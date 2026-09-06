@@ -1,10 +1,10 @@
 <resources>
-    <style name="Theme.MAP" parent="android:style/Theme.Material.Light.NoActionBar">
+    <style name="Theme.MAP" parent="android:style/Theme.Material.NoActionBar">
         <item name="android:fontFamily">sans</item>
         <item name="android:colorAccent">@color/map_accent</item>
         <item name="android:windowBackground">@color/map_background</item>
         <item name="android:navigationBarColor">@color/map_background</item>
         <item name="android:statusBarColor">@color/map_background</item>
-        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 </resources>

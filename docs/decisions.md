@@ -2,10 +2,25 @@
 
 - Android-native Kotlin application; minimum API 26, compile/target API 36.
 - Application ID: `app.map.android`.
-- Home/Today is the primary surface; navigation is Home, Music, Scan, Tasks.
-- MVP visual language is a quiet utility board with system themes, restrained motion, explicit states, and accessibility-first controls.
+- Home/Today is the primary surface. Home, Calendar, Tasks, and Tools are primary navigation; Tools contains Documents, Scan, and Music as personal tools.
+- The confirmed UI direction is **Quiet Focus**: native Android behavior with an editorial timeboard identity, a timeline-first Home, and a prominent Now/Next focus area.
+- Use Material 3 structure, calm tonal surfaces, restrained depth, one active accent, accessible contrast, system light/dark themes, and minimal motion. Avoid full neumorphism, dense card grids, and decorative productivity-game patterns.
+- Scheduled tasks appear in both Tasks and Calendar; unscheduled tasks remain in Inbox.
+- Calendar opens to a calm Today agenda on phones with a compact horizontal date strip and lightweight time grid; week view is secondary. Date-only tasks are all-day items. Now/Next is automatic by default, with optional user pinning.
+- Add task uses a focused bottom-sheet composer. The title is requested first; date, time, notes, recurrence, and tags are progressively revealed. Completion is explicit and offers an Undo snackbar; swipe gestures are optional enhancements, not the only path.
+- MAP includes a read-only local document viewer for user-selected PDFs and images, with compatibility and recovery states for files exported by scanning apps such as CamScanner. It opens source files directly and does not silently copy, repair, re-export, or modify them. Missing or unreadable files remain retained as unavailable records.
+- Personal tools includes a recent-documents list, an Open document action, and an Open with another app recovery action when MAP cannot render a source file.
+- Tools uses a calm list rather than a card grid. Documents, Scan, and Music rows show contextual state such as recent files, an unfinished scan, or the current track.
 - MVP has no account, backend, network service, analytics, crash reporting, or cloud sync.
 - Room/SQLite owns local metadata and operational state; user files remain file-backed.
 - Scanning is a recoverable multi-page camera/import workflow that exports readable PDFs; OCR is deferred.
-- Music uses user-selected local folders, persistent queue/state, and background controls.
+- Music is a full local-only player under Tools; streaming services are out of scope. It indexes user-selected folders without duplicating source files.
+- Music refreshes selected folders when the user opens Music and on explicit request; it does not continuously scan files in the background.
+- Music reads embedded audio tags and artwork, falls back to filenames and folders when metadata is missing, and never performs internet metadata lookup.
+- The library supports Songs, Albums, Artists, Genres, Folders, Playlists, Favorites, and Recently played, plus search, sorting, and filtering by folder, format, artist, album, genre, duration, and availability.
+- Now Playing includes artwork, seeking, previous/play/next, shuffle, repeat, favorite, and queue access. The persistent editable queue supports reorder, remove, play next, clear, and save as playlist. Playlists support create, rename, delete, reorder, and add/remove tracks.
+- Music restores the last track, queue, playback position, shuffle, repeat, and equalizer state between sessions, but never starts playback automatically after MAP or the device restarts.
+- Active playback exposes a mini-player across MAP plus notification and lock-screen controls. Sleep timer supports custom duration, end of track, and end of queue.
+- Equalizer exposes available bands, presets, and device-supported effects; unsupported effects are clearly hidden or disabled. Missing audio files remain retained as unavailable records.
+- Music follows Quiet Focus: primary playback controls stay visible, while queue, equalizer, sleep timer, and metadata use focused sheets or secondary screens rather than crowding Now Playing.
 - Tasks support Inbox, Overdue, Today, Upcoming, recurrence, completion history, reminders, and bounded snooze.
