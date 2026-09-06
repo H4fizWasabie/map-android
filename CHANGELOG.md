@@ -25,6 +25,7 @@
 - Added nearby-page PDF rendering, bounded zoom controls, image pinch zoom, and local OCR-backed document search.
 - Added broader local audio format discovery and URI-aware playback fallback for Android-supported files such as Opus.
 - Added automatic document-bound cropping for clear scan edges and per-page PDF export selection.
+- Added the full Google document-scanner capture flow for automatic corner correction, perspective cleanup, rotation, and multi-page review.
 
 ### Changed
 

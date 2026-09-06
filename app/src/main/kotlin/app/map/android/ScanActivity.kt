@@ -2,6 +2,7 @@ package app.map.android
 
 import android.app.Activity
 import android.content.Intent
+import android.content.IntentSender
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
@@ -19,6 +20,10 @@ import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.FileProvider
+import com.google.mlkit.vision.documentscanner.GmsDocumentScanner
+import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
+import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
+import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
@@ -27,15 +32,23 @@ import java.util.Locale
 
 class ScanActivity : Activity() {
     private lateinit var database: ScanDatabase
+    private lateinit var scanner: GmsDocumentScanner
     private var sessionId = 0L
     private lateinit var pages: LinearLayout
-    private var cameraPath: String? = null
     private val selectedPageIds = mutableSetOf<Long>()
     private var selectionInitialized = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         database = ScanDatabase(this)
+        scanner = GmsDocumentScanning.getClient(
+            GmsDocumentScannerOptions.Builder()
+                .setGalleryImportAllowed(true)
+                .setPageLimit(50)
+                .setResultFormats(GmsDocumentScannerOptions.RESULT_FORMAT_JPEG)
+                .setScannerMode(GmsDocumentScannerOptions.SCANNER_MODE_FULL)
+                .build()
+        )
         sessionId = database.activeSession()
         render()
     }
@@ -52,21 +65,15 @@ class ScanActivity : Activity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (resultCode != RESULT_OK) return
-        when (requestCode) {
-            IMPORT_REQUEST -> {
-                val uris = buildList {
-                    data?.data?.let(::add)
-                    data?.clipData?.let { clip -> repeat(clip.itemCount) { add(clip.getItemAt(it).uri) } }
-                }
-                uris.forEach { copyPage(it) }
-                render()
+        if (requestCode != SCANNER_REQUEST || resultCode != RESULT_OK || data == null) return
+        runCatching {
+            GmsDocumentScanningResult.fromActivityResultIntent(data)?.getPages()?.forEach { page ->
+                copyPage(page.getImageUri())
             }
-            CAMERA_REQUEST -> {
-                cameraPath?.let { selectedPageIds.add(database.addPage(sessionId, it)) }
-                render()
-            }
+        }.onFailure {
+            Toast.makeText(this, "Could not import the scanned pages", Toast.LENGTH_LONG).show()
         }
+        render()
     }
 
     private fun render() {
@@ -91,12 +98,8 @@ class ScanActivity : Activity() {
             setOnClickListener { finish() }
         })
         root.addView(Button(this).apply {
-            text = "Import images"
-            setOnClickListener { importImages() }
-        })
-        root.addView(Button(this).apply {
-            text = "Take photo"
-            setOnClickListener { takePhoto() }
+            text = "Scan documents"
+            setOnClickListener { startScanner() }
         })
         val storedPages = database.pages(sessionId)
         if (!selectionInitialized) {
@@ -115,7 +118,7 @@ class ScanActivity : Activity() {
             layoutParams = LinearLayout.LayoutParams(-1, dp(1)).apply { topMargin = dp(16) }
         })
         root.addView(TextView(this).apply {
-            text = "Pages · clear edges are cropped when detected"
+            text = "Pages · corners corrected in the scanner"
             textSize = 18f
             setTextColor(getColor(R.color.map_text))
             setPadding(0, dp(12), 0, dp(8))
@@ -183,22 +186,18 @@ class ScanActivity : Activity() {
         }.also { parent.addView(it) }
     }
 
-    private fun importImages() {
-        startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-            type = "image/*"
-            putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
-            addCategory(Intent.CATEGORY_OPENABLE)
-        }, IMPORT_REQUEST)
-    }
-
-    private fun takePhoto() {
-        val directory = File(filesDir, "scans/$sessionId").apply { mkdirs() }
-        cameraPath = File(directory, "camera-${System.currentTimeMillis()}.jpg").absolutePath
-        val uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", File(cameraPath!!))
-        startActivityForResult(Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE).apply {
-            putExtra(android.provider.MediaStore.EXTRA_OUTPUT, uri)
-            addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }, CAMERA_REQUEST)
+    private fun startScanner() {
+        scanner.getStartScanIntent(this)
+            .addOnSuccessListener { intentSender ->
+                try {
+                    startIntentSenderForResult(intentSender, SCANNER_REQUEST, null, 0, 0, 0)
+                } catch (_: IntentSender.SendIntentException) {
+                    Toast.makeText(this, "Could not open the document scanner", Toast.LENGTH_LONG).show()
+                }
+            }
+            .addOnFailureListener {
+                Toast.makeText(this, "Document scanner is not available on this device", Toast.LENGTH_LONG).show()
+            }
     }
 
     private fun copyPage(uri: Uri) {
@@ -275,8 +274,7 @@ class ScanActivity : Activity() {
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
 
     companion object {
-        private const val IMPORT_REQUEST = 10
-        private const val CAMERA_REQUEST = 11
+        private const val SCANNER_REQUEST = 12
         private const val PAGE_WIDTH = 595
         private const val PAGE_HEIGHT = 842
     }
