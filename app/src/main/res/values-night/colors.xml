@@ -1,0 +1,8 @@
+<resources>
+    <color name="map_background">#171815</color>
+    <color name="map_text">#F0F0EB</color>
+    <color name="map_muted">#B3B7B0</color>
+    <color name="map_accent">#9CCBB7</color>
+    <color name="map_divider">#454841</color>
+    <color name="map_card">#252823</color>
+</resources>
