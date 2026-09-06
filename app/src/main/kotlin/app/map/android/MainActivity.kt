@@ -3,6 +3,7 @@ package app.map.android
 import android.app.Activity
 import android.app.AlertDialog
 import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
@@ -27,6 +28,7 @@ class MainActivity : Activity() {
             requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 40)
         }
         showHome()
+        if (intent.getBooleanExtra(EXTRA_OPEN_COMPOSER, false)) showAddTaskDialog()
     }
 
     override fun onDestroy() {
@@ -60,6 +62,7 @@ class MainActivity : Activity() {
                 text = "Add a task"
                 setOnClickListener { showAddTaskDialog() }
             })
+            addNowNext(body, openTasks)
             addTaskSection(body, "Inbox", openTasks.filter { it.dueAt == null })
             addTaskSection(body, "Overdue", openTasks.filter { it.dueAt != null && it.dueAt!! < startOfToday })
             addTaskSection(body, "Today", openTasks.filter { it.dueAt != null && it.dueAt!! in startOfToday until startOfTomorrow })
@@ -108,16 +111,16 @@ class MainActivity : Activity() {
         addHeading(parent, "Navigate")
         LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            listOf("Home", "Tasks", "Scan", "Music").forEach { label ->
+            listOf("Home", "Calendar", "Tasks", "Tools").forEach { label ->
                 addView(Button(this@MainActivity).apply {
                     text = label
                     isEnabled = label != selected
                     setOnClickListener {
                         when (label) {
                             "Home" -> showHome()
+                            "Calendar" -> startActivity(Intent(this@MainActivity, CalendarActivity::class.java))
                             "Tasks" -> showTasks()
-                            "Scan" -> startActivity(Intent(this@MainActivity, ScanActivity::class.java))
-                            "Music" -> startActivity(Intent(this@MainActivity, MusicActivity::class.java))
+                            "Tools" -> startActivity(Intent(this@MainActivity, ToolsActivity::class.java))
                         }
                     }
                 })
@@ -128,6 +131,21 @@ class MainActivity : Activity() {
     private fun addTaskSection(parent: LinearLayout, title: String, tasks: List<Task>) {
         addHeading(parent, title)
         if (tasks.isEmpty()) addEmpty(parent, "Nothing here.") else tasks.forEach { addTaskRow(parent, it) }
+    }
+
+    private fun addNowNext(parent: LinearLayout, tasks: List<Task>) {
+        val now = System.currentTimeMillis()
+        val next = tasks.asSequence()
+            .filter { it.dueAt != null && it.dueAt!! >= now }
+            .minByOrNull { it.dueAt!! }
+        if (next == null) return
+        addHeading(parent, "Next")
+        parent.addView(TextView(this).apply {
+            text = if (next.allDay) next.title else "${next.title} · ${formatDateTime(next.dueAt!!)}"
+            textSize = 16f
+            setTextColor(getColor(R.color.map_text))
+            setPadding(0, 0, 0, dp(4))
+        })
     }
 
     private fun addTaskRow(parent: LinearLayout, task: Task) {
@@ -154,6 +172,12 @@ class MainActivity : Activity() {
             setTextColor(getColor(R.color.map_accent))
             setPadding(0, dp(4), 0, 0)
         })
+        task.dueAt?.let { dueAt -> row.addView(TextView(this).apply {
+            text = if (task.allDay) "All day · ${formatDate(dueAt)}" else formatDateTime(dueAt)
+            textSize = 13f
+            setTextColor(getColor(R.color.map_accent))
+            setPadding(0, dp(4), 0, 0)
+        }) }
         LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             addView(Button(this@MainActivity).apply {
@@ -274,6 +298,7 @@ class MainActivity : Activity() {
             contentDescription = "Task recurrence"
         }
         var dueAt: Long? = null
+        var allDay = true
         val dueButton = Button(this).apply {
             text = "No due date"
             setOnClickListener {
@@ -283,14 +308,41 @@ class MainActivity : Activity() {
                         set(year, month, day, 12, 0, 0)
                         set(Calendar.MILLISECOND, 0)
                     }.timeInMillis
+                    allDay = true
                     text = "%04d-%02d-%02d".format(year, month + 1, day)
                 }, today.get(Calendar.YEAR), today.get(Calendar.MONTH), today.get(Calendar.DAY_OF_MONTH)).show()
+            }
+        }
+        val timeButton = Button(this).apply {
+            text = "All day"
+            setOnClickListener {
+                val selected = dueAt ?: run {
+                    Toast.makeText(this@MainActivity, "Choose a date first", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                if (allDay) {
+                    val current = Calendar.getInstance().apply { timeInMillis = selected }
+                    TimePickerDialog(this@MainActivity, { _, hour, minute ->
+                        dueAt = Calendar.getInstance().apply {
+                            timeInMillis = selected
+                            set(Calendar.HOUR_OF_DAY, hour)
+                            set(Calendar.MINUTE, minute)
+                        }.timeInMillis
+                        allDay = false
+                        text = "%02d:%02d".format(hour, minute)
+                    }, current.get(Calendar.HOUR_OF_DAY), current.get(Calendar.MINUTE), true).show()
+                } else {
+                    allDay = true
+                    text = "All day"
+                    dueAt = Calendar.getInstance().apply { timeInMillis = selected; set(Calendar.HOUR_OF_DAY, 12); set(Calendar.MINUTE, 0) }.timeInMillis
+                }
             }
         }
         fields.addView(title)
         fields.addView(notes)
         fields.addView(tags)
         fields.addView(dueButton)
+        fields.addView(timeButton)
         fields.addView(recurrence)
 
         AlertDialog.Builder(this)
@@ -311,7 +363,8 @@ class MainActivity : Activity() {
                             notes.text.toString().trim(),
                             dueAt,
                             recurrence.selectedItem.toString(),
-                            tags.text.toString().trim()
+                            tags.text.toString().trim(),
+                            allDay
                         )
                         dueAt?.let { ReminderScheduler.schedule(this@MainActivity, taskId, taskTitle, it) }
                         dialog.dismiss()
@@ -323,8 +376,11 @@ class MainActivity : Activity() {
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+    private fun formatDate(value: Long) = java.text.SimpleDateFormat("EEE, d MMM", java.util.Locale.getDefault()).format(java.util.Date(value))
+    private fun formatDateTime(value: Long) = java.text.SimpleDateFormat("EEE, d MMM · HH:mm", java.util.Locale.getDefault()).format(java.util.Date(value))
 
     companion object {
+        const val EXTRA_OPEN_COMPOSER = "open_composer"
         private const val DAY = 24 * 60 * 60 * 1000L
     }
 }

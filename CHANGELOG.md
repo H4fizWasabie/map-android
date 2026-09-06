@@ -15,6 +15,9 @@
 - Added task due-date reminders with Android notifications and bounded one-day snooze.
 - Added light and dark system theme resources for the utility board palette.
 - Hardened task persistence against blank titles and stale double actions.
+- Added a calm Calendar destination with date strip, agenda/week view, all-day and timed tasks, completion, and snooze.
+- Added a list-based Tools destination for Documents, Scan, and Music.
+- Added a direct read-only PDF/image viewer with persisted local document history and external-app recovery.
 
 ### Changed
 
@@ -29,3 +32,4 @@
 - Recorded the list-based Tools screen with contextual state for each personal tool.
 - Expanded the confirmed Music contract to a full local library, player, adaptive equalizer, queue, playlists, filters, sleep timer, and app-wide mini-player.
 - Recorded on-open/manual library refresh, local metadata fallback, and state restoration without automatic playback.
+- Connected the primary navigation to Home, Calendar, Tasks, and Tools.

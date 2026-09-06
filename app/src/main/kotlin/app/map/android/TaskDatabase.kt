@@ -7,7 +7,7 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import java.util.Calendar
 
-class TaskDatabase(context: Context) : SQLiteOpenHelper(context, "map.db", null, 2) {
+class TaskDatabase(context: Context) : SQLiteOpenHelper(context, "map.db", null, 3) {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
             """
@@ -18,6 +18,7 @@ class TaskDatabase(context: Context) : SQLiteOpenHelper(context, "map.db", null,
                 due_at INTEGER,
                 recurrence TEXT NOT NULL DEFAULT '',
                 tags TEXT NOT NULL DEFAULT '',
+                all_day INTEGER NOT NULL DEFAULT 1,
                 completed INTEGER NOT NULL DEFAULT 0,
                 created_at INTEGER NOT NULL,
                 completed_at INTEGER
@@ -27,9 +28,11 @@ class TaskDatabase(context: Context) : SQLiteOpenHelper(context, "map.db", null,
         db.execSQL("CREATE INDEX tasks_due_idx ON tasks(completed, due_at)")
     }
 
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        if (oldVersion < 3) db.execSQL("ALTER TABLE tasks ADD COLUMN all_day INTEGER NOT NULL DEFAULT 1")
+    }
 
-    fun addTask(title: String, notes: String, dueAt: Long?, recurrence: String, tags: String): Long {
+    fun addTask(title: String, notes: String, dueAt: Long?, recurrence: String, tags: String, allDay: Boolean = true): Long {
         require(title.isNotBlank()) { "Task title cannot be blank" }
         return writableDatabase.insertOrThrow("tasks", null, ContentValues().apply {
             put("title", title)
@@ -37,6 +40,7 @@ class TaskDatabase(context: Context) : SQLiteOpenHelper(context, "map.db", null,
             dueAt?.let { put("due_at", it) }
             put("recurrence", recurrence)
             put("tags", tags)
+            put("all_day", if (allDay) 1 else 0)
             put("created_at", System.currentTimeMillis())
         })
     }
@@ -58,7 +62,7 @@ class TaskDatabase(context: Context) : SQLiteOpenHelper(context, "map.db", null,
         )
         if (updated == 0) return null
         val nextDueAt = nextDueAt(task, completedAt) ?: return null
-        return addTask(task.title, task.notes, nextDueAt, task.recurrence, task.tags)
+        return addTask(task.title, task.notes, nextDueAt, task.recurrence, task.tags, task.allDay)
     }
 
     fun snooze(task: Task): Long? {
@@ -107,7 +111,8 @@ class TaskDatabase(context: Context) : SQLiteOpenHelper(context, "map.db", null,
         recurrence = getString(getColumnIndexOrThrow("recurrence")),
         tags = getString(getColumnIndexOrThrow("tags")),
         completed = getInt(getColumnIndexOrThrow("completed")) == 1,
-        completedAt = getLongOrNull("completed_at")
+        completedAt = getLongOrNull("completed_at"),
+        allDay = getInt(getColumnIndexOrThrow("all_day")) == 1
     )
 
     private fun Cursor.getLongOrNull(column: String): Long? {

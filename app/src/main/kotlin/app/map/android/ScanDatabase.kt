@@ -44,4 +44,9 @@ class ScanDatabase(context: Context) : SQLiteOpenHelper(context, "map-scans.db",
         }
         return pages
     }
+
+    fun unfinishedPageCount(): Int = readableDatabase.rawQuery(
+        "SELECT COUNT(p.id) FROM sessions s LEFT JOIN pages p ON p.session_id = s.id WHERE s.exported = 0 AND s.id = (SELECT id FROM sessions WHERE exported = 0 ORDER BY created_at DESC LIMIT 1)",
+        null
+    ).use { cursor -> if (cursor.moveToFirst()) cursor.getInt(0) else 0 }
 }

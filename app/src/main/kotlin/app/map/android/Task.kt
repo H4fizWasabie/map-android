@@ -8,5 +8,6 @@ data class Task(
     val recurrence: String,
     val tags: String,
     val completed: Boolean,
-    val completedAt: Long?
+    val completedAt: Long?,
+    val allDay: Boolean = true
 )
