@@ -109,6 +109,7 @@ class DocumentViewerActivity : Activity() {
             addView(TextView(this@DocumentViewerActivity).apply {
                 text = name
                 textSize = 18f
+                gravity = Gravity.CENTER_VERTICAL
                 setTextColor(getColor(R.color.map_text))
                 setPadding(dp(12), 0, 0, 0)
                 maxLines = 1

@@ -68,6 +68,7 @@ class ToolsActivity : Activity() {
         addView(TextView(this@ToolsActivity).apply {
             text = "Tools"
             textSize = 18f
+            gravity = Gravity.CENTER_VERTICAL
             setTextColor(getColor(R.color.map_text))
             setTypeface(typeface, android.graphics.Typeface.BOLD)
             setPadding(dp(12), 0, 0, 0)

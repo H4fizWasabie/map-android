@@ -79,6 +79,7 @@ class CalendarActivity : Activity() {
         addView(TextView(this@CalendarActivity).apply {
             text = "Calendar"
             textSize = 18f
+            gravity = Gravity.CENTER_VERTICAL
             setTextColor(getColor(R.color.map_text))
             setTypeface(typeface, android.graphics.Typeface.BOLD)
             setPadding(dp(12), 0, 0, 0)
@@ -102,10 +103,49 @@ class CalendarActivity : Activity() {
     }
 
     private fun addDay(parent: LinearLayout) {
-        val tasks = database.openTasks().filter { it.dueAt?.let(::dayStart) == selectedDay }.sortedWith(compareByDescending<Task> { it.allDay }.thenBy { it.dueAt })
-        addHeading(parent, if (tasks.isEmpty()) "Nothing scheduled" else "Agenda")
-        if (tasks.isEmpty()) addEmpty(parent, "Your day is open. Add a task when something needs a place.")
-        tasks.forEach { addTaskRow(parent, it) }
+        val tasks = database.openTasks().filter { it.dueAt?.let(::dayStart) == selectedDay }
+        val allDayTasks = tasks.filter { it.allDay }.sortedBy { it.dueAt }
+        val timedTasks = tasks.filterNot { it.allDay }.sortedBy { it.dueAt }
+        if (allDayTasks.isNotEmpty()) {
+            addHeading(parent, "All day")
+            allDayTasks.forEach { addTaskRow(parent, it) }
+        }
+        addHeading(parent, if (timedTasks.isEmpty()) "Nothing scheduled" else "Timeline")
+        if (timedTasks.isEmpty()) {
+            addEmpty(parent, if (allDayTasks.isEmpty()) "Your day is open. Add a task when something needs a place." else "No timed tasks today.")
+            return
+        }
+        val visible = timedTasks.filter { hourOfDay(it.dueAt!!) in FIRST_HOUR..LAST_HOUR }
+        (FIRST_HOUR..LAST_HOUR).forEach { hour ->
+            addTimeRow(parent, hour, visible.filter { hourOfDay(it.dueAt!!) == hour })
+        }
+        timedTasks.filter { hourOfDay(it.dueAt!!) !in FIRST_HOUR..LAST_HOUR }
+            .forEach { addTaskRow(parent, it) }
+    }
+
+    private fun addTimeRow(parent: LinearLayout, hour: Int, tasks: List<Task>) {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.TOP
+            minimumHeight = dp(64)
+        }
+        row.addView(TextView(this).apply {
+            text = "%02d:00".format(hour)
+            textSize = 12f
+            setTextColor(getColor(R.color.map_muted))
+            setPadding(0, dp(8), dp(8), 0)
+        }, LinearLayout.LayoutParams(dp(58), -1))
+        val slot = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(8), dp(6), 0, dp(2))
+            addView(View(this@CalendarActivity).apply {
+                setBackgroundColor(getColor(R.color.map_divider))
+                layoutParams = LinearLayout.LayoutParams(-1, dp(1))
+            })
+        }
+        tasks.forEach { addTaskRow(slot, it) }
+        row.addView(slot, LinearLayout.LayoutParams(0, -2, 1f))
+        parent.addView(row)
     }
 
     private fun addWeek(parent: LinearLayout) {
@@ -186,7 +226,11 @@ class CalendarActivity : Activity() {
 
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
 
+    private fun hourOfDay(value: Long): Int = Calendar.getInstance().apply { timeInMillis = value }.get(Calendar.HOUR_OF_DAY)
+
     companion object {
+        private const val FIRST_HOUR = 6
+        private const val LAST_HOUR = 22
         private fun dayStart(value: Long): Long = Calendar.getInstance().apply { timeInMillis = value; set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
         private fun addDays(value: Long, amount: Int): Long = Calendar.getInstance().apply { timeInMillis = value; add(Calendar.DAY_OF_YEAR, amount) }.timeInMillis
         private fun monday(value: Long): Long {

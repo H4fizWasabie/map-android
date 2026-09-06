@@ -65,6 +65,28 @@ class TaskDatabase(context: Context) : SQLiteOpenHelper(context, "map.db", null,
         return addTask(task.title, task.notes, nextDueAt, task.recurrence, task.tags, task.allDay)
     }
 
+    fun undoComplete(task: Task, nextId: Long?): Boolean {
+        writableDatabase.beginTransaction()
+        return try {
+            val restored = writableDatabase.update(
+                "tasks",
+                ContentValues().apply {
+                    put("completed", 0)
+                    putNull("completed_at")
+                },
+                "id = ? AND completed = 1",
+                arrayOf(task.id.toString())
+            ) == 1
+            if (restored && nextId != null) {
+                writableDatabase.delete("tasks", "id = ? AND completed = 0", arrayOf(nextId.toString()))
+            }
+            if (restored) writableDatabase.setTransactionSuccessful()
+            restored
+        } finally {
+            writableDatabase.endTransaction()
+        }
+    }
+
     fun snooze(task: Task): Long? {
         val dueAt = System.currentTimeMillis() + DAY
         val updated = writableDatabase.update(
