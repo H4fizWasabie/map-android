@@ -1,8 +1,10 @@
 <resources>
-    <color name="map_background">#FAF9F6</color>
-    <color name="map_text">#1B1B1B</color>
-    <color name="map_muted">#5F6368</color>
-    <color name="map_accent">#315C4C</color>
-    <color name="map_divider">#E3E0DA</color>
-    <color name="map_card">#FFFFFF</color>
+    <color name="map_background">#F7F5F0</color>
+    <color name="map_text">#20231F</color>
+    <color name="map_muted">#5F655D</color>
+    <color name="map_accent">#396B5E</color>
+    <color name="map_on_accent">#FFFFFF</color>
+    <color name="map_divider">#DEDED7</color>
+    <color name="map_card">#FFFEFA</color>
+    <color name="map_focus">#E8F0EB</color>
 </resources>

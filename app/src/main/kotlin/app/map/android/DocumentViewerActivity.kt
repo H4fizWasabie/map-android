@@ -185,7 +185,7 @@ class DocumentViewerActivity : Activity() {
         addView(LinearLayout(this@DocumentViewerActivity).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(16), dp(12), dp(16), dp(4))
+            setPadding(dp(16), dp(24), dp(16), dp(4))
             addView(button("Back") { finish() })
             addView(TextView(this@DocumentViewerActivity).apply {
                 text = name

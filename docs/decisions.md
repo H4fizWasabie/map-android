@@ -4,6 +4,7 @@
 - Application ID: `app.map.android`.
 - Home/Today is the primary surface. Home, Calendar, Tasks, and Tools are primary navigation; Tools contains Documents, Scan, and Music as personal tools.
 - The confirmed UI direction is **Quiet Focus**: native Android behavior with an editorial timeboard identity, a timeline-first Home, and a prominent Now/Next focus area.
+- The shared visual system uses a warm neutral background, dark ink, muted blue-green accent, soft white surfaces, light dividers, 8dp spacing, 48dp touch targets, and restrained motion. Primary screens use Home, Calendar, Tasks, and Tools navigation; secondary controls stay in focused sheets or screens.
 - Use Material 3 structure, calm tonal surfaces, restrained depth, one active accent, accessible contrast, system light/dark themes, and minimal motion. Avoid full neumorphism, dense card grids, and decorative productivity-game patterns.
 - Scheduled tasks appear in both Tasks and Calendar; unscheduled tasks remain in Inbox.
 - Calendar opens to a calm Today agenda on phones with a compact horizontal date strip and lightweight time grid; week view is secondary. Date-only tasks are all-day items. Now/Next is automatic by default, with optional user pinning.

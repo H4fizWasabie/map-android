@@ -149,7 +149,7 @@ class ScanActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = android.view.Gravity.CENTER_VERTICAL
             setPadding(dp(12), dp(10), dp(8), dp(10))
-            setBackgroundColor(getColor(R.color.map_card))
+            setBackgroundResource(R.drawable.map_surface)
             contentDescription = "Music: ${item.title}"
             setOnClickListener { startActivity(Intent(this@ScanActivity, MusicActivity::class.java).putExtra(MusicActivity.EXTRA_OPEN_PLAYER, true)) }
             addView(TextView(this@ScanActivity).apply {

@@ -39,3 +39,4 @@
 - Recorded on-open/manual library refresh, local metadata fallback, and state restoration without automatic playback.
 - Connected the primary navigation to Home, Calendar, Tasks, and Tools.
 - Refined Home to foreground Now/Next and hide empty task sections; softened native button treatment across light and dark themes.
+- Refined the primary surfaces into a Quiet Personal Workspace with shared navigation, calm task rows, focus treatment, and task details.

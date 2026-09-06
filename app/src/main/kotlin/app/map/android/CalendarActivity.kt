@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -45,7 +46,7 @@ class CalendarActivity : Activity() {
         val scroll = ScrollView(this)
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(24), 0, dp(24), dp(24)) }
         body.addView(TextView(this).apply {
-            text = "Your schedule"
+            text = if (weekMode) "This week" else "Today"
             textSize = 30f
             setTextColor(getColor(R.color.map_text))
             setPadding(0, dp(8), 0, dp(4))
@@ -68,22 +69,30 @@ class CalendarActivity : Activity() {
         if (weekMode) addWeek(body) else addDay(body)
         scroll.addView(body)
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        root.addView(MapUi.bottomNavigation(this, "Calendar", ::navigate))
         setContentView(root)
     }
 
     private fun header(): View = LinearLayout(this).apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
-        setPadding(dp(16), dp(12), dp(16), dp(4))
-        addView(actionButton("Back") { finish() })
+        setPadding(dp(16), dp(24), dp(16), dp(4))
         addView(TextView(this@CalendarActivity).apply {
             text = "Calendar"
             textSize = 18f
             gravity = Gravity.CENTER_VERTICAL
             setTextColor(getColor(R.color.map_text))
             setTypeface(typeface, android.graphics.Typeface.BOLD)
-            setPadding(dp(12), 0, 0, 0)
+            setPadding(0, 0, 0, 0)
         }, LinearLayout.LayoutParams(0, -1, 1f))
+    }
+
+    private fun navigate(label: String) {
+        when (label) {
+            "Home" -> startActivity(Intent(this, MainActivity::class.java))
+            "Tasks" -> startActivity(Intent(this, MainActivity::class.java).putExtra(MainActivity.EXTRA_OPEN_TASKS, true))
+            "Tools" -> startActivity(Intent(this, ToolsActivity::class.java))
+        }
     }
 
     private fun dateStrip(): View = HorizontalScrollView(this).apply {
@@ -167,38 +176,53 @@ class CalendarActivity : Activity() {
 
     private fun addTaskRow(parent: LinearLayout, task: Task) {
         val row = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(14), dp(12), dp(14), dp(10))
-            setBackgroundColor(getColor(R.color.map_card))
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(8), 0, dp(8))
             contentDescription = "Calendar task: ${task.title}"
         }
-        row.addView(TextView(this).apply {
-            text = task.title
-            textSize = 16f
-            setTextColor(getColor(R.color.map_text))
-        })
-        row.addView(TextView(this).apply {
-            text = if (task.allDay) "All day" else SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(task.dueAt ?: 0))
-            textSize = 13f
-            setTextColor(getColor(R.color.map_accent))
-            setPadding(0, dp(3), 0, 0)
-        })
-        LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            addView(actionButton("Done") {
-                ReminderScheduler.cancel(this@CalendarActivity, task.id)
-                val completedAt = System.currentTimeMillis()
-                val nextDueAt = database.nextDueAt(task, completedAt)
-                val nextId = database.complete(task)
-                if (nextId != null && nextDueAt != null) ReminderScheduler.schedule(this@CalendarActivity, nextId, task.title, nextDueAt)
-                render()
+        row.addView(CheckBox(this).apply {
+            contentDescription = "Complete ${task.title}"
+            minWidth = dp(48)
+            minHeight = dp(48)
+            setOnClickListener { completeTask(task) }
+        }, LinearLayout.LayoutParams(dp(48), dp(56)))
+        row.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(8), 0, 0, 0)
+            setOnClickListener {
+                startActivity(Intent(this@CalendarActivity, MainActivity::class.java).apply {
+                    putExtra(MainActivity.EXTRA_OPEN_TASKS, true)
+                    putExtra(MainActivity.EXTRA_OPEN_TASK_ID, task.id)
+                })
+            }
+            addView(TextView(this@CalendarActivity).apply {
+                text = task.title
+                textSize = 16f
+                maxLines = 2
+                setTextColor(getColor(R.color.map_text))
             })
-            if (task.dueAt != null) addView(actionButton("Snooze") {
-                database.snooze(task)?.let { ReminderScheduler.schedule(this@CalendarActivity, task.id, task.title, it) }
-                render()
+            addView(TextView(this@CalendarActivity).apply {
+                text = if (task.allDay) "All day" else SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(task.dueAt ?: 0))
+                textSize = 13f
+                setTextColor(getColor(R.color.map_muted))
+                setPadding(0, dp(3), 0, 0)
             })
-        }.also { row.addView(it) }
-        parent.addView(row, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
+        }, LinearLayout.LayoutParams(0, -2, 1f))
+        parent.addView(row)
+        parent.addView(View(this).apply {
+            setBackgroundColor(getColor(R.color.map_divider))
+            layoutParams = LinearLayout.LayoutParams(-1, dp(1))
+        })
+    }
+
+    private fun completeTask(task: Task) {
+        ReminderScheduler.cancel(this, task.id)
+        val completedAt = System.currentTimeMillis()
+        val nextDueAt = database.nextDueAt(task, completedAt)
+        val nextId = database.complete(task)
+        if (nextId != null && nextDueAt != null) ReminderScheduler.schedule(this, nextId, task.title, nextDueAt)
+        render()
     }
 
     private fun actionButton(label: String, click: () -> Unit): Button = Button(this).apply {

@@ -49,6 +49,20 @@ class TaskDatabase(context: Context) : SQLiteOpenHelper(context, "map.db", null,
 
     fun recentCompleted(): List<Task> = queryTasks("completed = 1")
 
+    fun updateTask(task: Task, title: String, notes: String, tags: String): Boolean {
+        require(title.isNotBlank()) { "Task title cannot be blank" }
+        return writableDatabase.update(
+            "tasks",
+            ContentValues().apply {
+                put("title", title)
+                put("notes", notes)
+                put("tags", tags)
+            },
+            "id = ? AND completed = 0",
+            arrayOf(task.id.toString())
+        ) == 1
+    }
+
     fun complete(task: Task): Long? {
         val completedAt = System.currentTimeMillis()
         val updated = writableDatabase.update(

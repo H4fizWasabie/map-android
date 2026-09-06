@@ -57,22 +57,30 @@ class ToolsActivity : Activity() {
         addScan(body)
         addMusic(body)
         root.addView(ScrollView(this).apply { addView(body) }, LinearLayout.LayoutParams(-1, 0, 1f))
+        root.addView(MapUi.bottomNavigation(this, "Tools", ::navigate))
         setContentView(root)
     }
 
     private fun header(): View = LinearLayout(this).apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
-        setPadding(dp(16), dp(12), dp(16), dp(4))
-        addView(button("Back") { finish() })
+        setPadding(dp(16), dp(24), dp(16), dp(4))
         addView(TextView(this@ToolsActivity).apply {
             text = "Tools"
             textSize = 18f
             gravity = Gravity.CENTER_VERTICAL
             setTextColor(getColor(R.color.map_text))
             setTypeface(typeface, android.graphics.Typeface.BOLD)
-            setPadding(dp(12), 0, 0, 0)
+            setPadding(0, 0, 0, 0)
         })
+    }
+
+    private fun navigate(label: String) {
+        when (label) {
+            "Home" -> startActivity(Intent(this, MainActivity::class.java))
+            "Calendar" -> startActivity(Intent(this, CalendarActivity::class.java))
+            "Tasks" -> startActivity(Intent(this, MainActivity::class.java).putExtra(MainActivity.EXTRA_OPEN_TASKS, true))
+        }
     }
 
     private fun addDocuments(parent: LinearLayout) {
@@ -126,7 +134,7 @@ class ToolsActivity : Activity() {
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(14), dp(16), dp(12))
-            setBackgroundColor(getColor(R.color.map_card))
+            setBackgroundResource(R.drawable.map_surface)
             contentDescription = "$title tool"
         }
         row.addView(TextView(this).apply {

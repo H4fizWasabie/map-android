@@ -707,7 +707,7 @@ class MusicActivity : Activity() {
     private fun header(title: String, player: Boolean): View = LinearLayout(this).apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
-        setPadding(dp(16), dp(12), dp(16), dp(4))
+        setPadding(dp(16), dp(24), dp(16), dp(4))
         addView(actionButton("Back") { if (player) renderLibrary() else finish() })
         addView(TextView(this@MusicActivity).apply { text = title; textSize = 18f; setTextColor(getColor(R.color.map_text)); setTypeface(typeface, android.graphics.Typeface.BOLD); gravity = Gravity.CENTER_VERTICAL; setPadding(dp(12), 0, 0, 0) }, LinearLayout.LayoutParams(0, -1, 1f))
     }
