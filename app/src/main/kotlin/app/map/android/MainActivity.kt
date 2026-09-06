@@ -23,6 +23,7 @@ class MainActivity : Activity() {
     private lateinit var database: TaskDatabase
     private lateinit var content: LinearLayout
     private var undoState: UndoState? = null
+    private val preferences by lazy { getSharedPreferences("map-focus", MODE_PRIVATE) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -153,16 +154,31 @@ class MainActivity : Activity() {
         val current = today.filter { task ->
             task.allDay || (task.dueAt!! <= now && task.dueAt!! + HOUR >= now)
         }.minByOrNull { it.dueAt ?: Long.MAX_VALUE }
+        val pinned = preferences.getLong(PINNED_FOCUS_ID, -1L).takeIf { it != -1L }?.let { id -> tasks.firstOrNull { it.id == id } }
+        if (pinned == null && preferences.contains(PINNED_FOCUS_ID)) preferences.edit().remove(PINNED_FOCUS_ID).apply()
+        val focus = pinned ?: current
         val next = tasks.asSequence()
-            .filter { it.dueAt != null && it.dueAt!! >= now }
+            .filter { it.id != focus?.id && it.dueAt != null && it.dueAt!! >= now }
             .minByOrNull { it.dueAt!! }
         addHeading(parent, "Focus")
         parent.addView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(14), dp(16), dp(14))
             setBackgroundColor(getColor(R.color.map_card))
-            addView(focusLine("Now", current?.let(::focusLabel) ?: "Nothing in progress"))
+            addView(focusLine("Now", focus?.let(::focusLabel) ?: "Nothing in progress"))
             addView(focusLine("Next", next?.let(::focusLabel) ?: "Nothing queued"))
+            focus?.let { task ->
+                addView(Button(this@MainActivity).apply {
+                    text = if (pinned == null) "Pin focus" else "Unpin focus"
+                    isAllCaps = false
+                    contentDescription = text
+                    setOnClickListener {
+                        if (pinned == null) preferences.edit().putLong(PINNED_FOCUS_ID, task.id).apply()
+                        else preferences.edit().remove(PINNED_FOCUS_ID).apply()
+                        showHome()
+                    }
+                })
+            }
         })
     }
 
@@ -482,6 +498,7 @@ class MainActivity : Activity() {
         const val EXTRA_OPEN_COMPOSER = "open_composer"
         private const val HOUR = 60 * 60 * 1000L
         private const val DAY = 24 * 60 * 60 * 1000L
+        private const val PINNED_FOCUS_ID = "pinned_focus_id"
     }
 
     private data class UndoState(val task: Task, val nextId: Long?)

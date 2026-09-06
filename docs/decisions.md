@@ -13,7 +13,8 @@
 - Tools uses a calm list rather than a card grid. Documents, Scan, and Music rows show contextual state such as recent files, an unfinished scan, or the current track.
 - MVP has no account, backend, network service, analytics, crash reporting, or cloud sync.
 - Room/SQLite owns local metadata and operational state; user files remain file-backed.
-- Scanning is a recoverable multi-page camera/import workflow that exports readable PDFs; OCR is deferred.
+- Scanning is a recoverable multi-page camera/import workflow that exports readable PDFs and can extract text locally with the bundled OCR model; source pages remain unchanged.
+- The document viewer renders only nearby PDF pages, supports bounded zoom, and searches locally stored OCR text without modifying the source file.
 - Music is a full local-only player under Tools; streaming services are out of scope. It indexes user-selected folders without duplicating source files.
 - Music refreshes selected folders when the user opens Music and on explicit request; it does not continuously scan files in the background.
 - Music reads embedded audio tags and artwork, falls back to filenames and folders when metadata is missing, and never performs internet metadata lookup.

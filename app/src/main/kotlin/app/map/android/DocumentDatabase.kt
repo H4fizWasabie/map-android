@@ -13,7 +13,12 @@ data class DocumentItem(
     val available: Boolean
 )
 
-class DocumentDatabase(context: Context) : SQLiteOpenHelper(context, "map-documents.db", null, 1) {
+data class DocumentText(
+    val page: Int,
+    val text: String
+)
+
+class DocumentDatabase(context: Context) : SQLiteOpenHelper(context, "map-documents.db", null, 2) {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
             """
@@ -27,9 +32,25 @@ class DocumentDatabase(context: Context) : SQLiteOpenHelper(context, "map-docume
             )
             """.trimIndent()
         )
+        createTextTable(db)
     }
 
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        if (oldVersion < 2) createTextTable(db)
+    }
+
+    private fun createTextTable(db: SQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS document_text (
+                uri TEXT NOT NULL,
+                page INTEGER NOT NULL,
+                text TEXT NOT NULL,
+                PRIMARY KEY(uri, page)
+            )
+            """.trimIndent()
+        )
+    }
 
     fun upsert(uri: String, name: String, mime: String) {
         writableDatabase.insertWithOnConflict(
@@ -60,6 +81,33 @@ class DocumentDatabase(context: Context) : SQLiteOpenHelper(context, "map-docume
     })
 
     fun markUnavailable(uri: String) = update(uri, ContentValues().apply { put("available", 0) })
+
+    fun saveText(uri: String, page: Int, text: String) {
+        writableDatabase.insertWithOnConflict(
+            "document_text",
+            null,
+            ContentValues().apply {
+                put("uri", uri)
+                put("page", page)
+                put("text", text)
+            },
+            SQLiteDatabase.CONFLICT_REPLACE
+        )
+    }
+
+    fun text(uri: String): List<DocumentText> = buildList {
+        readableDatabase.query(
+            "document_text",
+            arrayOf("page", "text"),
+            "uri = ?",
+            arrayOf(uri),
+            null,
+            null,
+            "page ASC"
+        ).use { cursor ->
+            while (cursor.moveToNext()) add(DocumentText(cursor.getInt(0), cursor.getString(1)))
+        }
+    }
 
     private fun update(uri: String, values: ContentValues) {
         writableDatabase.update("documents", values, "uri = ?", arrayOf(uri))

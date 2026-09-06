@@ -21,6 +21,8 @@
 - Added a lightweight Calendar hour timeline for timed tasks.
 - Added a focused bottom-sheet task composer and visible completion undo.
 - Made the task composer title-first with an explicit Add details reveal.
+- Added optional Home Focus pinning so Now/Next can stay anchored to a chosen task.
+- Added nearby-page PDF rendering, bounded zoom controls, image pinch zoom, and local OCR-backed document search.
 
 ### Changed
 

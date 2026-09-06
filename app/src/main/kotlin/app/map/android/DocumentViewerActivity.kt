@@ -4,23 +4,53 @@ import android.app.Activity
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Rect
 import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.os.Bundle
+import android.os.ParcelFileDescriptor
+import android.text.InputType
 import android.view.Gravity
+import android.view.ScaleGestureDetector
+import android.view.View
+import android.view.ViewGroup
 import android.widget.Button
+import android.widget.EditText
+import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import com.google.android.gms.tasks.Tasks
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.TextRecognizer
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import java.util.concurrent.Executors
+import kotlin.math.roundToInt
 
 class DocumentViewerActivity : Activity() {
     private lateinit var database: DocumentDatabase
     private lateinit var uri: Uri
     private var mime = "application/pdf"
     private var name = "Document"
+    private var isPdf = false
+    private var pdfDescriptor: ParcelFileDescriptor? = null
+    private var pdfRenderer: PdfRenderer? = null
+    private var pdfScroll: ScrollView? = null
+    private var pdfPages = emptyList<PdfPageView>()
+    private var pdfPagesContainer: LinearLayout? = null
+    private var pdfBaseWidth = 0
+    private var pdfZoom = 1f
+    private val ocrExecutor = Executors.newSingleThreadExecutor()
+    private lateinit var ocrButton: Button
+    private lateinit var searchPanel: LinearLayout
+    private lateinit var searchInput: EditText
+    private lateinit var status: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,13 +69,16 @@ class DocumentViewerActivity : Activity() {
     }
 
     override fun onDestroy() {
+        pdfRenderer?.close()
+        pdfDescriptor?.close()
+        ocrExecutor.shutdownNow()
         if (::database.isInitialized) database.close()
         super.onDestroy()
     }
 
     private fun loadDocument() {
         try {
-            val isPdf = mime == "application/pdf" || name.endsWith(".pdf", ignoreCase = true)
+            isPdf = mime == "application/pdf" || name.endsWith(".pdf", ignoreCase = true)
             if (isPdf) showPdf() else showImage()
         } catch (_: Exception) {
             database.markUnavailable(uri.toString())
@@ -54,40 +87,77 @@ class DocumentViewerActivity : Activity() {
     }
 
     private fun showPdf() {
-        val descriptor = contentResolver.openFileDescriptor(uri, "r") ?: error("File is unavailable")
-        descriptor.use { file ->
-            PdfRenderer(file).use { renderer ->
-                val root = viewerRoot()
-                val pages = LinearLayout(this).apply {
-                    orientation = LinearLayout.VERTICAL
-                    setPadding(dp(16), dp(8), dp(16), dp(24))
-                }
-                val width = (resources.displayMetrics.widthPixels - dp(40)).coerceAtLeast(dp(240))
-                for (index in 0 until renderer.pageCount) {
-                    renderer.openPage(index).use { page ->
-                        val scale = width.toFloat() / page.width
-                        val bitmap = Bitmap.createBitmap(width, (page.height * scale).toInt(), Bitmap.Config.ARGB_8888)
-                        bitmap.eraseColor(Color.WHITE)
-                        page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-                        pages.addView(ImageView(this).apply {
-                            setImageBitmap(bitmap)
-                            adjustViewBounds = true
-                            contentDescription = "Page ${index + 1} of $name"
-                            setBackgroundColor(Color.WHITE)
-                        }, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) })
-                    }
-                }
-                root.addView(ScrollView(this).apply { addView(pages) }, LinearLayout.LayoutParams(-1, 0, 1f))
-                setContentView(root)
+        pdfDescriptor = contentResolver.openFileDescriptor(uri, "r") ?: error("File is unavailable")
+        pdfRenderer = PdfRenderer(pdfDescriptor!!)
+        val dimensions = buildList {
+            repeat(pdfRenderer!!.pageCount) { index ->
+                pdfRenderer!!.openPage(index).use { page -> add(page.width to page.height) }
             }
+        }
+        pdfBaseWidth = (resources.displayMetrics.widthPixels - dp(32)).coerceAtLeast(dp(240))
+        val pages = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(getColor(R.color.map_divider))
+            layoutParams = ViewGroup.LayoutParams(pdfBaseWidth, -2)
+        }
+        pdfPages = dimensions.mapIndexed { index, size ->
+            PdfPageView(index, size.first, size.second).also { page ->
+                pages.addView(page, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
+            }
+        }
+        pdfPagesContainer = pages
+        val vertical = ScrollView(this).apply {
+            pdfScroll = this
+            isFillViewport = true
+            setOnScrollChangeListener { _, _, _, _, _ -> renderVisiblePages() }
+        }
+        vertical.addView(HorizontalScrollView(this).apply {
+            isFillViewport = true
+            addView(pages)
+        })
+        val root = viewerRoot()
+        root.addView(vertical, LinearLayout.LayoutParams(-1, 0, 1f))
+        setContentView(root)
+        vertical.post { renderVisiblePages() }
+    }
+
+    private fun renderVisiblePages() {
+        val scroll = pdfScroll ?: return
+        val top = scroll.scrollY - scroll.height
+        val bottom = scroll.scrollY + scroll.height * 2
+        pdfPages.forEach { page ->
+            if (page.bottom >= top && page.top <= bottom) renderPage(page) else page.clearBitmap()
         }
     }
 
+    private fun renderPage(page: PdfPageView) {
+        val renderer = pdfRenderer ?: return
+        val width = (pdfBaseWidth * pdfZoom).roundToInt().coerceAtMost(dp(2400))
+        if (page.renderedWidth == width) return
+        renderer.openPage(page.index).use { source ->
+            val scale = width.toFloat() / source.width
+            val bitmap = Bitmap.createBitmap(width, (source.height * scale).roundToInt(), Bitmap.Config.ARGB_8888)
+            bitmap.eraseColor(Color.WHITE)
+            source.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+            page.setBitmap(bitmap, width)
+        }
+    }
+
+    private fun setPdfZoom(value: Float) {
+        pdfZoom = value.coerceIn(0.75f, 2.5f)
+        pdfPagesContainer?.layoutParams = ViewGroup.LayoutParams((pdfBaseWidth * pdfZoom).roundToInt(), -2)
+        pdfPages.forEach { it.zoom = pdfZoom; it.clearBitmap() }
+        pdfPagesContainer?.requestLayout()
+        pdfScroll?.post { renderVisiblePages() }
+        status.text = "Zoom ${(pdfZoom * 100).roundToInt()}%"
+        status.visibility = View.VISIBLE
+    }
+
     private fun showImage() {
-        val bitmap = contentResolver.openInputStream(uri)?.use(BitmapFactory::decodeStream) ?: error("File is unavailable")
+        val bitmap = decodeImage() ?: error("File is unavailable")
         val root = viewerRoot()
         root.addView(ScrollView(this).apply {
-            addView(ImageView(this@DocumentViewerActivity).apply {
+            addView(ZoomImageView(this@DocumentViewerActivity).apply {
                 setImageBitmap(bitmap)
                 adjustViewBounds = true
                 scaleType = ImageView.ScaleType.FIT_CENTER
@@ -96,6 +166,17 @@ class DocumentViewerActivity : Activity() {
             })
         }, LinearLayout.LayoutParams(-1, 0, 1f))
         setContentView(root)
+    }
+
+    private fun decodeImage(): Bitmap? {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+        var sample = 1
+        while (bounds.outWidth / sample > 1600 || bounds.outHeight / sample > 1600) sample *= 2
+        return contentResolver.openInputStream(uri)?.use {
+            BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = sample })
+        }
     }
 
     private fun viewerRoot(): LinearLayout = LinearLayout(this).apply {
@@ -111,12 +192,141 @@ class DocumentViewerActivity : Activity() {
                 textSize = 18f
                 gravity = Gravity.CENTER_VERTICAL
                 setTextColor(getColor(R.color.map_text))
-                setPadding(dp(12), 0, 0, 0)
+                setPadding(dp(12), 0, dp(12), 0)
                 maxLines = 1
                 ellipsize = android.text.TextUtils.TruncateAt.END
             }, LinearLayout.LayoutParams(0, -2, 1f))
         })
+        addView(LinearLayout(this@DocumentViewerActivity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            addView(Button(this@DocumentViewerActivity).apply {
+                text = "-"
+                isAllCaps = false
+                contentDescription = "Zoom out"
+                setOnClickListener { if (isPdf) setPdfZoom(pdfZoom - 0.25f) }
+            })
+            addView(Button(this@DocumentViewerActivity).apply {
+                text = "100%"
+                isAllCaps = false
+                contentDescription = "Reset zoom"
+                setOnClickListener { if (isPdf) setPdfZoom(1f) }
+            })
+            addView(Button(this@DocumentViewerActivity).apply {
+                text = "+"
+                isAllCaps = false
+                contentDescription = "Zoom in"
+                setOnClickListener { if (isPdf) setPdfZoom(pdfZoom + 0.25f) }
+            })
+            ocrButton = button("Read text") { runOcr() }
+            addView(ocrButton)
+            addView(button("Search") { toggleSearch() })
+        })
+        status = TextView(this@DocumentViewerActivity).apply {
+            textSize = 14f
+            setTextColor(getColor(R.color.map_muted))
+            setPadding(dp(16), 0, dp(16), dp(4))
+            visibility = View.GONE
+        }
+        addView(status)
+        searchPanel = LinearLayout(this@DocumentViewerActivity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            visibility = View.GONE
+            setPadding(dp(16), 0, dp(16), dp(4))
+        }
+        searchInput = EditText(this@DocumentViewerActivity).apply {
+            hint = "Search extracted text"
+            inputType = InputType.TYPE_CLASS_TEXT
+            isSingleLine = true
+        }
+        searchPanel.addView(searchInput, LinearLayout.LayoutParams(0, -2, 1f))
+        searchPanel.addView(button("Find") { findText() })
+        addView(searchPanel)
     }
+
+    private fun toggleSearch() {
+        searchPanel.visibility = if (searchPanel.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+        if (searchPanel.visibility == View.VISIBLE) searchInput.requestFocus()
+    }
+
+    private fun findText() {
+        val query = searchInput.text.toString().trim()
+        if (query.isBlank()) return
+        val match = database.text(uri.toString()).firstOrNull { it.text.contains(query, ignoreCase = true) }
+        if (match == null) {
+            status.text = "No extracted text matches \"${query}\"."
+        } else {
+            status.text = "Found on page ${match.page + 1}."
+            if (isPdf) pdfScroll?.post { pdfScroll?.smoothScrollTo(0, pdfPages.getOrNull(match.page)?.top ?: 0) }
+        }
+        status.visibility = View.VISIBLE
+    }
+
+    private fun runOcr() {
+        if (database.text(uri.toString()).isNotEmpty()) {
+            status.text = "Text is already available. Search is ready."
+            status.visibility = View.VISIBLE
+            return
+        }
+        ocrButton.isEnabled = false
+        status.text = "Reading this document locally…"
+        status.visibility = View.VISIBLE
+        ocrExecutor.execute {
+            val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+            try {
+                if (isPdf) ocrPdf(recognizer) else ocrImage(recognizer)
+                runOnUiThread {
+                    if (!isFinishing) {
+                        ocrButton.isEnabled = true
+                        ocrButton.text = "Text ready"
+                        status.text = "Text is ready. Search is available."
+                    }
+                }
+            } catch (_: Exception) {
+                runOnUiThread {
+                    if (!isFinishing) {
+                        ocrButton.isEnabled = true
+                        status.text = "Could not read text from this document."
+                    }
+                }
+            } finally {
+                recognizer.close()
+            }
+        }
+    }
+
+    private fun ocrImage(recognizer: TextRecognizer) {
+        val bitmap = decodeImage() ?: error("File is unavailable")
+        try {
+            database.saveText(uri.toString(), 0, recognize(recognizer, bitmap))
+        } finally {
+            bitmap.recycle()
+        }
+    }
+
+    private fun ocrPdf(recognizer: TextRecognizer) {
+        val descriptor = contentResolver.openFileDescriptor(uri, "r") ?: error("File is unavailable")
+        descriptor.use { file ->
+            PdfRenderer(file).use { renderer ->
+                repeat(renderer.pageCount) { index ->
+                    renderer.openPage(index).use { page ->
+                        val width = page.width.coerceAtMost(1600)
+                        val scale = width.toFloat() / page.width
+                        val bitmap = Bitmap.createBitmap(width, (page.height * scale).roundToInt(), Bitmap.Config.ARGB_8888)
+                        try {
+                            bitmap.eraseColor(Color.WHITE)
+                            page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                            database.saveText(uri.toString(), index, recognize(recognizer, bitmap))
+                        } finally {
+                            bitmap.recycle()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun recognize(recognizer: TextRecognizer, bitmap: Bitmap): String =
+        Tasks.await(recognizer.process(InputImage.fromBitmap(bitmap, 0))).text
 
     private fun showUnavailable(message: String) {
         val root = LinearLayout(this).apply {
@@ -160,6 +370,67 @@ class DocumentViewerActivity : Activity() {
     }
 
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
+
+    private inner class PdfPageView(
+        val index: Int,
+        private val pageWidth: Int,
+        private val pageHeight: Int
+    ) : View(this@DocumentViewerActivity) {
+        var zoom = 1f
+        var renderedWidth = 0
+            private set
+        private var bitmap: Bitmap? = null
+        private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+        override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+            val width = (pdfBaseWidth * zoom).roundToInt()
+            val height = (width * pageHeight.toFloat() / pageWidth).roundToInt()
+            setMeasuredDimension(width, height)
+        }
+
+        override fun onDraw(canvas: Canvas) {
+            canvas.drawColor(Color.WHITE)
+            bitmap?.let { canvas.drawBitmap(it, null, Rect(0, 0, width, height), paint) }
+                ?: run {
+                    paint.color = getColor(R.color.map_muted)
+                    paint.textSize = dp(14).toFloat()
+                    canvas.drawText("Page ${index + 1}", dp(16).toFloat(), dp(28).toFloat(), paint)
+                }
+        }
+
+        fun setBitmap(value: Bitmap, width: Int) {
+            bitmap?.recycle()
+            bitmap = value
+            renderedWidth = width
+            invalidate()
+        }
+
+        fun clearBitmap() {
+            if (bitmap == null) return
+            bitmap?.recycle()
+            bitmap = null
+            renderedWidth = 0
+            invalidate()
+        }
+    }
+
+    @Suppress("AppCompatCustomView")
+    private class ZoomImageView(context: android.content.Context) : ImageView(context) {
+        private var zoom = 1f
+        private val detector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            override fun onScale(detector: ScaleGestureDetector): Boolean {
+                zoom = (zoom * detector.scaleFactor).coerceIn(1f, 3f)
+                scaleX = zoom
+                scaleY = zoom
+                return true
+            }
+        })
+
+        override fun onTouchEvent(event: android.view.MotionEvent): Boolean {
+            detector.onTouchEvent(event)
+            return if (event.pointerCount > 1) true else super.onTouchEvent(event)
+        }
+    }
 
     companion object {
         const val EXTRA_URI = "document_uri"
