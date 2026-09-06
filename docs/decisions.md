@@ -15,6 +15,7 @@
 - MVP has no account, backend, network service, analytics, crash reporting, or cloud sync.
 - Room/SQLite owns local metadata and operational state; user files remain file-backed.
 - Scanning is a recoverable multi-page camera/import workflow that exports readable PDFs and can extract text locally with the bundled OCR model; source pages remain unchanged.
+- Scan export automatically crops clear document-sized boundaries without changing stored source pages; users choose which captured pages to include in each PDF.
 - The document viewer renders only nearby PDF pages, supports bounded zoom, and searches locally stored OCR text without modifying the source file.
 - Music is a full local-only player under Tools; streaming services are out of scope. It indexes user-selected folders without duplicating source files.
 - Music refreshes selected folders when the user opens Music and on explicit request; it does not continuously scan files in the background.

@@ -674,7 +674,7 @@ class MusicActivity : Activity() {
                     val mime = cursor.getString(2).orEmpty()
                     val child = DocumentsContract.buildDocumentUriUsingTree(tree, id)
                     if (mime == DocumentsContract.Document.MIME_TYPE_DIR) pending.add(ScanNode(id, "${node.path} / $name"))
-                    else if (isAudio(name, mime)) items += readAudio(child, folder.uri, node.path, name, mime)
+                    else if (MusicFormats.isAudio(name, mime)) items += readAudio(child, folder.uri, node.path, name, mime)
                 }
             }
         }
@@ -698,11 +698,8 @@ class MusicActivity : Activity() {
             duration = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
         }
         retriever.release()
-        return AudioItem(uri.toString(), folderUri, folderName, name, title, artist, album, genre, formatOf(name, mime), duration)
+        return AudioItem(uri.toString(), folderUri, folderName, name, title, artist, album, genre, MusicFormats.extension(name, mime), duration)
     }
-
-    private fun isAudio(name: String, mime: String): Boolean = mime.startsWith("audio/") || formatOf(name, mime) in AUDIO_FORMATS
-    private fun formatOf(name: String, mime: String): String = name.substringAfterLast('.', mime.substringAfter('/', "audio")).lowercase()
 
     private fun header(title: String, player: Boolean): View = LinearLayout(this).apply {
         orientation = LinearLayout.HORIZONTAL
@@ -781,6 +778,5 @@ class MusicActivity : Activity() {
         const val EXTRA_OPEN_PLAYER = "open_player"
         private const val FOLDER_REQUEST = 30
         private const val NOTIFICATION_REQUEST = 31
-        private val AUDIO_FORMATS = setOf("mp3", "m4a", "aac", "flac", "wav", "ogg", "opus", "amr", "3gp")
     }
 }

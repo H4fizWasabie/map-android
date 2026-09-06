@@ -159,12 +159,16 @@ class MusicService : Service() {
                 setAudioAttributes(
                     AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build()
                 )
-                sourceDescriptor = contentResolver.openAssetFileDescriptor(Uri.parse(uri), "r")
-                    ?: throw IllegalArgumentException("Audio file could not be opened")
-                if (sourceDescriptor?.length == AssetFileDescriptor.UNKNOWN_LENGTH) {
-                    setDataSource(sourceDescriptor!!.fileDescriptor)
-                } else {
-                    setDataSource(sourceDescriptor!!.fileDescriptor, sourceDescriptor!!.startOffset, sourceDescriptor!!.length)
+                try {
+                    setDataSource(this@MusicService, Uri.parse(uri))
+                } catch (_: Exception) {
+                    sourceDescriptor = contentResolver.openAssetFileDescriptor(Uri.parse(uri), "r")
+                        ?: throw IllegalArgumentException("Audio file could not be opened")
+                    if (sourceDescriptor?.length == AssetFileDescriptor.UNKNOWN_LENGTH) {
+                        setDataSource(sourceDescriptor!!.fileDescriptor)
+                    } else {
+                        setDataSource(sourceDescriptor!!.fileDescriptor, sourceDescriptor!!.startOffset, sourceDescriptor!!.length)
+                    }
                 }
                 setOnPreparedListener { prepared ->
                     sourceDescriptor?.close()

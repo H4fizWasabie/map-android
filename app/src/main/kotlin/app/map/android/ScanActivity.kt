@@ -13,6 +13,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -29,6 +30,8 @@ class ScanActivity : Activity() {
     private var sessionId = 0L
     private lateinit var pages: LinearLayout
     private var cameraPath: String? = null
+    private val selectedPageIds = mutableSetOf<Long>()
+    private var selectionInitialized = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,7 +63,7 @@ class ScanActivity : Activity() {
                 render()
             }
             CAMERA_REQUEST -> {
-                cameraPath?.let { database.addPage(sessionId, it) }
+                cameraPath?.let { selectedPageIds.add(database.addPage(sessionId, it)) }
                 render()
             }
         }
@@ -95,33 +98,45 @@ class ScanActivity : Activity() {
             text = "Take photo"
             setOnClickListener { takePhoto() }
         })
-        root.addView(Button(this).apply {
-            text = "Export PDF"
-            isEnabled = database.pages(sessionId).isNotEmpty()
+        val storedPages = database.pages(sessionId)
+        if (!selectionInitialized) {
+            selectedPageIds += storedPages.map { it.id }
+            selectionInitialized = true
+        }
+        selectedPageIds.retainAll(storedPages.map { it.id }.toSet())
+        val exportButton = Button(this).apply {
+            text = "Export PDF (${selectedPageIds.size})"
+            isEnabled = selectedPageIds.isNotEmpty()
             setOnClickListener { exportPdf() }
-        })
+        }
+        root.addView(exportButton)
         root.addView(View(this).apply {
             setBackgroundColor(getColor(R.color.map_divider))
             layoutParams = LinearLayout.LayoutParams(-1, dp(1)).apply { topMargin = dp(16) }
         })
         root.addView(TextView(this).apply {
-            text = "Pages"
+            text = "Pages · clear edges are cropped when detected"
             textSize = 18f
             setTextColor(getColor(R.color.map_text))
             setPadding(0, dp(12), 0, dp(8))
         })
         pages = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        val storedPages = database.pages(sessionId)
         if (storedPages.isEmpty()) pages.addView(TextView(this).apply {
             text = "No pages captured yet."
             setTextColor(getColor(R.color.map_muted))
         })
         storedPages.forEachIndexed { index, page ->
-            pages.addView(TextView(this).apply {
+            pages.addView(CheckBox(this).apply {
                 val status = if (File(page.path).exists()) "" else " (Unavailable)"
                 text = "Page ${index + 1}: ${File(page.path).name}$status"
-                setTextColor(getColor(R.color.map_muted))
-                setPadding(0, 0, 0, dp(8))
+                setTextColor(if (status.isEmpty()) getColor(R.color.map_text) else getColor(R.color.map_muted))
+                isChecked = page.id in selectedPageIds
+                contentDescription = "Include page ${index + 1}"
+                setOnCheckedChangeListener { _, checked ->
+                    if (checked) selectedPageIds.add(page.id) else selectedPageIds.remove(page.id)
+                    exportButton.text = "Export PDF (${selectedPageIds.size})"
+                    exportButton.isEnabled = selectedPageIds.isNotEmpty()
+                }
             })
         }
         root.addView(pages)
@@ -194,7 +209,7 @@ class ScanActivity : Activity() {
                 requireNotNull(input)
                 FileOutputStream(target).use { output -> input.copyTo(output) }
             }
-            database.addPage(sessionId, target.absolutePath)
+            selectedPageIds.add(database.addPage(sessionId, target.absolutePath))
         }.onFailure {
             Toast.makeText(this, "Could not import that image", Toast.LENGTH_LONG).show()
         }
@@ -204,12 +219,16 @@ class ScanActivity : Activity() {
         val document = PdfDocument()
         var exportedPages = 0
         try {
-            database.pages(sessionId).forEachIndexed { index, page ->
-                val bitmap = BitmapFactory.decodeFile(page.path) ?: return@forEachIndexed
+            val selectedPages = database.pages(sessionId).filter { it.id in selectedPageIds }
+            if (selectedPages.isEmpty()) error("No pages selected")
+            selectedPages.forEach { page ->
+                val bitmap = decodePage(page.path) ?: return@forEach
+                val cleaned = ScanImageProcessor.clean(bitmap)
                 val pageInfo = PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, exportedPages + 1).create()
                 val pdfPage = document.startPage(pageInfo)
-                drawBitmap(pdfPage.canvas, bitmap)
+                drawBitmap(pdfPage.canvas, cleaned)
                 document.finishPage(pdfPage)
+                if (cleaned !== bitmap) cleaned.recycle()
                 bitmap.recycle()
                 exportedPages++
             }
@@ -228,6 +247,15 @@ class ScanActivity : Activity() {
         } finally {
             document.close()
         }
+    }
+
+    private fun decodePage(path: String): Bitmap? {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(path, bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+        var sample = 1
+        while (bounds.outWidth / sample > 2400 || bounds.outHeight / sample > 2400) sample *= 2
+        return BitmapFactory.decodeFile(path, BitmapFactory.Options().apply { inSampleSize = sample })
     }
 
     private fun drawBitmap(canvas: Canvas, bitmap: Bitmap) {
