@@ -20,6 +20,7 @@
 - Added a direct read-only PDF/image viewer with persisted local document history and external-app recovery.
 - Added a lightweight Calendar hour timeline for timed tasks.
 - Added a focused bottom-sheet task composer and visible completion undo.
+- Made the task composer title-first with an explicit Add details reveal.
 
 ### Changed
 

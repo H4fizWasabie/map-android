@@ -399,12 +399,26 @@ class MainActivity : Activity() {
                 }
             }
         }
+        val details = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = View.GONE
+            addView(notes)
+            addView(tags)
+            addView(dueButton)
+            addView(timeButton)
+            addView(recurrence)
+        }
+        val detailsButton = Button(this).apply {
+            text = "Add details"
+            isAllCaps = false
+            setOnClickListener {
+                visibility = View.GONE
+                details.visibility = View.VISIBLE
+            }
+        }
         fields.addView(title)
-        fields.addView(notes)
-        fields.addView(tags)
-        fields.addView(dueButton)
-        fields.addView(timeButton)
-        fields.addView(recurrence)
+        fields.addView(detailsButton)
+        fields.addView(details)
 
         val dialog = Dialog(this).apply {
             requestWindowFeature(android.view.Window.FEATURE_NO_TITLE)
