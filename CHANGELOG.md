@@ -29,6 +29,9 @@
 
 ### Changed
 
+- Replaced the native MediaPlayer path with AndroidX Media3 ExoPlayer for more reliable local Opus playback and safe pause/seek during buffering.
+- Made selected music-folder URI permissions persist using the provider-granted SAF flags; uninstalling still intentionally clears them with app data.
+- Fixed PDF search navigation inside the nested viewer scroll containers so a match jumps to its page reliably.
 - Recorded the Quiet Focus UI direction and timeline-first Home/Calendar relationship.
 - Recorded Today-agenda Calendar defaults, all-day tasks, and automatic Now/Next behavior with optional pinning.
 - Recorded progressive bottom-sheet task creation and explicit completion with Undo.

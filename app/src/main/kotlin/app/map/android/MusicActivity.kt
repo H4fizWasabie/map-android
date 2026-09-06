@@ -156,7 +156,9 @@ class MusicActivity : Activity() {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode != FOLDER_REQUEST || resultCode != RESULT_OK) return
         val tree = data?.data ?: return
-        runCatching { contentResolver.takePersistableUriPermission(tree, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+        val takeFlags = (data.flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION))
+            .takeIf { it != 0 } ?: Intent.FLAG_GRANT_READ_URI_PERMISSION
+        runCatching { contentResolver.takePersistableUriPermission(tree, takeFlags) }
         val name = tree.pathSegments.lastOrNull()?.substringAfterLast(':') ?: "Music folder"
         val folder = MusicFolder(tree.toString(), Uri.decode(name).ifBlank { "Music folder" })
         database.addFolder(folder.uri, folder.name)

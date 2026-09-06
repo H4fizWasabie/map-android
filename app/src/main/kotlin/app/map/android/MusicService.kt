@@ -1,5 +1,6 @@
 package app.map.android
 
+import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -9,12 +10,10 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.res.AssetFileDescriptor
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.MediaMetadata
-import android.media.MediaPlayer
 import android.media.audiofx.BassBoost
 import android.media.audiofx.Equalizer
 import android.media.audiofx.Virtualizer
@@ -26,24 +25,39 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.SystemClock
+import androidx.media3.common.AudioAttributes as Media3AudioAttributes
+import androidx.media3.common.C
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
 import kotlin.random.Random
 
+@SuppressLint("UnsafeOptInUsageError")
 class MusicService : Service() {
     private lateinit var database: MusicDatabase
     private lateinit var session: MediaSession
     private lateinit var audioManager: AudioManager
     private val handler = Handler(Looper.getMainLooper())
-    private var player: MediaPlayer? = null
-    private var sourceDescriptor: AssetFileDescriptor? = null
+    private var player: ExoPlayer? = null
     private var equalizer: Equalizer? = null
     private var bassBoost: BassBoost? = null
     private var virtualizer: Virtualizer? = null
     private var currentUri: String? = null
     private var pendingSeek = 0
+    private var effectsSessionId = C.AUDIO_SESSION_ID_UNSET
     private var sleepMode = SLEEP_OFF
     private var sleepEndsAt = 0L
     private var focusRequest: AudioFocusRequest? = null
     private var tickCount = 0
+
+    private val focusListener = AudioManager.OnAudioFocusChangeListener { change ->
+        when (change) {
+            AudioManager.AUDIOFOCUS_LOSS, AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> pause()
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> player?.setVolume(0.25f)
+            AudioManager.AUDIOFOCUS_GAIN -> player?.setVolume(1f)
+        }
+    }
 
     private val noisyReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) = pause()
@@ -53,7 +67,7 @@ class MusicService : Service() {
         override fun run() {
             val currentPlayer = player
             if (currentPlayer != null && currentPlayer.isPlaying && ++tickCount % 5 == 0) {
-                database.setPosition(runCatching { currentPlayer.currentPosition }.getOrDefault(0))
+                database.setPosition(runCatching { currentPlayer.currentPosition.toInt() }.getOrDefault(0))
             }
             if (sleepMode == SLEEP_TIMER && sleepEndsAt <= SystemClock.elapsedRealtime()) stopPlayback()
             else {
@@ -128,8 +142,6 @@ class MusicService : Service() {
         handler.removeCallbacksAndMessages(null)
         runCatching { unregisterReceiver(noisyReceiver) }
         releaseEffects()
-        sourceDescriptor?.close()
-        sourceDescriptor = null
         player?.release()
         abandonAudioFocus()
         session.release()
@@ -151,44 +163,49 @@ class MusicService : Service() {
         database.setCurrent(uri)
         pendingSeek = if (restorePosition) database.position() else 0
         releaseEffects()
-        sourceDescriptor?.close()
-        sourceDescriptor = null
         player?.release()
         player = try {
-            MediaPlayer().apply {
-                setAudioAttributes(
-                    AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build()
+            ExoPlayer.Builder(this)
+                .setAudioAttributes(
+                    Media3AudioAttributes.Builder()
+                        .setUsage(C.USAGE_MEDIA)
+                        .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+                        .build(),
+                    false
                 )
-                try {
-                    setDataSource(this@MusicService, Uri.parse(uri))
-                } catch (_: Exception) {
-                    sourceDescriptor = contentResolver.openAssetFileDescriptor(Uri.parse(uri), "r")
-                        ?: throw IllegalArgumentException("Audio file could not be opened")
-                    if (sourceDescriptor?.length == AssetFileDescriptor.UNKNOWN_LENGTH) {
-                        setDataSource(sourceDescriptor!!.fileDescriptor)
-                    } else {
-                        setDataSource(sourceDescriptor!!.fileDescriptor, sourceDescriptor!!.startOffset, sourceDescriptor!!.length)
-                    }
+                .build()
+                .apply {
+                    addListener(object : Player.Listener {
+                        override fun onPlaybackStateChanged(state: Int) {
+                            when (state) {
+                                Player.STATE_READY -> {
+                                    if (pendingSeek > 0) seekTo(pendingSeek.toLong())
+                                    pendingSeek = 0
+                                    database.markPlayed(uri)
+                                    if (audioSessionId != C.AUDIO_SESSION_ID_UNSET && audioSessionId != effectsSessionId) {
+                                        initialiseEffects(audioSessionId)
+                                        effectsSessionId = audioSessionId
+                                    }
+                                    updateMetadata(item)
+                                    updateState()
+                                }
+                                Player.STATE_ENDED -> onTrackComplete()
+                            }
+                        }
+
+                        override fun onIsPlayingChanged(isPlaying: Boolean) {
+                            updateState()
+                        }
+
+                        override fun onPlayerError(error: PlaybackException) {
+                            broadcastError("MAP could not play ${item.title}.")
+                            advance(1)
+                        }
+                    })
+                    setMediaItem(MediaItem.fromUri(Uri.parse(uri)))
+                    prepare()
+                    play()
                 }
-                setOnPreparedListener { prepared ->
-                    sourceDescriptor?.close()
-                    sourceDescriptor = null
-                    if (pendingSeek in 1 until prepared.duration) prepared.seekTo(pendingSeek)
-                    pendingSeek = 0
-                    prepared.start()
-                    database.markPlayed(uri)
-                    initialiseEffects(prepared.audioSessionId)
-                    updateMetadata(item)
-                    updateState()
-                }
-                setOnCompletionListener { onTrackComplete() }
-                setOnErrorListener { _, _, _ ->
-                    broadcastError("MAP could not play ${item.title}.")
-                    advance(1)
-                    true
-                }
-                prepareAsync()
-            }
         } catch (_: Exception) {
             broadcastError("MAP could not open ${item.title}.")
             null
@@ -200,7 +217,7 @@ class MusicService : Service() {
     private fun resume() {
         val currentPlayer = player
         if (currentPlayer != null) {
-            if (requestAudioFocus()) runCatching { currentPlayer.start() }
+            if (requestAudioFocus()) runCatching { currentPlayer.play() }
             updateState()
             return
         }
@@ -208,7 +225,7 @@ class MusicService : Service() {
     }
 
     private fun pause() {
-        runCatching { player?.takeIf { it.isPlaying }?.pause() }
+        runCatching { player?.pause() }
         savePosition()
         updateState()
     }
@@ -254,8 +271,14 @@ class MusicService : Service() {
     }
 
     private fun seek(position: Int) {
-        runCatching { player?.seekTo(position.coerceAtLeast(0)) }
-        database.setPosition(position.coerceAtLeast(0))
+        val safePosition = position.coerceAtLeast(0)
+        val currentPlayer = player
+        val shouldResume = currentPlayer?.playWhenReady == true
+        runCatching {
+            currentPlayer?.seekTo(safePosition.toLong())
+            if (shouldResume) currentPlayer?.play()
+        }
+        database.setPosition(safePosition)
         updateState()
     }
 
@@ -263,8 +286,6 @@ class MusicService : Service() {
         savePosition()
         player?.release()
         player = null
-        sourceDescriptor?.close()
-        sourceDescriptor = null
         releaseEffects()
         abandonAudioFocus()
         sleepMode = SLEEP_OFF
@@ -276,7 +297,7 @@ class MusicService : Service() {
     }
 
     private fun savePosition() {
-        val position = runCatching { player?.currentPosition ?: 0 }.getOrDefault(0)
+        val position = runCatching { player?.currentPosition?.toInt() ?: 0 }.getOrDefault(0)
         if (position > 0) database.setPosition(position)
     }
 
@@ -347,19 +368,13 @@ class MusicService : Service() {
         equalizer = null
         bassBoost = null
         virtualizer = null
+        effectsSessionId = C.AUDIO_SESSION_ID_UNSET
     }
 
     private fun requestAudioFocus(): Boolean {
-        val listener = AudioManager.OnAudioFocusChangeListener { change ->
-            when (change) {
-                AudioManager.AUDIOFOCUS_LOSS, AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> pause()
-                AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> player?.setVolume(0.25f, 0.25f)
-                AudioManager.AUDIOFOCUS_GAIN -> player?.setVolume(1f, 1f)
-            }
-        }
-        focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+        if (focusRequest == null) focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
             .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
-            .setOnAudioFocusChangeListener(listener)
+            .setOnAudioFocusChangeListener(focusListener)
             .build()
         return audioManager.requestAudioFocus(focusRequest!!) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
     }
@@ -439,8 +454,8 @@ class MusicService : Service() {
         sendBroadcast(Intent(ACTION_STATE).setPackage(packageName).apply {
             putExtra(EXTRA_URI, currentUri ?: database.current())
             putExtra(EXTRA_PLAYING, currentPlayer?.isPlaying == true)
-            putExtra(EXTRA_POSITION, runCatching { currentPlayer?.currentPosition ?: database.position() }.getOrDefault(0))
-            putExtra(EXTRA_DURATION, runCatching { currentPlayer?.duration ?: database.track(currentUri ?: database.current())?.durationMs?.toInt() ?: 0 }.getOrDefault(0))
+            putExtra(EXTRA_POSITION, runCatching { currentPlayer?.currentPosition?.toInt() ?: database.position() }.getOrDefault(0))
+            putExtra(EXTRA_DURATION, runCatching { currentPlayer?.duration?.toInt() ?: database.track(currentUri ?: database.current())?.durationMs?.toInt() ?: 0 }.getOrDefault(0))
             putExtra(EXTRA_SHUFFLE, database.shuffle())
             putExtra(EXTRA_REPEAT, database.repeat())
             putExtra(EXTRA_SLEEP_MODE, sleepMode)

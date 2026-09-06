@@ -256,7 +256,16 @@ class DocumentViewerActivity : Activity() {
             status.text = "No extracted text matches \"${query}\"."
         } else {
             status.text = "Found on page ${match.page + 1}."
-            if (isPdf) pdfScroll?.post { pdfScroll?.smoothScrollTo(0, pdfPages.getOrNull(match.page)?.top ?: 0) }
+            if (isPdf) pdfScroll?.post {
+                val page = pdfPages.getOrNull(match.page) ?: return@post
+                val scroll = pdfScroll ?: return@post
+                val scrollLocation = IntArray(2)
+                val pageLocation = IntArray(2)
+                scroll.getLocationOnScreen(scrollLocation)
+                page.getLocationOnScreen(pageLocation)
+                val target = (scroll.scrollY + pageLocation[1] - scrollLocation[1] - dp(16)).coerceAtLeast(0)
+                scroll.smoothScrollTo(0, target)
+            }
         }
         status.visibility = View.VISIBLE
     }
