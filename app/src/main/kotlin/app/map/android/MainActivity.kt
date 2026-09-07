@@ -67,7 +67,7 @@ class MainActivity : Activity() {
         }.timeInMillis
         val startOfTomorrow = startOfToday + DAY
 
-        render("Today") { body ->
+        render("Today", "Home") { body ->
             body.addView(TextView(this).apply {
                 text = "A clear view of what needs your attention."
                 textSize = 16f
@@ -112,7 +112,7 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun render(title: String, fill: (LinearLayout) -> Unit) {
+    private fun render(title: String, selected: String = title, fill: (LinearLayout) -> Unit) {
         content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(24), dp(24), dp(24), dp(24))
@@ -135,7 +135,7 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(getColor(R.color.map_background))
             addView(ScrollView(this@MainActivity).apply { addView(content) }, LinearLayout.LayoutParams(-1, 0, 1f))
-            addView(MapUi.bottomNavigation(this@MainActivity, title, ::navigate))
+            addView(MapUi.bottomNavigation(this@MainActivity, selected, ::navigate))
         }
         setContentView(root)
     }

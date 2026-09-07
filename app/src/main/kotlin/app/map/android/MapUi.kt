@@ -29,7 +29,8 @@ object MapUi {
                         isClickable = label != selected
                         contentDescription = "$label navigation"
                         setTextColor(activity.getColor(if (label == selected) R.color.map_accent else R.color.map_muted))
-                        setBackgroundResource(if (label == selected) R.drawable.map_focus_surface else android.R.color.transparent)
+                        setBackgroundResource(if (label == selected) R.drawable.map_focus_surface else R.drawable.map_nav_button)
+                        backgroundTintList = null
                         setOnClickListener { onNavigate(label) }
                     }, LinearLayout.LayoutParams(0, dp(activity, 56), 1f))
                 }

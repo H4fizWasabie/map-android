@@ -46,3 +46,5 @@
 - Connected the primary navigation to Home, Calendar, Tasks, and Tools.
 - Refined Home to foreground Now/Next and hide empty task sections; softened native button treatment across light and dark themes.
 - Refined the primary surfaces into a Quiet Personal Workspace with shared navigation, calm task rows, focus treatment, and task details.
+- Added clearer accent hierarchy and pressed/focused states to shared actions and primary navigation.
+- Prevented Bluetooth/media-session reconnect commands from auto-resuming paused music.

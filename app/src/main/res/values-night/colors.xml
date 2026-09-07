@@ -3,8 +3,9 @@
     <color name="map_text">#F0F1EB</color>
     <color name="map_muted">#B1B8AF</color>
     <color name="map_accent">#9BC9B5</color>
+    <color name="map_accent_pressed">#B7E0C7</color>
     <color name="map_on_accent">#152019</color>
     <color name="map_divider">#3C433D</color>
     <color name="map_card">#202620</color>
-    <color name="map_focus">#26362D</color>
+    <color name="map_focus">#2B4639</color>
 </resources>
