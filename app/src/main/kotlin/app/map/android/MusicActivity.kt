@@ -493,7 +493,8 @@ class MusicActivity : Activity() {
         root.addView(header("Now Playing", true))
         val scroll = ScrollView(this)
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL; setPadding(dp(24), 0, dp(24), dp(28)) }
-        body.addView(cover(item, dp(292)), LinearLayout.LayoutParams(dp(292), dp(292)).apply { topMargin = dp(20); bottomMargin = dp(24) })
+        val artworkSize = minOf(dp(292), resources.displayMetrics.widthPixels - dp(48))
+        body.addView(cover(item, artworkSize), LinearLayout.LayoutParams(artworkSize, artworkSize).apply { topMargin = dp(20); bottomMargin = dp(24) })
         nowPlayingTitle = TextView(this).apply { text = item.title; textSize = 24f; setTextColor(getColor(R.color.map_text)); gravity = Gravity.CENTER; setTypeface(typeface, android.graphics.Typeface.BOLD) }
         body.addView(nowPlayingTitle)
         nowPlayingArtist = TextView(this).apply { text = "${item.artist} · ${item.album}"; textSize = 15f; setTextColor(getColor(R.color.map_muted)); gravity = Gravity.CENTER; setPadding(0, dp(6), 0, dp(16)) }
