@@ -816,18 +816,38 @@ class MusicActivity : Activity() {
 
     private fun cover(item: AudioItem, size: Int): View {
         val image = ImageView(this).apply { scaleType = ImageView.ScaleType.CENTER_CROP; contentDescription = "Artwork for ${item.title}" }
-        val retriever = android.media.MediaMetadataRetriever()
-        val bitmap = runCatching {
-            retriever.setDataSource(this, Uri.parse(item.uri))
-            retriever.embeddedPicture?.let { bytes -> decodeArtwork(bytes, size) }
-        }.getOrNull()
-        retriever.release()
-        if (bitmap != null) image.setImageBitmap(bitmap) else {
-            image.setBackgroundResource(R.drawable.map_focus_surface)
-            image.setImageResource(if (size >= dp(100)) R.drawable.ic_map_music_artwork else R.drawable.ic_map_music)
-            image.imageTintList = ColorStateList.valueOf(getColor(R.color.map_accent))
+        image.setBackgroundResource(R.drawable.map_focus_surface)
+        image.setImageResource(if (size >= dp(100)) R.drawable.ic_map_music_artwork else R.drawable.ic_map_music)
+        image.imageTintList = ColorStateList.valueOf(getColor(R.color.map_accent))
+        runCatching {
+            executor.execute {
+                val bitmap = loadArtwork(item, size)
+                val delivered = image.post {
+                    if (bitmap == null) return@post
+                    if (isFinishing || isDestroyed || !image.isAttachedToWindow) {
+                        bitmap.recycle()
+                        return@post
+                    }
+                    image.background = null
+                    image.imageTintList = null
+                    image.setImageBitmap(bitmap)
+                }
+                if (!delivered) bitmap?.recycle()
+            }
         }
         return image
+    }
+
+    private fun loadArtwork(item: AudioItem, size: Int): android.graphics.Bitmap? {
+        val retriever = android.media.MediaMetadataRetriever()
+        return try {
+            retriever.setDataSource(this, Uri.parse(item.uri))
+            retriever.embeddedPicture?.let { bytes -> decodeArtwork(bytes, size) }
+        } catch (_: Exception) {
+            null
+        } finally {
+            runCatching { retriever.release() }
+        }
     }
 
     private fun decodeArtwork(bytes: ByteArray, requestedSize: Int): android.graphics.Bitmap? {
