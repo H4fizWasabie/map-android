@@ -293,7 +293,7 @@ class DocumentViewerActivity : Activity() {
             try {
                 if (isPdf) ocrPdf(recognizer) else ocrImage(recognizer)
                 runOnUiThread {
-                    if (!isFinishing) {
+                    if (!isFinishing && !isDestroyed) {
                         ocrButton.isEnabled = true
                         ocrButton.text = "Text ready"
                         status.text = "Text is ready. Search is available."
@@ -301,7 +301,7 @@ class DocumentViewerActivity : Activity() {
                 }
             } catch (_: Exception) {
                 runOnUiThread {
-                    if (!isFinishing) {
+                    if (!isFinishing && !isDestroyed) {
                         ocrButton.isEnabled = true
                         status.text = "Could not read text from this document."
                     }
