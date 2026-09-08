@@ -22,6 +22,12 @@ class ToolsActivity : Activity() {
         render()
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        render()
+    }
+
     override fun onResume() {
         super.onResume()
         if (::documents.isInitialized) render()
@@ -77,9 +83,9 @@ class ToolsActivity : Activity() {
 
     private fun navigate(label: String) {
         when (label) {
-            "Home" -> startActivity(Intent(this, MainActivity::class.java))
-            "Calendar" -> startActivity(Intent(this, CalendarActivity::class.java))
-            "Tasks" -> startActivity(Intent(this, MainActivity::class.java).putExtra(MainActivity.EXTRA_OPEN_TASKS, true))
+            "Home" -> startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+            "Calendar" -> startActivity(Intent(this, CalendarActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+            "Tasks" -> startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP).putExtra(MainActivity.EXTRA_OPEN_TASKS, true))
         }
     }
 

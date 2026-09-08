@@ -27,6 +27,12 @@ class CalendarActivity : Activity() {
         render()
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        render()
+    }
+
     override fun onResume() {
         super.onResume()
         if (::database.isInitialized) render()
@@ -68,7 +74,7 @@ class CalendarActivity : Activity() {
                 minHeight = dp(48)
                 minWidth = dp(48)
                 setOnClickListener {
-                startActivity(Intent(this@CalendarActivity, MainActivity::class.java).putExtra(MainActivity.EXTRA_OPEN_COMPOSER, true))
+                    startActivity(Intent(this@CalendarActivity, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP).putExtra(MainActivity.EXTRA_OPEN_COMPOSER, true))
                 }
             })
         }.also { body.addView(it) }
@@ -95,9 +101,9 @@ class CalendarActivity : Activity() {
 
     private fun navigate(label: String) {
         when (label) {
-            "Home" -> startActivity(Intent(this, MainActivity::class.java))
-            "Tasks" -> startActivity(Intent(this, MainActivity::class.java).putExtra(MainActivity.EXTRA_OPEN_TASKS, true))
-            "Tools" -> startActivity(Intent(this, ToolsActivity::class.java))
+            "Home" -> startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+            "Tasks" -> startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP).putExtra(MainActivity.EXTRA_OPEN_TASKS, true))
+            "Tools" -> startActivity(Intent(this, ToolsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
         }
     }
 
@@ -197,7 +203,7 @@ class CalendarActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(8), 0, 0, 0)
             setOnClickListener {
-                startActivity(Intent(this@CalendarActivity, MainActivity::class.java).apply {
+                startActivity(Intent(this@CalendarActivity, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP).apply {
                     putExtra(MainActivity.EXTRA_OPEN_TASKS, true)
                     putExtra(MainActivity.EXTRA_OPEN_TASK_ID, task.id)
                 })
