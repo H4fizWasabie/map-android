@@ -629,6 +629,12 @@ class MainActivity : Activity() {
             setBackgroundDrawable(ColorDrawable(getColor(R.color.map_card)))
             setLayout(-1, -2)
             attributes = attributes.apply { gravity = Gravity.BOTTOM }
+            setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
+        }
+        title.post {
+            title.requestFocus()
+            (getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager)
+                .showSoftInput(title, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
         }
     }
 
