@@ -80,6 +80,7 @@ class MusicService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        isRunning = true
         database = MusicDatabase(this)
         audioManager = getSystemService(AudioManager::class.java)
         createChannel()
@@ -150,6 +151,7 @@ class MusicService : Service() {
     }
 
     override fun onDestroy() {
+        isRunning = false
         savePosition()
         handler.removeCallbacksAndMessages(null)
         runCatching { unregisterReceiver(noisyReceiver) }
@@ -509,6 +511,9 @@ class MusicService : Service() {
     }
 
     companion object {
+        @Volatile
+        var isRunning = false
+
         const val ACTION_PLAY = "app.map.android.music.PLAY"
         const val ACTION_RESUME = "app.map.android.music.RESUME"
         const val ACTION_TOGGLE = "app.map.android.music.TOGGLE"

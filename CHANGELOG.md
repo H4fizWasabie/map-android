@@ -29,6 +29,8 @@
 
 ### Changed
 
+- Treated the running playback service, not stale persisted metadata, as the source of truth for Music state after a cold launch.
+- Kept Home's Music play control synchronized with foreground playback state and TalkBack labels.
 - Bounded embedded music artwork decoding so oversized local album art cannot exhaust MAP while rendering playback surfaces.
 - Kept completion Undo visible when tasks are completed from the Tasks destination.
 - Opened Music directly in Now Playing when requested instead of rendering the full library first.

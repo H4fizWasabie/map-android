@@ -182,7 +182,7 @@ class ScanActivity : Activity() {
     private fun addMusicMiniPlayer(parent: LinearLayout) {
         val music = MusicDatabase(this)
         val item = music.track(music.current())
-        val playing = music.playing()
+        val playing = MusicService.isRunning && music.playing()
         music.close()
         if (item == null) return
         parent.addView(View(this).apply {
