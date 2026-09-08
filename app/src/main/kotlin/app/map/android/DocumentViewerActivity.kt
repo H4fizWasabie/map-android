@@ -232,7 +232,7 @@ class DocumentViewerActivity : Activity() {
                 ellipsize = android.text.TextUtils.TruncateAt.END
             }, LinearLayout.LayoutParams(0, -2, 1f))
         })
-        addView(LinearLayout(this@DocumentViewerActivity).apply {
+        val zoomControls = LinearLayout(this@DocumentViewerActivity).apply {
             orientation = LinearLayout.HORIZONTAL
             addView(Button(this@DocumentViewerActivity).apply {
                 text = "-"
@@ -252,10 +252,27 @@ class DocumentViewerActivity : Activity() {
                 contentDescription = "Zoom in"
                 setOnClickListener { if (isPdf) setPdfZoom(pdfZoom + 0.25f) }
             })
-            ocrButton = button("Read text") { runOcr() }
-            addView(ocrButton)
-            addView(button("Search") { toggleSearch() })
-        })
+        }
+        ocrButton = button("Read text") { runOcr() }
+        val searchButton = button("Search") { toggleSearch() }
+        addView(LinearLayout(this@DocumentViewerActivity).apply {
+            orientation = if (resources.configuration.screenWidthDp < 360) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
+            if (resources.configuration.screenWidthDp < 360) {
+                addView(zoomControls)
+                addView(ocrButton, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+                addView(searchButton, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+            } else {
+                addView(HorizontalScrollView(this@DocumentViewerActivity).apply {
+                    isHorizontalScrollBarEnabled = false
+                    addView(LinearLayout(this@DocumentViewerActivity).apply {
+                        orientation = LinearLayout.HORIZONTAL
+                        addView(zoomControls)
+                        addView(ocrButton)
+                        addView(searchButton)
+                    })
+                }, LinearLayout.LayoutParams(-1, -2))
+            }
+        }, LinearLayout.LayoutParams(-1, -2))
         status = TextView(this@DocumentViewerActivity).apply {
             textSize = 14f
             setTextColor(getColor(R.color.map_muted))
