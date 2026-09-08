@@ -195,6 +195,12 @@ class CalendarActivity : Activity() {
             gravity = Gravity.CENTER_VERTICAL
             setPadding(0, dp(8), 0, dp(8))
             contentDescription = "Calendar task: ${task.title}"
+            setOnClickListener {
+                startActivity(Intent(this@CalendarActivity, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP).apply {
+                    putExtra(MainActivity.EXTRA_OPEN_TASKS, true)
+                    putExtra(MainActivity.EXTRA_OPEN_TASK_ID, task.id)
+                })
+            }
         }
         row.addView(CheckBox(this).apply {
             contentDescription = "Complete ${task.title}"
@@ -205,12 +211,6 @@ class CalendarActivity : Activity() {
         row.addView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(8), 0, 0, 0)
-            setOnClickListener {
-                startActivity(Intent(this@CalendarActivity, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP).apply {
-                    putExtra(MainActivity.EXTRA_OPEN_TASKS, true)
-                    putExtra(MainActivity.EXTRA_OPEN_TASK_ID, task.id)
-                })
-            }
             addView(TextView(this@CalendarActivity).apply {
                 text = task.title
                 textSize = 16f

@@ -249,6 +249,7 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER_VERTICAL
             setPadding(0, dp(8), 0, dp(8))
             contentDescription = "Task: ${task.title}"
+            setOnClickListener { showTaskDetails(task) }
         }
         row.addView(CheckBox(this).apply {
             contentDescription = "Complete ${task.title}"
@@ -259,7 +260,6 @@ class MainActivity : Activity() {
         row.addView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(8), 0, dp(8), 0)
-            setOnClickListener { showTaskDetails(task) }
             addView(TextView(this@MainActivity).apply {
                 text = task.title
                 textSize = 17f
