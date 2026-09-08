@@ -121,6 +121,7 @@ class MainActivity : Activity() {
                 isAllCaps = false
                 setOnClickListener { showAddTaskDialog() }
             })
+            addUndoBar(body)
             val tasks = database.openTasks()
             if (tasks.isEmpty()) addEmpty(body, "No tasks yet.") else tasks.forEach { addTaskRow(body, it) }
             addActivity(body, database.recentCompleted())
