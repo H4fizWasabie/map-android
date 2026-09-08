@@ -143,11 +143,6 @@ class ToolsActivity : Activity() {
             setBackgroundColor(getColor(R.color.map_divider))
             layoutParams = LinearLayout.LayoutParams(-1, dp(1)).apply { topMargin = dp(16) }
         })
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(12), 0, dp(12))
-        }
         val mark = android.widget.ImageView(this).apply {
             setImageResource(icon)
             imageTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.map_accent))
@@ -155,8 +150,7 @@ class ToolsActivity : Activity() {
             setPadding(dp(12), dp(12), dp(12), dp(12))
             contentDescription = null
         }
-        row.addView(mark, LinearLayout.LayoutParams(dp(48), dp(48)))
-        row.addView(LinearLayout(this).apply {
+        val copy = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(14), 0, 0, 0)
             addView(TextView(this@ToolsActivity).apply {
@@ -170,8 +164,28 @@ class ToolsActivity : Activity() {
                 setTextColor(getColor(R.color.map_muted))
                 setPadding(0, dp(3), 0, 0)
             })
-        }, LinearLayout.LayoutParams(0, -2, 1f))
-        row.addView(button(action, click), LinearLayout.LayoutParams(-2, -2).apply { leftMargin = dp(8) })
+        }
+        val actionView = button(action, click)
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(12), 0, dp(12))
+            if (resources.configuration.screenWidthDp < 360) {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.START
+                addView(LinearLayout(this@ToolsActivity).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    addView(mark, LinearLayout.LayoutParams(dp(48), dp(48)))
+                    addView(copy, LinearLayout.LayoutParams(0, -2, 1f))
+                }, LinearLayout.LayoutParams(-1, -2))
+                addView(actionView, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+            } else {
+                addView(mark, LinearLayout.LayoutParams(dp(48), dp(48)))
+                addView(copy, LinearLayout.LayoutParams(0, -2, 1f))
+                addView(actionView, LinearLayout.LayoutParams(-2, -2).apply { leftMargin = dp(8) })
+            }
+        }
         parent.addView(row, LinearLayout.LayoutParams(-1, -2))
     }
 
