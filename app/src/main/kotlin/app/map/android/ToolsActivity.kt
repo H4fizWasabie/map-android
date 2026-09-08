@@ -106,7 +106,9 @@ class ToolsActivity : Activity() {
                 text = if (item.available) item.name else "${item.name} · unavailable"
                 textSize = 15f
                 setTextColor(if (item.available) getColor(R.color.map_text) else getColor(R.color.map_muted))
-                setPadding(dp(16), dp(6), 0, dp(6))
+                minHeight = dp(48)
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(64), dp(6), 0, dp(6))
                 contentDescription = "Document: ${item.name}"
                 setOnClickListener {
                     if (!item.available) {
@@ -139,43 +141,38 @@ class ToolsActivity : Activity() {
     private fun addToolRow(parent: LinearLayout, title: String, subtitle: String, action: String, icon: Int, click: () -> Unit) {
         parent.addView(View(this).apply {
             setBackgroundColor(getColor(R.color.map_divider))
-            layoutParams = LinearLayout.LayoutParams(-1, dp(1)).apply { topMargin = dp(18) }
+            layoutParams = LinearLayout.LayoutParams(-1, dp(1)).apply { topMargin = dp(16) }
         })
         val row = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(14), dp(16), dp(12))
-            setBackgroundResource(R.drawable.map_surface)
-            contentDescription = "$title tool"
-        }
-        row.addView(LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            val mark = android.widget.ImageView(this@ToolsActivity).apply {
-                setImageResource(icon)
-                imageTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.map_accent))
-                setBackgroundResource(R.drawable.map_focus_surface)
-                setPadding(dp(12), dp(12), dp(12), dp(12))
-                contentDescription = null
-            }
-            addView(mark, LinearLayout.LayoutParams(dp(48), dp(48)))
-            addView(LinearLayout(this@ToolsActivity).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(dp(14), 0, 0, 0)
-                addView(TextView(this@ToolsActivity).apply {
-                    text = title
-                    textSize = 19f
-                    setTextColor(getColor(R.color.map_text))
-                })
-                addView(TextView(this@ToolsActivity).apply {
-                    text = subtitle
-                    textSize = 14f
-                    setTextColor(getColor(R.color.map_muted))
-                    setPadding(0, dp(3), 0, 0)
-                })
-            }, LinearLayout.LayoutParams(0, -2, 1f))
-        })
-        row.addView(button(action, click))
-        parent.addView(row, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+            setPadding(0, dp(12), 0, dp(12))
+        }
+        val mark = android.widget.ImageView(this).apply {
+            setImageResource(icon)
+            imageTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.map_accent))
+            setBackgroundResource(R.drawable.map_focus_surface)
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+            contentDescription = null
+        }
+        row.addView(mark, LinearLayout.LayoutParams(dp(48), dp(48)))
+        row.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(14), 0, 0, 0)
+            addView(TextView(this@ToolsActivity).apply {
+                text = title
+                textSize = 19f
+                setTextColor(getColor(R.color.map_text))
+            })
+            addView(TextView(this@ToolsActivity).apply {
+                text = subtitle
+                textSize = 14f
+                setTextColor(getColor(R.color.map_muted))
+                setPadding(0, dp(3), 0, 0)
+            })
+        }, LinearLayout.LayoutParams(0, -2, 1f))
+        row.addView(button(action, click), LinearLayout.LayoutParams(-2, -2).apply { leftMargin = dp(8) })
+        parent.addView(row, LinearLayout.LayoutParams(-1, -2))
     }
 
     private fun openDocument() {
