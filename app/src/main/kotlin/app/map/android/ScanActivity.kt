@@ -1,7 +1,10 @@
 package app.map.android
 
 import android.app.Activity
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.IntentSender
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -23,6 +26,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.FileProvider
+import androidx.core.content.ContextCompat
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanner
 import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
@@ -46,6 +50,17 @@ class ScanActivity : Activity() {
     private var exporting = false
     private var importing = false
     private var initialResumePending = true
+    private var musicPlayButton: Button? = null
+
+    private val musicStateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val button = musicPlayButton ?: return
+            val event = intent ?: return
+            if (!event.hasExtra(MusicService.EXTRA_PLAYING)) return
+            button.text = if (event.getBooleanExtra(MusicService.EXTRA_PLAYING, false)) "Pause" else "Play"
+            button.contentDescription = button.text
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -75,6 +90,16 @@ class ScanActivity : Activity() {
             return
         }
         if (::database.isInitialized) render()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        ContextCompat.registerReceiver(this, musicStateReceiver, IntentFilter(MusicService.ACTION_STATE), ContextCompat.RECEIVER_NOT_EXPORTED)
+    }
+
+    override fun onStop() {
+        runCatching { unregisterReceiver(musicStateReceiver) }
+        super.onStop()
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -235,9 +260,10 @@ class ScanActivity : Activity() {
                 textSize = 15f
                 setTextColor(getColor(R.color.map_text))
             }, LinearLayout.LayoutParams(0, -2, 1f))
-            addView(Button(this@ScanActivity).apply {
+            val playButton = Button(this@ScanActivity).apply {
                 text = if (playing) "Pause" else "Play"
                 isAllCaps = false
+                contentDescription = text
                 setOnClickListener {
                     requestNotificationsIfNeeded()
                     val intent = Intent(this@ScanActivity, MusicService::class.java).setAction(MusicService.ACTION_TOGGLE)
@@ -245,7 +271,9 @@ class ScanActivity : Activity() {
                         Toast.makeText(this@ScanActivity, "MAP could not start Music. Try Play again.", Toast.LENGTH_LONG).show()
                     }
                 }
-            })
+            }
+            musicPlayButton = playButton
+            addView(playButton)
         }.also { parent.addView(it) }
     }
 
