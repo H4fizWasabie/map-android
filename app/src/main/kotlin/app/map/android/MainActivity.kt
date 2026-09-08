@@ -33,9 +33,6 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         database = TaskDatabase(this)
-        if (android.os.Build.VERSION.SDK_INT >= 33) {
-            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 40)
-        }
         selectedView = if (intent.getBooleanExtra(EXTRA_OPEN_TASKS, false)) "Tasks" else "Home"
         pendingTaskId = intent.getLongExtra(EXTRA_OPEN_TASK_ID, -1L).takeIf { it != -1L }
         if (selectedView == "Tasks") showTasks() else showHome()
@@ -296,7 +293,10 @@ class MainActivity : Activity() {
                 isAllCaps = false
                 setOnClickListener {
                     ReminderScheduler.cancel(this@MainActivity, task.id)
-                    database.snooze(task)?.let { ReminderScheduler.schedule(this@MainActivity, task.id, task.title, it) }
+                    database.snooze(task)?.let {
+                        requestNotificationsIfNeeded()
+                        ReminderScheduler.schedule(this@MainActivity, task.id, task.title, it)
+                    }
                     dialog.dismiss()
                     if (selectedView == "Tasks") showTasks() else showHome()
                 }
@@ -569,7 +569,10 @@ class MainActivity : Activity() {
                             tags.text.toString().trim(),
                             allDay
                         )
-                        dueAt?.let { ReminderScheduler.schedule(this@MainActivity, taskId, taskTitle, it) }
+                        dueAt?.let {
+                            requestNotificationsIfNeeded()
+                            ReminderScheduler.schedule(this@MainActivity, taskId, taskTitle, it)
+                        }
                         dialog.dismiss()
                         showHome()
                     }
@@ -586,6 +589,11 @@ class MainActivity : Activity() {
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+    private fun requestNotificationsIfNeeded() {
+        if (android.os.Build.VERSION.SDK_INT >= 33 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), NOTIFICATION_REQUEST)
+        }
+    }
     private fun formatDate(value: Long) = java.text.SimpleDateFormat("EEE, d MMM", java.util.Locale.getDefault()).format(java.util.Date(value))
     private fun formatDateTime(value: Long) = java.text.SimpleDateFormat("EEE, d MMM · HH:mm", java.util.Locale.getDefault()).format(java.util.Date(value))
 
@@ -596,6 +604,7 @@ class MainActivity : Activity() {
         private const val HOUR = 60 * 60 * 1000L
         private const val DAY = 24 * 60 * 60 * 1000L
         private const val PINNED_FOCUS_ID = "pinned_focus_id"
+        private const val NOTIFICATION_REQUEST = 40
     }
 
     private data class UndoState(val task: Task, val nextId: Long?)
