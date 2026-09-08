@@ -39,6 +39,7 @@
 - Moved visible PDF bitmap rendering off the UI thread with stale-result protection.
 - Kept large Music library queries and transformations off the UI thread, applying only the newest result.
 - Kept every expanded navigation destination reachable in short landscape windows.
+- Kept document viewer zoom, OCR, and search actions readable with large text.
 - Made task rows open details from any non-checkbox tap across Home, Tasks, and Calendar.
 - Used a lightweight Music row count instead of loading the full library twice when opening or rerendering Music.
 - Refined Tools into a calm single-surface list with contextual states, compact actions, and readable large-text rows.
