@@ -47,7 +47,7 @@ class TaskDatabase(context: Context) : SQLiteOpenHelper(context, "map.db", null,
 
     fun openTasks(): List<Task> = queryTasks("completed = 0")
 
-    fun recentCompleted(): List<Task> = queryTasks("completed = 1")
+    fun recentCompleted(): List<Task> = queryTasks("completed = 1", "20")
 
     fun updateTask(task: Task, title: String, notes: String, tags: String): Boolean {
         require(title.isNotBlank()) { "Task title cannot be blank" }
@@ -120,7 +120,7 @@ class TaskDatabase(context: Context) : SQLiteOpenHelper(context, "map.db", null,
         return if (updated == 1) dueAt else null
     }
 
-    private fun queryTasks(where: String): List<Task> {
+    private fun queryTasks(where: String, limit: String? = null): List<Task> {
         val tasks = mutableListOf<Task>()
         readableDatabase.query(
             "tasks",
@@ -129,7 +129,8 @@ class TaskDatabase(context: Context) : SQLiteOpenHelper(context, "map.db", null,
             null,
             null,
             null,
-            if (where == "completed = 1") "completed_at DESC" else "due_at IS NULL, due_at ASC"
+            if (where == "completed = 1") "completed_at DESC" else "due_at IS NULL, due_at ASC",
+            limit
         ).use { cursor ->
             while (cursor.moveToNext()) tasks += cursor.toTask()
         }
