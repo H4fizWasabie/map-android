@@ -107,3 +107,4 @@
 - Kept Scan and Calendar Music controls synchronized with live local playback state.
 - Respected Android reduced-motion settings when jumping to document search results.
 - Preserved a task's time and all-day mode when changing only its date.
+- Added a GitHub Actions quality gate for Android builds, lint, tests, and changelog checks.

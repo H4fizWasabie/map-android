@@ -1,0 +1,25 @@
+name: Android quality gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Verify Android app
+        run: ./gradlew test lint assembleDebug
+      - name: Verify changelog
+        run: ./scripts/check-changelog.sh
