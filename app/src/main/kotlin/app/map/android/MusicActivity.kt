@@ -722,7 +722,14 @@ class MusicActivity : Activity() {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
         setPadding(dp(16), dp(24), dp(16), dp(4))
-        addView(actionButton("Back") { if (player) renderLibrary() else finish() })
+        addView(ImageButton(this@MusicActivity).apply {
+            setImageResource(R.drawable.ic_map_back)
+            imageTintList = ColorStateList.valueOf(getColor(R.color.map_text))
+            setBackgroundResource(R.drawable.map_button_surface)
+            backgroundTintList = null
+            contentDescription = "Back"
+            setOnClickListener { if (player) renderLibrary() else finish() }
+        }, LinearLayout.LayoutParams(dp(48), dp(48)))
         addView(TextView(this@MusicActivity).apply { text = title; textSize = 18f; setTextColor(getColor(R.color.map_text)); setTypeface(typeface, android.graphics.Typeface.BOLD); gravity = Gravity.CENTER_VERTICAL; setPadding(dp(12), 0, 0, 0) }, LinearLayout.LayoutParams(0, -1, 1f))
     }
 
@@ -758,7 +765,8 @@ class MusicActivity : Activity() {
         minHeight = dp(48)
         minWidth = dp(48)
         setTextColor(getColor(R.color.map_text))
-        backgroundTintList = ColorStateList.valueOf(getColor(R.color.map_card))
+        setBackgroundResource(R.drawable.map_button_surface)
+        backgroundTintList = null
         setOnClickListener { click() }
     }
 
@@ -767,7 +775,8 @@ class MusicActivity : Activity() {
         contentDescription = description
         minimumWidth = dp(56)
         minimumHeight = dp(56)
-        backgroundTintList = ColorStateList.valueOf(getColor(R.color.map_card))
+        setBackgroundResource(R.drawable.map_button_surface)
+        backgroundTintList = null
         imageTintList = ColorStateList.valueOf(getColor(R.color.map_text))
         setOnClickListener { click() }
     }

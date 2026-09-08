@@ -89,7 +89,8 @@ class ToolsActivity : Activity() {
             parent,
             "Documents",
             if (recent.isEmpty()) "Read local PDFs and images directly." else "${recent.size} saved document${if (recent.size == 1) "" else "s"}",
-            "Open document"
+            "Open document",
+            R.drawable.ic_map_documents
         ) { openDocument() }
         recent.take(3).forEach { item ->
             parent.addView(TextView(this).apply {
@@ -111,7 +112,7 @@ class ToolsActivity : Activity() {
         val scans = ScanDatabase(this)
         val pages = scans.unfinishedPageCount()
         scans.close()
-        addToolRow(parent, "Scan", if (pages == 0) "Capture pages into a local PDF." else "$pages unfinished page${if (pages == 1) "" else "s"}", "Open scanner") {
+        addToolRow(parent, "Scan", if (pages == 0) "Capture pages into a local PDF." else "$pages unfinished page${if (pages == 1) "" else "s"}", "Open scanner", R.drawable.ic_map_scan) {
             startActivity(Intent(this, ScanActivity::class.java))
         }
     }
@@ -121,12 +122,12 @@ class ToolsActivity : Activity() {
         val current = music.track(music.current())
         val playing = music.playing()
         music.close()
-        addToolRow(parent, "Music", current?.let { if (playing) "Playing ${it.title}" else "Ready with ${it.title}" } ?: "Play music stored on this device", "Open music") {
+        addToolRow(parent, "Music", current?.let { if (playing) "Playing ${it.title}" else "Ready with ${it.title}" } ?: "Play music stored on this device", "Open music", R.drawable.ic_map_music) {
             startActivity(Intent(this, MusicActivity::class.java).putExtra(MusicActivity.EXTRA_OPEN_PLAYER, true))
         }
     }
 
-    private fun addToolRow(parent: LinearLayout, title: String, subtitle: String, action: String, click: () -> Unit) {
+    private fun addToolRow(parent: LinearLayout, title: String, subtitle: String, action: String, icon: Int, click: () -> Unit) {
         parent.addView(View(this).apply {
             setBackgroundColor(getColor(R.color.map_divider))
             layoutParams = LinearLayout.LayoutParams(-1, dp(1)).apply { topMargin = dp(18) }
@@ -137,16 +138,32 @@ class ToolsActivity : Activity() {
             setBackgroundResource(R.drawable.map_surface)
             contentDescription = "$title tool"
         }
-        row.addView(TextView(this).apply {
-            text = title
-            textSize = 19f
-            setTextColor(getColor(R.color.map_text))
-        })
-        row.addView(TextView(this).apply {
-            text = subtitle
-            textSize = 14f
-            setTextColor(getColor(R.color.map_muted))
-            setPadding(0, dp(3), 0, dp(7))
+        row.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            val mark = android.widget.ImageView(this@ToolsActivity).apply {
+                setImageResource(icon)
+                imageTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.map_accent))
+                setBackgroundResource(R.drawable.map_focus_surface)
+                setPadding(dp(12), dp(12), dp(12), dp(12))
+                contentDescription = null
+            }
+            addView(mark, LinearLayout.LayoutParams(dp(48), dp(48)))
+            addView(LinearLayout(this@ToolsActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(14), 0, 0, 0)
+                addView(TextView(this@ToolsActivity).apply {
+                    text = title
+                    textSize = 19f
+                    setTextColor(getColor(R.color.map_text))
+                })
+                addView(TextView(this@ToolsActivity).apply {
+                    text = subtitle
+                    textSize = 14f
+                    setTextColor(getColor(R.color.map_muted))
+                    setPadding(0, dp(3), 0, 0)
+                })
+            }, LinearLayout.LayoutParams(0, -2, 1f))
         })
         row.addView(button(action, click))
         parent.addView(row, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
