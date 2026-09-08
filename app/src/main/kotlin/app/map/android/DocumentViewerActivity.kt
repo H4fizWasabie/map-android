@@ -334,7 +334,7 @@ class DocumentViewerActivity : Activity() {
                 scroll.getLocationOnScreen(scrollLocation)
                 page.getLocationOnScreen(pageLocation)
                 val target = (scroll.scrollY + pageLocation[1] - scrollLocation[1] - dp(16)).coerceAtLeast(0)
-                scroll.smoothScrollTo(0, target)
+                if (android.animation.ValueAnimator.areAnimatorsEnabled()) scroll.smoothScrollTo(0, target) else scroll.scrollTo(0, target)
             }
         }
         status.visibility = View.VISIBLE
