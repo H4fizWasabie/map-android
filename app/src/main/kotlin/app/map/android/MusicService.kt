@@ -109,45 +109,52 @@ class MusicService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startForeground(NOTIFICATION_ID, notification())
-        when (intent?.action) {
-            ACTION_PLAY -> intent.getStringExtra(EXTRA_URI)?.let {
-                allowExternalResume = true
-                play(it, intent.getBooleanExtra(EXTRA_RESTORE_POSITION, false))
+        return try {
+            startForeground(NOTIFICATION_ID, notification())
+            when (intent?.action) {
+                ACTION_PLAY -> intent.getStringExtra(EXTRA_URI)?.let {
+                    allowExternalResume = true
+                    play(it, intent.getBooleanExtra(EXTRA_RESTORE_POSITION, false))
+                }
+                ACTION_RESUME -> {
+                    allowExternalResume = true
+                    resume()
+                }
+                ACTION_TOGGLE -> if (player?.isPlaying == true) pause() else {
+                    allowExternalResume = true
+                    resume()
+                }
+                ACTION_PAUSE -> pause()
+                ACTION_NEXT -> advance(1)
+                ACTION_PREVIOUS -> previous()
+                ACTION_SEEK -> seek(intent.getIntExtra(EXTRA_POSITION, 0))
+                ACTION_SHUFFLE -> {
+                    database.setShuffle(!database.shuffle())
+                    updateState()
+                }
+                ACTION_REPEAT -> {
+                    database.setRepeat(when (database.repeat()) { REPEAT_OFF -> REPEAT_ALL; REPEAT_ALL -> REPEAT_ONE; else -> REPEAT_OFF })
+                    updateState()
+                }
+                ACTION_SLEEP -> setSleep(intent.getStringExtra(EXTRA_SLEEP_MODE) ?: SLEEP_OFF, intent.getIntExtra(EXTRA_MINUTES, 0))
+                ACTION_EQ_ENABLED -> setEqualizerEnabled(intent.getBooleanExtra(EXTRA_ENABLED, false))
+                ACTION_EQ_BAND -> setEqualizerBand(intent.getIntExtra(EXTRA_BAND, 0), intent.getShortExtra(EXTRA_LEVEL, 0))
+                ACTION_EQ_PRESET -> usePreset(intent.getShortExtra(EXTRA_PRESET, 0))
+                ACTION_BASS -> setBass(intent.getShortExtra(EXTRA_LEVEL, 0))
+                ACTION_VIRTUALIZER -> setVirtualizer(intent.getShortExtra(EXTRA_LEVEL, 0))
+                ACTION_STOP -> {
+                    stopPlayback()
+                    return START_NOT_STICKY
+                }
             }
-            ACTION_RESUME -> {
-                allowExternalResume = true
-                resume()
-            }
-            ACTION_TOGGLE -> if (player?.isPlaying == true) pause() else {
-                allowExternalResume = true
-                resume()
-            }
-            ACTION_PAUSE -> pause()
-            ACTION_NEXT -> advance(1)
-            ACTION_PREVIOUS -> previous()
-            ACTION_SEEK -> seek(intent.getIntExtra(EXTRA_POSITION, 0))
-            ACTION_SHUFFLE -> {
-                database.setShuffle(!database.shuffle())
-                updateState()
-            }
-            ACTION_REPEAT -> {
-                database.setRepeat(when (database.repeat()) { REPEAT_OFF -> REPEAT_ALL; REPEAT_ALL -> REPEAT_ONE; else -> REPEAT_OFF })
-                updateState()
-            }
-            ACTION_SLEEP -> setSleep(intent.getStringExtra(EXTRA_SLEEP_MODE) ?: SLEEP_OFF, intent.getIntExtra(EXTRA_MINUTES, 0))
-            ACTION_EQ_ENABLED -> setEqualizerEnabled(intent.getBooleanExtra(EXTRA_ENABLED, false))
-            ACTION_EQ_BAND -> setEqualizerBand(intent.getIntExtra(EXTRA_BAND, 0), intent.getShortExtra(EXTRA_LEVEL, 0))
-            ACTION_EQ_PRESET -> usePreset(intent.getShortExtra(EXTRA_PRESET, 0))
-            ACTION_BASS -> setBass(intent.getShortExtra(EXTRA_LEVEL, 0))
-            ACTION_VIRTUALIZER -> setVirtualizer(intent.getShortExtra(EXTRA_LEVEL, 0))
-            ACTION_STOP -> {
-                stopPlayback()
-                return START_NOT_STICKY
-            }
+            updateState()
+            START_STICKY
+        } catch (_: Exception) {
+            broadcastError("MAP could not start music safely. Try Play again.")
+            runCatching { stopPlayback() }
+            runCatching { stopSelf() }
+            START_NOT_STICKY
         }
-        updateState()
-        return START_STICKY
     }
 
     override fun onDestroy() {

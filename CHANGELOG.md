@@ -29,6 +29,7 @@
 
 ### Changed
 
+- Kept foreground Music commands and notification startup from taking down the app when a local playback transition fails.
 - Made task rows open details from any non-checkbox tap across Home, Tasks, and Calendar.
 - Used a lightweight Music row count instead of loading the full library twice when opening or rerendering Music.
 - Refined Tools into a calm single-surface list with contextual states, compact actions, and readable large-text rows.
