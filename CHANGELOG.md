@@ -108,3 +108,4 @@
 - Respected Android reduced-motion settings when jumping to document search results.
 - Preserved a task's time and all-day mode when changing only its date.
 - Added a GitHub Actions quality gate for Android builds, lint, tests, and changelog checks.
+- Kept the Android quality gate on supported GitHub Actions runtimes.
