@@ -322,19 +322,25 @@ class MusicService : Service() {
     }
 
     private fun initialiseEffects(audioSessionId: Int) {
-        equalizer = runCatching { Equalizer(0, audioSessionId) }.getOrNull()?.apply {
-            for (band in 0 until numberOfBands.toInt()) database.equalizerBand(band)?.let { setBandLevel(band.toShort(), it.coerceIn(bandLevelRange[0], bandLevelRange[1])) }
-            enabled = database.equalizerEnabled()
-        }
-        bassBoost = runCatching { BassBoost(0, audioSessionId) }.getOrNull()?.apply {
-            if (strengthSupported) setStrength(database.bassStrength().coerceIn(0, 1_000))
-            enabled = database.equalizerEnabled()
+        runCatching {
+            equalizer = Equalizer(0, audioSessionId).apply {
+                for (band in 0 until numberOfBands.toInt()) database.equalizerBand(band)?.let { setBandLevel(band.toShort(), it.coerceIn(bandLevelRange[0], bandLevelRange[1])) }
+                enabled = database.equalizerEnabled()
+            }
+            bassBoost = BassBoost(0, audioSessionId).apply {
+                if (strengthSupported) setStrength(database.bassStrength().coerceIn(0, 1_000))
+                enabled = database.equalizerEnabled()
+            }
+        }.onFailure {
+            releaseEffects()
         }
         @Suppress("DEPRECATION")
-        virtualizer = runCatching { Virtualizer(0, audioSessionId) }.getOrNull()?.apply {
-            if (strengthSupported) setStrength(database.virtualizerStrength().coerceIn(0, 1_000))
-            enabled = database.equalizerEnabled()
-        }
+        virtualizer = runCatching {
+            Virtualizer(0, audioSessionId).apply {
+                if (strengthSupported) setStrength(database.virtualizerStrength().coerceIn(0, 1_000))
+                enabled = database.equalizerEnabled()
+            }
+        }.getOrNull()
         broadcastState()
     }
 
@@ -376,9 +382,9 @@ class MusicService : Service() {
     }
 
     private fun releaseEffects() {
-        equalizer?.release()
-        bassBoost?.release()
-        virtualizer?.release()
+        runCatching { equalizer?.release() }
+        runCatching { bassBoost?.release() }
+        runCatching { virtualizer?.release() }
         equalizer = null
         bassBoost = null
         virtualizer = null
