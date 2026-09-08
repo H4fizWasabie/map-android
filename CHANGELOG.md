@@ -29,6 +29,7 @@
 
 ### Changed
 
+- Virtualized Music result rows with a native list so large local libraries do not build every row at once.
 - Disabled Android app backup and cleartext traffic for MAP's private local state.
 - Removed dependency-added network permissions from the merged app manifest; local features now ship without app network access.
 - Added an authored adaptive MAP launcher icon for the application and round launcher slot.
