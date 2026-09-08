@@ -45,43 +45,52 @@ object MapUi {
 
     fun bottomNavigation(activity: Activity, selected: String, onNavigate: (String) -> Unit): View {
         val expanded = activity.resources.configuration.screenWidthDp >= 600
+        val largePhoneText = !expanded && activity.resources.configuration.fontScale >= 1.3f
+        val labels = listOf("Home", "Calendar", "Tasks", "Tools")
+        fun destinationButton(label: String) = Button(activity, null, 0, R.style.MapNavigationButton).apply {
+            text = label
+            isSelected = label == selected
+            contentDescription = "$label navigation"
+            val color = activity.getColor(if (label == selected) R.color.map_accent else R.color.map_muted)
+            setTextColor(color)
+            setBackgroundResource(R.drawable.map_nav_button)
+            backgroundTintList = null
+            val icon = when (label) {
+                "Home" -> R.drawable.ic_map_home
+                "Calendar" -> R.drawable.ic_map_calendar
+                "Tasks" -> R.drawable.ic_map_tasks
+                else -> R.drawable.ic_map_tools
+            }
+            activity.getDrawable(icon)?.mutate()?.apply { setTint(color) }?.let {
+                setCompoundDrawablesWithIntrinsicBounds(if (largePhoneText) it else null, if (largePhoneText) null else it, null, null)
+            }
+            if (largePhoneText) gravity = Gravity.CENTER
+            compoundDrawablePadding = dp(activity, 2)
+            setOnClickListener { if (label != selected) onNavigate(label) }
+        }
         val destinations = LinearLayout(activity).apply {
-            orientation = if (expanded) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
-            gravity = if (expanded) Gravity.TOP or Gravity.CENTER_HORIZONTAL else Gravity.CENTER
+            orientation = if (expanded || largePhoneText) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
+            gravity = if (expanded || largePhoneText) Gravity.TOP or Gravity.CENTER_HORIZONTAL else Gravity.CENTER
             setPadding(
                 dp(activity, if (expanded) 6 else 8),
                 dp(activity, if (expanded) 12 else 6),
                 dp(activity, if (expanded) 6 else 8),
                 dp(activity, if (expanded) 12 else 8),
             )
-            listOf("Home", "Calendar", "Tasks", "Tools").forEach { label ->
-                addView(Button(activity, null, 0, R.style.MapNavigationButton).apply {
-                    text = label
-                    isSelected = label == selected
-                    contentDescription = "$label navigation"
-                    val color = activity.getColor(if (label == selected) R.color.map_accent else R.color.map_muted)
-                    setTextColor(color)
-                    setBackgroundResource(R.drawable.map_nav_button)
-                    backgroundTintList = null
-                    val icon = when (label) {
-                        "Home" -> R.drawable.ic_map_home
-                        "Calendar" -> R.drawable.ic_map_calendar
-                        "Tasks" -> R.drawable.ic_map_tasks
-                        else -> R.drawable.ic_map_tools
-                    }
-                    activity.getDrawable(icon)?.mutate()?.apply { setTint(color) }?.let {
-                        setCompoundDrawablesWithIntrinsicBounds(null, it, null, null)
-                    }
-                    compoundDrawablePadding = dp(activity, 2)
-                    setOnClickListener { if (label != selected) onNavigate(label) }
-                }, if (expanded) {
+            if (largePhoneText) {
+                labels.chunked(2).forEach { rowLabels ->
+                    addView(LinearLayout(activity).apply {
+                        orientation = LinearLayout.HORIZONTAL
+                        rowLabels.forEach { addView(destinationButton(it), LinearLayout.LayoutParams(0, -2, 1f)) }
+                    }, LinearLayout.LayoutParams(-1, -2))
+                }
+            } else labels.forEach { label ->
+                addView(destinationButton(label), if (expanded) {
                     LinearLayout.LayoutParams(-1, dp(activity, 80)).apply {
                         topMargin = dp(activity, 4)
                         bottomMargin = dp(activity, 4)
                     }
-                } else {
-                    LinearLayout.LayoutParams(0, dp(activity, 56), 1f)
-                })
+                } else LinearLayout.LayoutParams(0, -2, 1f))
             }
         }
         return LinearLayout(activity).apply {
