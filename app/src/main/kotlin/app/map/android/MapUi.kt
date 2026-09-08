@@ -11,6 +11,8 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 
 object MapUi {
+    private fun expandedNavigation(context: Context): Boolean = context.resources.configuration.screenWidthDp >= 600
+
     fun dp(context: Context, value: Int): Int = (value * context.resources.displayMetrics.density).toInt()
 
     fun applySystemBarInsets(view: View) {
@@ -32,7 +34,7 @@ object MapUi {
     }
 
     fun addPrimaryNavigation(root: LinearLayout, content: View, navigation: View) {
-        if (root.resources.configuration.screenWidthDp >= 600) {
+        if (expandedNavigation(root.context)) {
             root.orientation = LinearLayout.HORIZONTAL
             root.addView(navigation, LinearLayout.LayoutParams(dp(root.context, 104), -1))
             root.addView(content, LinearLayout.LayoutParams(0, -1, 1f))
@@ -44,7 +46,8 @@ object MapUi {
     }
 
     fun bottomNavigation(activity: Activity, selected: String, onNavigate: (String) -> Unit): View {
-        val expanded = activity.resources.configuration.screenWidthDp >= 600
+        val expanded = expandedNavigation(activity)
+        val landscapePhone = !expanded && activity.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
         val largePhoneText = !expanded && activity.resources.configuration.fontScale >= 1.3f
         val labels = listOf("Home", "Calendar", "Tasks", "Tools")
         fun destinationButton(label: String) = Button(activity, null, 0, R.style.MapNavigationButton).apply {
@@ -62,22 +65,28 @@ object MapUi {
                 else -> R.drawable.ic_map_tools
             }
             activity.getDrawable(icon)?.mutate()?.apply { setTint(color) }?.let {
-                setCompoundDrawablesWithIntrinsicBounds(if (largePhoneText) it else null, if (largePhoneText) null else it, null, null)
+                setCompoundDrawablesWithIntrinsicBounds(
+                    if (largePhoneText && !landscapePhone) it else null,
+                    if (largePhoneText) null else it,
+                    null,
+                    null,
+                )
             }
-            if (largePhoneText) gravity = Gravity.CENTER
+            if (largePhoneText || landscapePhone) gravity = Gravity.CENTER
             compoundDrawablePadding = dp(activity, 2)
             setOnClickListener { if (label != selected) onNavigate(label) }
         }
         val destinations = LinearLayout(activity).apply {
-            orientation = if (expanded || largePhoneText) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
-            gravity = if (expanded || largePhoneText) Gravity.TOP or Gravity.CENTER_HORIZONTAL else Gravity.CENTER
+            val grid = largePhoneText && !landscapePhone
+            orientation = if (expanded || grid) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
+            gravity = if (expanded || grid) Gravity.TOP or Gravity.CENTER_HORIZONTAL else Gravity.CENTER
             setPadding(
-                dp(activity, if (expanded) 6 else 8),
-                dp(activity, if (expanded) 12 else 6),
-                dp(activity, if (expanded) 6 else 8),
-                dp(activity, if (expanded) 12 else 8),
+                dp(activity, if (expanded) 6 else if (landscapePhone) 0 else 8),
+                dp(activity, if (expanded) 12 else if (landscapePhone) 0 else 6),
+                dp(activity, if (expanded) 6 else if (landscapePhone) 0 else 8),
+                dp(activity, if (expanded) 12 else if (landscapePhone) 0 else 8),
             )
-            if (largePhoneText) {
+            if (grid) {
                 labels.chunked(2).forEach { rowLabels ->
                     addView(LinearLayout(activity).apply {
                         orientation = LinearLayout.HORIZONTAL
