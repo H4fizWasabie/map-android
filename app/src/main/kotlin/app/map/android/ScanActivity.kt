@@ -211,6 +211,7 @@ class ScanActivity : Activity() {
                 text = if (playing) "Pause" else "Play"
                 isAllCaps = false
                 setOnClickListener {
+                    requestNotificationsIfNeeded()
                     val intent = Intent(this@ScanActivity, MusicService::class.java).setAction(MusicService.ACTION_TOGGLE)
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) startForegroundService(intent) else startService(intent)
                 }
@@ -331,8 +332,15 @@ class ScanActivity : Activity() {
     private fun timestamp() = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
 
+    private fun requestNotificationsIfNeeded() {
+        if (android.os.Build.VERSION.SDK_INT >= 33 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), NOTIFICATION_REQUEST)
+        }
+    }
+
     companion object {
         private const val SCANNER_REQUEST = 12
+        private const val NOTIFICATION_REQUEST = 13
         private const val PAGE_WIDTH = 595
         private const val PAGE_HEIGHT = 842
     }

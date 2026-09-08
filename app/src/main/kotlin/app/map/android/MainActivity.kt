@@ -454,6 +454,7 @@ class MainActivity : Activity() {
                 isAllCaps = false
                 contentDescription = text
                 setOnClickListener {
+                    requestNotificationsIfNeeded()
                     val intent = Intent(this@MainActivity, MusicService::class.java).setAction(MusicService.ACTION_TOGGLE)
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) startForegroundService(intent) else startService(intent)
                 }
