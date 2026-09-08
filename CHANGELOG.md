@@ -29,6 +29,7 @@
 
 ### Changed
 
+- Ignored late document OCR callbacks after the viewer has been destroyed.
 - Kept Home, Calendar, Tasks, and Tools in a predictable single navigation stack.
 - Enabled Android predictive Back dispatch for the native MAP navigation contract.
 - Routed Music player Back through Android's modern system callback while retaining older-device support.
