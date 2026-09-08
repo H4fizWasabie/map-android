@@ -76,12 +76,12 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        if (initialResumePending) {
-            initialResumePending = false
-            return
-        }
+        val refresh = !initialResumePending
+        initialResumePending = false
         if (::database.isInitialized) {
-            if (selectedView == "Tasks") showTasks() else showHome()
+            if (refresh) {
+                if (selectedView == "Tasks") showTasks() else showHome()
+            }
             pendingTaskId?.let { id ->
                 pendingTaskId = null
                 database.openTasks().firstOrNull { it.id == id }?.let(::showTaskDetails)
