@@ -217,11 +217,20 @@ class MusicActivity : Activity() {
             setTextColor(getColor(R.color.map_muted))
             setPadding(0, 0, 0, dp(16))
         })
+        val stackedActions = resources.configuration.screenWidthDp < 360 || resources.configuration.fontScale >= 1.3f
         LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            addView(actionButton("Add folder") { requestFolder() })
-            addView(actionButton("Refresh") { refreshFolders() })
-            addView(actionButton("Folders") { showFoldersDialog() })
+            orientation = if (stackedActions) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
+            listOf(
+                actionButton("Add folder") { requestFolder() },
+                actionButton("Refresh") { refreshFolders() },
+                actionButton("Folders") { showFoldersDialog() },
+            ).forEachIndexed { index, action ->
+                addView(action, if (stackedActions) {
+                    LinearLayout.LayoutParams(-1, -2).apply { if (index > 0) topMargin = dp(4) }
+                } else {
+                    LinearLayout.LayoutParams(-2, -2)
+                })
+            }
         }.also { body.addView(it) }
         body.addView(horizontalModes())
         val search = EditText(this).apply {
