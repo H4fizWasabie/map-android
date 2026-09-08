@@ -44,6 +44,7 @@ class ScanActivity : Activity() {
     private val exportExecutor = Executors.newSingleThreadExecutor()
     private var exportButton: Button? = null
     private var exporting = false
+    private var importing = false
     private var initialResumePending = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -79,14 +80,31 @@ class ScanActivity : Activity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode != SCANNER_REQUEST || resultCode != RESULT_OK || data == null) return
-        runCatching {
-            GmsDocumentScanningResult.fromActivityResultIntent(data)?.getPages()?.forEach { page ->
-                copyPage(page.getImageUri())
-            }
-        }.onFailure {
+        val uris = runCatching {
+            GmsDocumentScanningResult.fromActivityResultIntent(data)?.getPages().orEmpty().map { it.getImageUri() }
+        }.getOrElse {
             Toast.makeText(this, "Could not import the scanned pages", Toast.LENGTH_LONG).show()
+            return
         }
+        if (uris.isEmpty()) return
+        importing = true
         render()
+        exportExecutor.execute {
+            val imported = mutableListOf<Long>()
+            var failures = 0
+            uris.forEach { uri ->
+                runCatching { copyPage(uri) }
+                    .onSuccess(imported::add)
+                    .onFailure { failures++ }
+            }
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                selectedPageIds += imported
+                importing = false
+                render()
+                if (failures > 0) Toast.makeText(this, "Could not import $failures scanned page${if (failures == 1) "" else "s"}", Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
     private fun render() {
@@ -128,8 +146,9 @@ class ScanActivity : Activity() {
             setPadding(0, 0, 0, dp(16))
         })
         root.addView(Button(this, null, 0, R.style.MapPrimaryButton).apply {
-            text = "Scan documents"
+            text = if (importing) "Importing pages…" else "Scan documents"
             isAllCaps = false
+            isEnabled = !importing && !exporting
             setOnClickListener { startScanner() }
         })
         val storedPages = database.pages(sessionId)
@@ -139,9 +158,13 @@ class ScanActivity : Activity() {
         }
         selectedPageIds.retainAll(storedPages.map { it.id }.toSet())
         val exportButton = Button(this, null, 0, R.style.MapPrimaryButton).apply {
-            text = if (exporting) "Exporting PDF…" else "Export PDF (${selectedPageIds.size})"
+            text = when {
+                importing -> "Importing pages…"
+                exporting -> "Exporting PDF…"
+                else -> "Export PDF (${selectedPageIds.size})"
+            }
             isAllCaps = false
-            isEnabled = selectedPageIds.isNotEmpty() && !exporting
+            isEnabled = selectedPageIds.isNotEmpty() && !exporting && !importing
             setOnClickListener { exportPdf() }
             layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) }
         }
@@ -168,7 +191,7 @@ class ScanActivity : Activity() {
                 text = "Page ${index + 1}: ${File(page.path).name}$status"
                 setTextColor(if (status.isEmpty()) getColor(R.color.map_text) else getColor(R.color.map_muted))
                 isChecked = page.id in selectedPageIds
-                isEnabled = !exporting
+                isEnabled = !exporting && !importing
                 contentDescription = "Include page ${index + 1}"
                 setOnCheckedChangeListener { _, checked ->
                     if (checked) selectedPageIds.add(page.id) else selectedPageIds.remove(page.id)
@@ -238,18 +261,14 @@ class ScanActivity : Activity() {
             }
     }
 
-    private fun copyPage(uri: Uri) {
-        runCatching {
-            val directory = File(filesDir, "scans/$sessionId").apply { mkdirs() }
-            val target = File(directory, "import-${System.currentTimeMillis()}-${database.pages(sessionId).size}.jpg")
-            contentResolver.openInputStream(uri).use { input ->
-                requireNotNull(input)
-                FileOutputStream(target).use { output -> input.copyTo(output) }
-            }
-            selectedPageIds.add(database.addPage(sessionId, target.absolutePath))
-        }.onFailure {
-            Toast.makeText(this, "Could not import that image", Toast.LENGTH_LONG).show()
+    private fun copyPage(uri: Uri): Long {
+        val directory = File(filesDir, "scans/$sessionId").apply { mkdirs() }
+        val target = File(directory, "import-${System.currentTimeMillis()}-${database.pages(sessionId).size}.jpg")
+        contentResolver.openInputStream(uri).use { input ->
+            requireNotNull(input)
+            FileOutputStream(target).use { output -> input.copyTo(output) }
         }
+        return database.addPage(sessionId, target.absolutePath)
     }
 
     private fun exportPdf() {
