@@ -171,11 +171,12 @@ class ToolsActivity : Activity() {
             })
         }
         val actionView = button(action, click)
+        val stacked = resources.configuration.screenWidthDp < 360 || resources.configuration.fontScale >= 1.3f
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(0, dp(12), 0, dp(12))
-            if (resources.configuration.screenWidthDp < 360) {
+            if (stacked) {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.START
                 addView(LinearLayout(this@ToolsActivity).apply {
