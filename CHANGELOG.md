@@ -101,3 +101,4 @@
 - Prevented Bluetooth/media-session reconnect commands from auto-resuming paused music.
 - Kept device audio-effect initialization failures from crashing local playback.
 - Kept unavailable selected music folders from crashing Music while refreshing.
+- Guarded every Music foreground-service entry point so Android start failures show a retry message instead of crashing MAP.
