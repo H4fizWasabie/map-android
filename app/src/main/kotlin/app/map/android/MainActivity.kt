@@ -444,10 +444,22 @@ class MainActivity : Activity() {
             setBackgroundResource(R.drawable.map_surface)
             contentDescription = "Music: ${item.title}"
             setOnClickListener { startActivity(Intent(this@MainActivity, MusicActivity::class.java).putExtra(MusicActivity.EXTRA_OPEN_PLAYER, true)) }
-            addView(TextView(this@MainActivity).apply {
-                text = "${item.title}\n${item.artist}"
-                textSize = 15f
-                setTextColor(getColor(R.color.map_text))
+            addView(LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(TextView(this@MainActivity).apply {
+                    text = item.title
+                    textSize = 15f
+                    maxLines = 2
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                    setTextColor(getColor(R.color.map_text))
+                })
+                addView(TextView(this@MainActivity).apply {
+                    text = item.artist
+                    textSize = 13f
+                    maxLines = 1
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                    setTextColor(getColor(R.color.map_muted))
+                })
             }, LinearLayout.LayoutParams(0, -2, 1f))
             val playButton = Button(this@MainActivity).apply {
                 text = if (playing) "Pause" else "Play"
