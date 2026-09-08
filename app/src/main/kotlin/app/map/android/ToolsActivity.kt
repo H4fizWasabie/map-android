@@ -40,10 +40,8 @@ class ToolsActivity : Activity() {
 
     private fun render() {
         val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
             setBackgroundColor(getColor(R.color.map_background))
         }
-        root.addView(header())
         val body = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(24), dp(8), dp(24), dp(24))
@@ -62,8 +60,12 @@ class ToolsActivity : Activity() {
         addDocuments(body)
         addScan(body)
         addMusic(body)
-        root.addView(ScrollView(this).apply { addView(body) }, LinearLayout.LayoutParams(-1, 0, 1f))
-        root.addView(MapUi.bottomNavigation(this, "Tools", ::navigate))
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(header())
+            addView(ScrollView(this@ToolsActivity).apply { addView(body) }, LinearLayout.LayoutParams(-1, 0, 1f))
+        }
+        MapUi.addPrimaryNavigation(root, content, MapUi.bottomNavigation(this, "Tools", ::navigate))
         setContentView(root)
     }
 

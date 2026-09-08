@@ -29,6 +29,7 @@
 
 ### Changed
 
+- Adapted primary navigation to use a native rail on expanded Android windows while retaining the compact phone bar.
 - Moved Scan PDF processing and writing off the UI thread with explicit export progress state.
 - Ignored late document OCR callbacks after the viewer has been destroyed.
 - Kept Home, Calendar, Tasks, and Tools in a predictable single navigation stack.
