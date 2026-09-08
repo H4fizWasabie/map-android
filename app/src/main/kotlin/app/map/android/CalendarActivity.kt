@@ -45,10 +45,8 @@ class CalendarActivity : Activity() {
 
     private fun render() {
         val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
             setBackgroundColor(getColor(R.color.map_background))
         }
-        root.addView(header())
         val scroll = ScrollView(this)
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(24), 0, dp(24), dp(24)) }
         body.addView(TextView(this).apply {
@@ -80,8 +78,12 @@ class CalendarActivity : Activity() {
         }.also { body.addView(it) }
         if (weekMode) addWeek(body) else addDay(body)
         scroll.addView(body)
-        root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
-        root.addView(MapUi.bottomNavigation(this, "Calendar", ::navigate))
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(header())
+            addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        }
+        MapUi.addPrimaryNavigation(root, content, MapUi.bottomNavigation(this, "Calendar", ::navigate))
         setContentView(root)
     }
 

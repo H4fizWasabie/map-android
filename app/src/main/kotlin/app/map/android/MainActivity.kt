@@ -147,11 +147,13 @@ class MainActivity : Activity() {
         })
         fill(content)
         val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
             setBackgroundColor(getColor(R.color.map_background))
-            addView(ScrollView(this@MainActivity).apply { addView(content) }, LinearLayout.LayoutParams(-1, 0, 1f))
-            addView(MapUi.bottomNavigation(this@MainActivity, selected, ::navigate))
         }
+        MapUi.addPrimaryNavigation(
+            root,
+            ScrollView(this).apply { addView(content) },
+            MapUi.bottomNavigation(this, selected, ::navigate),
+        )
         setContentView(root)
     }
 
