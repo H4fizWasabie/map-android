@@ -12,9 +12,12 @@ import android.graphics.Rect
 import android.graphics.pdf.PdfDocument
 import android.net.Uri
 import android.os.Bundle
+import android.content.res.ColorStateList
+import android.view.Gravity
 import android.view.View
 import android.widget.Button
 import android.widget.CheckBox
+import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -82,23 +85,41 @@ class ScanActivity : Activity() {
             setPadding(dp(24), dp(24), dp(24), dp(24))
             setBackgroundColor(getColor(R.color.map_background))
         }
-        root.addView(TextView(this).apply {
-            text = "MAP"
-            textSize = 14f
-            setTextColor(getColor(R.color.map_accent))
+        root.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(ImageButton(this@ScanActivity).apply {
+                setImageResource(R.drawable.ic_map_back)
+                imageTintList = ColorStateList.valueOf(getColor(R.color.map_text))
+                setBackgroundResource(R.drawable.map_button_surface)
+                backgroundTintList = null
+                contentDescription = "Back"
+                setOnClickListener { finish() }
+            }, LinearLayout.LayoutParams(dp(48), dp(48)))
+            addView(TextView(this@ScanActivity).apply {
+                text = "Scan"
+                textSize = 18f
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+                setTextColor(getColor(R.color.map_text))
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(12), 0, 0, 0)
+            })
         })
         root.addView(TextView(this).apply {
-            text = "Scan"
-            textSize = 32f
+            text = "Capture documents"
+            textSize = 30f
             setTextColor(getColor(R.color.map_text))
-            setPadding(0, dp(8), 0, dp(16))
+            setPadding(0, dp(16), 0, dp(4))
         })
-        root.addView(Button(this).apply {
-            text = "Back to Home"
-            setOnClickListener { finish() }
+        root.addView(TextView(this).apply {
+            text = "Corrected pages stay on this device until you export them."
+            textSize = 15f
+            setTextColor(getColor(R.color.map_muted))
+            setPadding(0, 0, 0, dp(16))
         })
-        root.addView(Button(this).apply {
+        root.addView(Button(this, null, 0, R.style.MapPrimaryButton).apply {
             text = "Scan documents"
+            isAllCaps = false
             setOnClickListener { startScanner() }
         })
         val storedPages = database.pages(sessionId)
@@ -107,10 +128,12 @@ class ScanActivity : Activity() {
             selectionInitialized = true
         }
         selectedPageIds.retainAll(storedPages.map { it.id }.toSet())
-        val exportButton = Button(this).apply {
+        val exportButton = Button(this, null, 0, R.style.MapPrimaryButton).apply {
             text = "Export PDF (${selectedPageIds.size})"
+            isAllCaps = false
             isEnabled = selectedPageIds.isNotEmpty()
             setOnClickListener { exportPdf() }
+            layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) }
         }
         root.addView(exportButton)
         root.addView(View(this).apply {
