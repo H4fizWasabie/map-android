@@ -36,6 +36,7 @@
 - Opened the task composer ready for immediate title entry with the keyboard visible.
 - Kept long track names compact in the Home music mini-player while preserving artist context.
 - Stacked Tools actions on narrow windows so large text keeps each tool readable.
+- Moved visible PDF bitmap rendering off the UI thread with stale-result protection.
 - Made task rows open details from any non-checkbox tap across Home, Tasks, and Calendar.
 - Used a lightweight Music row count instead of loading the full library twice when opening or rerendering Music.
 - Refined Tools into a calm single-surface list with contextual states, compact actions, and readable large-text rows.

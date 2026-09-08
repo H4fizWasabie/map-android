@@ -48,6 +48,9 @@ class DocumentViewerActivity : Activity() {
     private var pdfPagesContainer: LinearLayout? = null
     private var pdfBaseWidth = 0
     private var pdfZoom = 1f
+    private var pdfRenderGeneration = 0L
+    private val pdfRenderLock = Any()
+    private val pdfExecutor = Executors.newSingleThreadExecutor()
     private val ocrExecutor = Executors.newSingleThreadExecutor()
     private lateinit var ocrButton: Button
     private lateinit var searchPanel: LinearLayout
@@ -71,8 +74,12 @@ class DocumentViewerActivity : Activity() {
     }
 
     override fun onDestroy() {
-        pdfRenderer?.close()
-        pdfDescriptor?.close()
+        pdfRenderGeneration++
+        pdfExecutor.shutdownNow()
+        synchronized(pdfRenderLock) {
+            pdfRenderer?.close()
+            pdfDescriptor?.close()
+        }
         ocrExecutor.shutdownNow()
         if (::database.isInitialized) database.close()
         super.onDestroy()
@@ -127,26 +134,43 @@ class DocumentViewerActivity : Activity() {
         val scroll = pdfScroll ?: return
         val top = scroll.scrollY - scroll.height
         val bottom = scroll.scrollY + scroll.height * 2
+        val width = (pdfBaseWidth * pdfZoom).roundToInt().coerceAtMost(dp(2400))
+        val generation = pdfRenderGeneration
         pdfPages.forEach { page ->
-            if (page.bottom >= top && page.top <= bottom) renderPage(page) else page.clearBitmap()
+            if (page.bottom >= top && page.top <= bottom) {
+                if (page.renderedWidth != width && page.renderingWidth != width) {
+                    page.renderingWidth = width
+                    pdfExecutor.execute {
+                        val bitmap = runCatching { renderPdfPage(page.index, width) }.getOrNull()
+                        val delivered = page.post {
+                            page.renderingWidth = 0
+                            if (bitmap != null && generation == pdfRenderGeneration && !isFinishing && !isDestroyed && page in pdfPages) {
+                                page.setBitmap(bitmap, width)
+                            } else {
+                                bitmap?.recycle()
+                            }
+                        }
+                        if (!delivered) bitmap?.recycle()
+                    }
+                }
+            } else page.clearBitmap()
         }
     }
 
-    private fun renderPage(page: PdfPageView) {
-        val renderer = pdfRenderer ?: return
-        val width = (pdfBaseWidth * pdfZoom).roundToInt().coerceAtMost(dp(2400))
-        if (page.renderedWidth == width) return
-        renderer.openPage(page.index).use { source ->
+    private fun renderPdfPage(index: Int, width: Int): Bitmap = synchronized(pdfRenderLock) {
+        val renderer = pdfRenderer ?: error("PDF renderer is unavailable")
+        renderer.openPage(index).use { source ->
             val scale = width.toFloat() / source.width
             val bitmap = Bitmap.createBitmap(width, (source.height * scale).roundToInt(), Bitmap.Config.ARGB_8888)
             bitmap.eraseColor(Color.WHITE)
             source.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-            page.setBitmap(bitmap, width)
+            bitmap
         }
     }
 
     private fun setPdfZoom(value: Float) {
         pdfZoom = value.coerceIn(0.75f, 2.5f)
+        pdfRenderGeneration++
         pdfPagesContainer?.layoutParams = ViewGroup.LayoutParams((pdfBaseWidth * pdfZoom).roundToInt(), -2)
         pdfPages.forEach { it.zoom = pdfZoom; it.clearBitmap() }
         pdfPagesContainer?.requestLayout()
@@ -404,6 +428,7 @@ class DocumentViewerActivity : Activity() {
         var zoom = 1f
         var renderedWidth = 0
             private set
+        var renderingWidth = 0
         private var bitmap: Bitmap? = null
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
