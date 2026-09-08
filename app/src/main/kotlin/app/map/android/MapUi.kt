@@ -13,7 +13,7 @@ object MapUi {
     fun bottomNavigation(activity: Activity, selected: String, onNavigate: (String) -> Unit): View =
         LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(activity.getColor(R.color.map_background))
+            setBackgroundColor(activity.getColor(R.color.map_nav_background))
             addView(View(activity).apply {
                 setBackgroundColor(activity.getColor(R.color.map_divider))
                 layoutParams = LinearLayout.LayoutParams(-1, dp(activity, 1))
@@ -25,13 +25,23 @@ object MapUi {
                 listOf("Home", "Calendar", "Tasks", "Tools").forEach { label ->
                     addView(Button(activity, null, 0, R.style.MapNavigationButton).apply {
                         text = label
-                        isAllCaps = false
-                        isClickable = label != selected
+                        isSelected = label == selected
                         contentDescription = "$label navigation"
-                        setTextColor(activity.getColor(if (label == selected) R.color.map_accent else R.color.map_muted))
-                        setBackgroundResource(if (label == selected) R.drawable.map_focus_surface else R.drawable.map_nav_button)
+                        val color = activity.getColor(if (label == selected) R.color.map_accent else R.color.map_muted)
+                        setTextColor(color)
+                        setBackgroundResource(R.drawable.map_nav_button)
                         backgroundTintList = null
-                        setOnClickListener { onNavigate(label) }
+                        val icon = when (label) {
+                            "Home" -> R.drawable.ic_map_home
+                            "Calendar" -> R.drawable.ic_map_calendar
+                            "Tasks" -> R.drawable.ic_map_tasks
+                            else -> R.drawable.ic_map_tools
+                        }
+                        activity.getDrawable(icon)?.mutate()?.apply { setTint(color) }?.let {
+                            setCompoundDrawablesWithIntrinsicBounds(null, it, null, null)
+                        }
+                        compoundDrawablePadding = dp(activity, 2)
+                        setOnClickListener { if (label != selected) onNavigate(label) }
                     }, LinearLayout.LayoutParams(0, dp(activity, 56), 1f))
                 }
             }, LinearLayout.LayoutParams(-1, -2))
