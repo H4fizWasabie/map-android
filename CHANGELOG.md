@@ -29,6 +29,7 @@
 
 ### Changed
 
+- Let task details edit due date, time, recurrence, and all-day state while keeping large-text actions reachable.
 - Kept Music library management actions readable and non-overlapping at large text sizes.
 - Kept Music playlist controls usable at large text sizes and narrow widths.
 - Kept the task composer details scrollable with actions visible in landscape at large text sizes.

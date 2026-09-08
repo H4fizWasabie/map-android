@@ -22,6 +22,7 @@ import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
@@ -322,12 +323,62 @@ class MainActivity : Activity() {
         fields.addView(title)
         fields.addView(notes)
         fields.addView(tags)
-        fields.addView(TextView(this).apply {
-            text = task.dueAt?.let { if (task.allDay) "All day · ${formatDate(it)}" else formatDateTime(it) } ?: "No due date"
-            textSize = 14f
-            setTextColor(getColor(R.color.map_muted))
-            setPadding(0, dp(8), 0, dp(8))
-        })
+        var dueAt = task.dueAt
+        var allDay = task.allDay
+        val dueButton = Button(this).apply {
+            text = dueAt?.let(::formatDate) ?: "No due date"
+            isAllCaps = false
+            setOnClickListener {
+                val today = Calendar.getInstance().apply { dueAt?.let { timeInMillis = it } }
+                DatePickerDialog(this@MainActivity, { _, year, month, day ->
+                    dueAt = Calendar.getInstance().apply {
+                        set(year, month, day, 12, 0, 0)
+                        set(Calendar.MILLISECOND, 0)
+                    }.timeInMillis
+                    allDay = true
+                    text = formatDate(dueAt!!)
+                }, today.get(Calendar.YEAR), today.get(Calendar.MONTH), today.get(Calendar.DAY_OF_MONTH)).show()
+            }
+        }
+        val timeButton = Button(this).apply {
+            text = if (dueAt == null || allDay) "All day" else SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(dueAt!!))
+            isAllCaps = false
+            setOnClickListener {
+                val selected = dueAt ?: run {
+                    Toast.makeText(this@MainActivity, "Choose a date first", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                if (allDay) {
+                    val current = Calendar.getInstance().apply { timeInMillis = selected }
+                    TimePickerDialog(this@MainActivity, { _, hour, minute ->
+                        dueAt = Calendar.getInstance().apply {
+                            timeInMillis = selected
+                            set(Calendar.HOUR_OF_DAY, hour)
+                            set(Calendar.MINUTE, minute)
+                        }.timeInMillis
+                        allDay = false
+                        text = "%02d:%02d".format(hour, minute)
+                    }, current.get(Calendar.HOUR_OF_DAY), current.get(Calendar.MINUTE), true).show()
+                } else {
+                    allDay = true
+                    text = "All day"
+                    dueAt = Calendar.getInstance().apply {
+                        timeInMillis = selected
+                        set(Calendar.HOUR_OF_DAY, 12)
+                        set(Calendar.MINUTE, 0)
+                    }.timeInMillis
+                }
+            }
+        }
+        val recurrenceValues = listOf("Does not repeat", "Daily", "Weekly", "Monthly")
+        val recurrence = Spinner(this).apply {
+            adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, recurrenceValues)
+            setSelection(recurrenceValues.indexOf(task.recurrence).coerceAtLeast(0))
+            contentDescription = "Task recurrence"
+        }
+        fields.addView(dueButton)
+        fields.addView(timeButton)
+        fields.addView(recurrence)
         val dialog = Dialog(this).apply {
             requestWindowFeature(android.view.Window.FEATURE_NO_TITLE)
             setCanceledOnTouchOutside(true)
@@ -361,9 +412,10 @@ class MainActivity : Activity() {
                         title.error = "Enter a task title"
                         return@setOnClickListener
                     }
-                    if (database.updateTask(task, newTitle, notes.text.toString().trim(), tags.text.toString().trim())) {
+                    if (database.updateTask(task, newTitle, notes.text.toString().trim(), tags.text.toString().trim(), dueAt, recurrence.selectedItem.toString(), allDay)) {
                         ReminderScheduler.cancel(this@MainActivity, task.id)
-                        task.dueAt?.takeIf { it > System.currentTimeMillis() }?.let {
+                        dueAt?.takeIf { it > System.currentTimeMillis() }?.let {
+                            requestNotificationsIfNeeded()
                             ReminderScheduler.schedule(this@MainActivity, task.id, newTitle, it)
                         }
                     }
@@ -381,7 +433,9 @@ class MainActivity : Activity() {
                 setTextColor(getColor(R.color.map_text))
                 setPadding(dp(24), dp(20), dp(24), dp(4))
             })
-            addView(fields)
+            addView(ScrollView(this@MainActivity).apply {
+                addView(fields)
+            }, LinearLayout.LayoutParams(-1, 0, 1f))
             addView(actions, LinearLayout.LayoutParams(-1, -2))
         }
         dialog.setContentView(sheet)
@@ -391,6 +445,7 @@ class MainActivity : Activity() {
             setLayout(-1, -2)
             attributes = attributes.apply { gravity = Gravity.BOTTOM }
         }
+        if (resources.configuration.fontScale >= 1.3f) fitLargeDialog(dialog)
     }
 
     private fun addUndoBar(parent: LinearLayout) {
@@ -541,7 +596,7 @@ class MainActivity : Activity() {
                         set(Calendar.MILLISECOND, 0)
                     }.timeInMillis
                     allDay = true
-                    text = "%04d-%02d-%02d".format(year, month + 1, day)
+                    text = formatDate(dueAt!!)
                 }, today.get(Calendar.YEAR), today.get(Calendar.MONTH), today.get(Calendar.DAY_OF_MONTH)).show()
             }
         }
@@ -590,19 +645,7 @@ class MainActivity : Activity() {
             setOnClickListener {
                 visibility = View.GONE
                 details.visibility = View.VISIBLE
-                if (resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE && resources.configuration.fontScale >= 1.5f) {
-                    dialog.window?.let { window ->
-                        window.decorView.post {
-                            val statusBarHeight = resources.getDimensionPixelSize(resources.getIdentifier("status_bar_height", "dimen", "android"))
-                            val navigationBarHeight = resources.getDimensionPixelSize(resources.getIdentifier("navigation_bar_height", "dimen", "android"))
-                            val availableHeight = resources.displayMetrics.heightPixels - statusBarHeight - navigationBarHeight
-                            window.attributes = window.attributes.apply {
-                                y = navigationBarHeight
-                            }
-                            window.setLayout(-1, availableHeight)
-                        }
-                    }
-                }
+                if (resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE && resources.configuration.fontScale >= 1.5f) fitLargeDialog(dialog)
             }
         }
         fields.addView(title)
@@ -671,6 +714,17 @@ class MainActivity : Activity() {
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    private fun fitLargeDialog(dialog: Dialog) {
+        dialog.window?.let { window ->
+            window.decorView.post {
+                val statusBarHeight = resources.getDimensionPixelSize(resources.getIdentifier("status_bar_height", "dimen", "android"))
+                val navigationBarHeight = resources.getDimensionPixelSize(resources.getIdentifier("navigation_bar_height", "dimen", "android"))
+                window.attributes = window.attributes.apply { y = navigationBarHeight }
+                window.setLayout(-1, resources.displayMetrics.heightPixels - statusBarHeight - navigationBarHeight)
+            }
+        }
+    }
     private fun requestNotificationsIfNeeded() {
         if (android.os.Build.VERSION.SDK_INT >= 33 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), NOTIFICATION_REQUEST)

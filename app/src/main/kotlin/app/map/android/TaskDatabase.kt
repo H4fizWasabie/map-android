@@ -49,7 +49,7 @@ class TaskDatabase(context: Context) : SQLiteOpenHelper(context, "map.db", null,
 
     fun recentCompleted(): List<Task> = queryTasks("completed = 1", "20")
 
-    fun updateTask(task: Task, title: String, notes: String, tags: String): Boolean {
+    fun updateTask(task: Task, title: String, notes: String, tags: String, dueAt: Long?, recurrence: String, allDay: Boolean): Boolean {
         require(title.isNotBlank()) { "Task title cannot be blank" }
         return writableDatabase.update(
             "tasks",
@@ -57,6 +57,9 @@ class TaskDatabase(context: Context) : SQLiteOpenHelper(context, "map.db", null,
                 put("title", title)
                 put("notes", notes)
                 put("tags", tags)
+                if (dueAt == null) putNull("due_at") else put("due_at", dueAt)
+                put("recurrence", recurrence)
+                put("all_day", if (allDay) 1 else 0)
             },
             "id = ? AND completed = 0",
             arrayOf(task.id.toString())
