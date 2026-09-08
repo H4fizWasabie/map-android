@@ -65,18 +65,26 @@ class TaskDatabase(context: Context) : SQLiteOpenHelper(context, "map.db", null,
 
     fun complete(task: Task): Long? {
         val completedAt = System.currentTimeMillis()
-        val updated = writableDatabase.update(
-            "tasks",
-            ContentValues().apply {
-                put("completed", 1)
-                put("completed_at", completedAt)
-            },
-            "id = ? AND completed = 0",
-            arrayOf(task.id.toString())
-        )
-        if (updated == 0) return null
-        val nextDueAt = nextDueAt(task, completedAt) ?: return null
-        return addTask(task.title, task.notes, nextDueAt, task.recurrence, task.tags, task.allDay)
+        writableDatabase.beginTransaction()
+        return try {
+            val updated = writableDatabase.update(
+                "tasks",
+                ContentValues().apply {
+                    put("completed", 1)
+                    put("completed_at", completedAt)
+                },
+                "id = ? AND completed = 0",
+                arrayOf(task.id.toString())
+            )
+            if (updated == 0) return null
+            val nextId = nextDueAt(task, completedAt)?.let {
+                addTask(task.title, task.notes, it, task.recurrence, task.tags, task.allDay)
+            }
+            writableDatabase.setTransactionSuccessful()
+            nextId
+        } finally {
+            writableDatabase.endTransaction()
+        }
     }
 
     fun undoComplete(task: Task, nextId: Long?): Boolean {
