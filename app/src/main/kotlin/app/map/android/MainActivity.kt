@@ -580,22 +580,35 @@ class MainActivity : Activity() {
             addView(timeButton)
             addView(recurrence)
         }
+        val dialog = Dialog(this).apply {
+            requestWindowFeature(android.view.Window.FEATURE_NO_TITLE)
+            setCanceledOnTouchOutside(true)
+        }
         val detailsButton = Button(this).apply {
             text = "Add details"
             isAllCaps = false
             setOnClickListener {
                 visibility = View.GONE
                 details.visibility = View.VISIBLE
+                if (resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE && resources.configuration.fontScale >= 1.5f) {
+                    dialog.window?.let { window ->
+                        window.decorView.post {
+                            val statusBarHeight = resources.getDimensionPixelSize(resources.getIdentifier("status_bar_height", "dimen", "android"))
+                            val navigationBarHeight = resources.getDimensionPixelSize(resources.getIdentifier("navigation_bar_height", "dimen", "android"))
+                            val availableHeight = resources.displayMetrics.heightPixels - statusBarHeight - navigationBarHeight
+                            window.attributes = window.attributes.apply {
+                                y = navigationBarHeight
+                            }
+                            window.setLayout(-1, availableHeight)
+                        }
+                    }
+                }
             }
         }
         fields.addView(title)
         fields.addView(detailsButton)
         fields.addView(details)
 
-        val dialog = Dialog(this).apply {
-            requestWindowFeature(android.view.Window.FEATURE_NO_TITLE)
-            setCanceledOnTouchOutside(true)
-        }
         val sheet = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(getColor(R.color.map_card))
@@ -605,7 +618,9 @@ class MainActivity : Activity() {
                 setTextColor(getColor(R.color.map_text))
                 setPadding(dp(24), dp(20), dp(24), dp(4))
             })
-            addView(fields)
+            addView(ScrollView(this@MainActivity).apply {
+                addView(fields)
+            }, LinearLayout.LayoutParams(-1, 0, 1f))
             addView(LinearLayout(this@MainActivity).apply {
                 gravity = Gravity.END
                 addView(Button(this@MainActivity).apply {
