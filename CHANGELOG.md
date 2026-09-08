@@ -102,3 +102,4 @@
 - Kept device audio-effect initialization failures from crashing local playback.
 - Kept unavailable selected music folders from crashing Music while refreshing.
 - Guarded every Music foreground-service entry point so Android start failures show a retry message instead of crashing MAP.
+- Kept the active Music mini-player visible above Calendar navigation, including at large text.

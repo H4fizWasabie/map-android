@@ -11,6 +11,7 @@ import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Toast
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -87,6 +88,7 @@ class CalendarActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             addView(header())
             addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+            addMusicMiniPlayer(this)
         }
         MapUi.addPrimaryNavigation(root, content, MapUi.bottomNavigation(this, "Calendar", ::navigate))
         MapUi.applySystemBarInsets(root)
@@ -245,6 +247,52 @@ class CalendarActivity : Activity() {
         render()
     }
 
+    private fun addMusicMiniPlayer(parent: LinearLayout) {
+        val music = MusicDatabase(this)
+        val item = music.track(music.current())
+        val playing = MusicService.isRunning && music.playing()
+        music.close()
+        if (item == null) return
+        parent.addView(View(this).apply {
+            setBackgroundColor(getColor(R.color.map_divider))
+            layoutParams = LinearLayout.LayoutParams(-1, dp(1))
+        })
+        parent.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(12), dp(8), dp(8), dp(8))
+            setBackgroundResource(R.drawable.map_surface)
+            contentDescription = "Music: ${item.title}"
+            setOnClickListener { startActivity(Intent(this@CalendarActivity, MusicActivity::class.java).putExtra(MusicActivity.EXTRA_OPEN_PLAYER, true)) }
+            addView(TextView(this@CalendarActivity).apply {
+                text = "${item.title}\n${item.artist}"
+                textSize = 14f
+                maxLines = 2
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                setTextColor(getColor(R.color.map_text))
+                setPadding(0, 0, dp(8), 0)
+            }, LinearLayout.LayoutParams(0, -2, 1f))
+            addView(Button(this@CalendarActivity).apply {
+                text = if (playing) "Pause" else "Play"
+                isAllCaps = false
+                contentDescription = text
+                setOnClickListener {
+                    requestNotificationsIfNeeded()
+                    val intent = Intent(this@CalendarActivity, MusicService::class.java).setAction(MusicService.ACTION_TOGGLE)
+                    if (!startMapMusicService(this@CalendarActivity, intent)) {
+                        Toast.makeText(this@CalendarActivity, "MAP could not start Music. Try Play again.", Toast.LENGTH_LONG).show()
+                    }
+                }
+            })
+        }, LinearLayout.LayoutParams(-1, -2))
+    }
+
+    private fun requestNotificationsIfNeeded() {
+        if (android.os.Build.VERSION.SDK_INT >= 33 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), NOTIFICATION_REQUEST)
+        }
+    }
+
     private fun actionButton(label: String, click: () -> Unit): Button = Button(this).apply {
         text = label
         isAllCaps = false
@@ -275,6 +323,7 @@ class CalendarActivity : Activity() {
     companion object {
         private const val FIRST_HOUR = 6
         private const val LAST_HOUR = 22
+        private const val NOTIFICATION_REQUEST = 14
         private fun dayStart(value: Long): Long = Calendar.getInstance().apply { timeInMillis = value; set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
         private fun addDays(value: Long, amount: Int): Long = Calendar.getInstance().apply { timeInMillis = value; add(Calendar.DAY_OF_YEAR, amount) }.timeInMillis
         private fun monday(value: Long): Long {
