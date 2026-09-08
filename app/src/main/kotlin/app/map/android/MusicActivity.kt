@@ -645,8 +645,17 @@ class MusicActivity : Activity() {
         refreshing = true
         renderLibrary()
         executor.execute {
-            folders.forEach { folder -> database.replaceFolderTracks(folder, scanFolder(folder)) }
-            runOnUiThread { if (!isFinishing) { refreshing = false; currentUri = database.current(); renderLibrary() } }
+            val failure = runCatching {
+                folders.forEach { folder -> database.replaceFolderTracks(folder, scanFolder(folder)) }
+            }.exceptionOrNull()
+            runOnUiThread {
+                if (!isFinishing && !isDestroyed) {
+                    refreshing = false
+                    currentUri = database.current()
+                    renderLibrary()
+                    if (failure != null) Toast.makeText(this, "Could not refresh a music folder. Existing tracks were kept.", Toast.LENGTH_LONG).show()
+                }
+            }
         }
     }
 
@@ -655,8 +664,14 @@ class MusicActivity : Activity() {
         refreshing = true
         renderLibrary()
         executor.execute {
-            database.replaceFolderTracks(folder, scanFolder(folder))
-            runOnUiThread { if (!isFinishing) { refreshing = false; renderLibrary() } }
+            val failure = runCatching { database.replaceFolderTracks(folder, scanFolder(folder)) }.exceptionOrNull()
+            runOnUiThread {
+                if (!isFinishing && !isDestroyed) {
+                    refreshing = false
+                    renderLibrary()
+                    if (failure != null) Toast.makeText(this, "Could not refresh this music folder. Existing tracks were kept.", Toast.LENGTH_LONG).show()
+                }
+            }
         }
     }
 

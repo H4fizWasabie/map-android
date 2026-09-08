@@ -48,3 +48,5 @@
 - Refined the primary surfaces into a Quiet Personal Workspace with shared navigation, calm task rows, focus treatment, and task details.
 - Added clearer accent hierarchy and pressed/focused states to shared actions and primary navigation.
 - Prevented Bluetooth/media-session reconnect commands from auto-resuming paused music.
+- Kept device audio-effect initialization failures from crashing local playback.
+- Kept unavailable selected music folders from crashing Music while refreshing.
