@@ -500,8 +500,7 @@ class MusicActivity : Activity() {
         database.setQueue(available, item.uri)
         currentUri = item.uri
         requestNotificationsIfNeeded()
-        startMusicAction(MusicService.ACTION_PLAY, item.uri)
-        renderPlayer()
+        if (startMusicAction(MusicService.ACTION_PLAY, item.uri)) renderPlayer()
     }
 
     private fun currentTrack(): AudioItem? = database.track(currentUri ?: database.current())
@@ -934,11 +933,13 @@ class MusicActivity : Activity() {
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).roundToInt()
     private fun rounded(color: Int, radius: Int) = GradientDrawable().apply { setColor(color); cornerRadius = radius.toFloat() }
 
-    private fun startMusicAction(action: String, uri: String? = null, extras: Map<String, Any> = emptyMap()) {
+    private fun startMusicAction(action: String, uri: String? = null, extras: Map<String, Any> = emptyMap()): Boolean {
         val intent = Intent(this, MusicService::class.java).setAction(action)
         uri?.let { intent.putExtra(MusicService.EXTRA_URI, it) }
         extras.forEach { (key, value) -> when (value) { is Int -> intent.putExtra(key, value); is Short -> intent.putExtra(key, value); is Boolean -> intent.putExtra(key, value); is String -> intent.putExtra(key, value) } }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent) else startService(intent)
+        return startMapMusicService(this, intent).also { started ->
+            if (!started) Toast.makeText(this, "MAP could not start Music. Try Play again.", Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun requestNotificationsIfNeeded() {

@@ -31,7 +31,13 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.core.content.ContextCompat
 import kotlin.random.Random
+
+internal fun startMapMusicService(context: Context, intent: Intent): Boolean = runCatching {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) ContextCompat.startForegroundService(context, intent)
+    else context.startService(intent)
+}.isSuccess
 
 @SuppressLint("UnsafeOptInUsageError")
 class MusicService : Service() {

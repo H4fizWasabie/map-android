@@ -241,7 +241,9 @@ class ScanActivity : Activity() {
                 setOnClickListener {
                     requestNotificationsIfNeeded()
                     val intent = Intent(this@ScanActivity, MusicService::class.java).setAction(MusicService.ACTION_TOGGLE)
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) startForegroundService(intent) else startService(intent)
+                    if (!startMapMusicService(this@ScanActivity, intent)) {
+                        Toast.makeText(this@ScanActivity, "MAP could not start Music. Try Play again.", Toast.LENGTH_LONG).show()
+                    }
                 }
             })
         }.also { parent.addView(it) }

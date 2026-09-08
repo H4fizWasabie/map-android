@@ -528,7 +528,9 @@ class MainActivity : Activity() {
                 setOnClickListener {
                     requestNotificationsIfNeeded()
                     val intent = Intent(this@MainActivity, MusicService::class.java).setAction(MusicService.ACTION_TOGGLE)
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) startForegroundService(intent) else startService(intent)
+                    if (!startMapMusicService(this@MainActivity, intent)) {
+                        Toast.makeText(this@MainActivity, "MAP could not start Music. Try Play again.", Toast.LENGTH_LONG).show()
+                    }
                 }
             }
             musicPlayButton = playButton
