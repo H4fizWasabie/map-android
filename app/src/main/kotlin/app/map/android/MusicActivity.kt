@@ -19,6 +19,7 @@ import android.text.TextWatcher
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.window.OnBackInvokedCallback
 import android.widget.ArrayAdapter
 import android.widget.AbsListView
 import android.widget.BaseAdapter
@@ -94,6 +95,7 @@ class MusicActivity : Activity() {
     private var bassLevel: Short = 0
     private var virtualizerLevel: Short = 0
     private lateinit var libraryAdapter: LibraryAdapter
+    private var backCallback: Any? = null
 
     private val stateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -136,6 +138,14 @@ class MusicActivity : Activity() {
         database = MusicDatabase(this)
         currentUri = database.current()
         playing = database.playing()
+        if (Build.VERSION.SDK_INT >= 33) {
+            val callback = OnBackInvokedCallback { handleBack() }
+            backCallback = callback
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(
+                android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+                callback
+            )
+        }
         window.statusBarColor = getColor(R.color.map_background)
         window.navigationBarColor = getColor(R.color.map_background)
         renderLibrary()
@@ -154,12 +164,17 @@ class MusicActivity : Activity() {
     }
 
     override fun onDestroy() {
+        if (Build.VERSION.SDK_INT >= 33) (backCallback as? OnBackInvokedCallback)?.let(onBackInvokedDispatcher::unregisterOnBackInvokedCallback)
         executor.shutdownNow()
         database.close()
         super.onDestroy()
     }
 
     override fun onBackPressed() {
+        handleBack()
+    }
+
+    private fun handleBack() {
         if (showingPlayer) renderLibrary() else super.onBackPressed()
     }
 
