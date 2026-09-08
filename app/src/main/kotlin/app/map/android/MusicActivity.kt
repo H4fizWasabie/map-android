@@ -217,21 +217,11 @@ class MusicActivity : Activity() {
             setTextColor(getColor(R.color.map_muted))
             setPadding(0, 0, 0, dp(16))
         })
-        val stackedActions = resources.configuration.screenWidthDp < 360 || resources.configuration.fontScale >= 1.3f
-        LinearLayout(this).apply {
-            orientation = if (stackedActions) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
-            listOf(
-                actionButton("Add folder") { requestFolder() },
-                actionButton("Refresh") { refreshFolders() },
-                actionButton("Folders") { showFoldersDialog() },
-            ).forEachIndexed { index, action ->
-                addView(action, if (stackedActions) {
-                    LinearLayout.LayoutParams(-1, -2).apply { if (index > 0) topMargin = dp(4) }
-                } else {
-                    LinearLayout.LayoutParams(-2, -2)
-                })
-            }
-        }.also { body.addView(it) }
+        body.addView(actionGroup(
+            actionButton("Add folder") { requestFolder() },
+            actionButton("Refresh") { refreshFolders() },
+            actionButton("Folders") { showFoldersDialog() },
+        ))
         body.addView(horizontalModes())
         val search = EditText(this).apply {
             hint = "Search your music"
@@ -437,12 +427,11 @@ class MusicActivity : Activity() {
             setTextColor(getColor(R.color.map_muted))
             setPadding(0, 0, 0, dp(12))
         })
-        LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            addView(actionButton("Play all") { database.playlistTracks(id).firstOrNull()?.let { playTracks(database.playlistTracks(id), it) } })
-            addView(actionButton("Rename") { promptRenamePlaylist(playlist) })
-            addView(actionButton("Delete") { confirmDeletePlaylist(playlist) })
-        }.also { body.addView(it) }
+        body.addView(actionGroup(
+            actionButton("Play all") { database.playlistTracks(id).firstOrNull()?.let { playTracks(database.playlistTracks(id), it) } },
+            actionButton("Rename") { promptRenamePlaylist(playlist) },
+            actionButton("Delete") { confirmDeletePlaylist(playlist) },
+        ))
         val tracks = database.playlistTracks(id)
         addPlaylistRows(body, id, tracks)
         if (tracks.isEmpty()) addEmpty(body, "Add tracks from your library using More.")
@@ -455,11 +444,36 @@ class MusicActivity : Activity() {
 
     private fun addPlaylistRows(parent: LinearLayout, playlistId: Long, tracks: List<AudioItem>) {
         tracks.forEach { item ->
-            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(12), dp(8), dp(8), dp(8)); background = rounded(getColor(R.color.map_card), dp(14)) }
-            row.addView(TextView(this).apply { text = "${item.title}\n${item.artist}"; textSize = 15f; setTextColor(getColor(R.color.map_text)) }, LinearLayout.LayoutParams(0, -2, 1f))
-            row.addView(actionButton("Up") { database.movePlaylistItem(playlistId, item.uri, -1); showPlaylist(playlistId) })
-            row.addView(actionButton("Down") { database.movePlaylistItem(playlistId, item.uri, 1); showPlaylist(playlistId) })
-            row.addView(actionButton("Remove") { database.removeFromPlaylist(playlistId, item.uri); showPlaylist(playlistId) })
+            val largeText = isLargeTextLayout()
+            val title = TextView(this).apply {
+                text = "${item.title}\n${item.artist}"
+                textSize = 15f
+                setTextColor(getColor(R.color.map_text))
+            }
+            val actions = listOf(
+                actionButton("Up") { database.movePlaylistItem(playlistId, item.uri, -1); showPlaylist(playlistId) },
+                actionButton("Down") { database.movePlaylistItem(playlistId, item.uri, 1); showPlaylist(playlistId) },
+                actionButton("Remove") { database.removeFromPlaylist(playlistId, item.uri); showPlaylist(playlistId) },
+            )
+            val row = LinearLayout(this).apply {
+                orientation = if (largeText) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(12), dp(8), dp(8), dp(8))
+                background = rounded(getColor(R.color.map_card), dp(14))
+                if (largeText) {
+                    addView(title, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(4) })
+                    addView(HorizontalScrollView(this@MusicActivity).apply {
+                        isHorizontalScrollBarEnabled = false
+                        addView(LinearLayout(this@MusicActivity).apply {
+                            orientation = LinearLayout.HORIZONTAL
+                            actions.forEach { addView(it) }
+                        })
+                    }, LinearLayout.LayoutParams(-1, -2))
+                } else {
+                    addView(title, LinearLayout.LayoutParams(0, -2, 1f))
+                    actions.forEach { addView(it) }
+                }
+            }
             parent.addView(row, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
         }
     }
@@ -877,6 +891,20 @@ class MusicActivity : Activity() {
         setOnClickListener { click() }
         addView(TextView(this@MusicActivity).apply { text = title; textSize = 16f; setTextColor(getColor(R.color.map_text)) })
         addView(TextView(this@MusicActivity).apply { text = detail; textSize = 13f; setTextColor(getColor(R.color.map_muted)); setPadding(0, dp(3), 0, 0) })
+    }
+
+    private fun isLargeTextLayout(): Boolean = resources.configuration.screenWidthDp < 360 || resources.configuration.fontScale >= 1.3f
+
+    private fun actionGroup(vararg actions: View): View = LinearLayout(this).apply {
+        val stacked = isLargeTextLayout()
+        orientation = if (stacked) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
+        actions.forEachIndexed { index, action ->
+            addView(action, if (stacked) {
+                LinearLayout.LayoutParams(-1, -2).apply { if (index > 0) topMargin = dp(4) }
+            } else {
+                LinearLayout.LayoutParams(-2, -2)
+            })
+        }
     }
 
     private fun actionButton(text: String, click: () -> Unit): Button = Button(this).apply {
