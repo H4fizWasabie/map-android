@@ -180,19 +180,37 @@ class DocumentViewerActivity : Activity() {
     }
 
     private fun showImage() {
-        val bitmap = decodeImage() ?: error("File is unavailable")
         val root = viewerRoot()
+        val image = ZoomImageView(this).apply {
+            adjustViewBounds = true
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            contentDescription = name
+            setPadding(dp(16), dp(8), dp(16), dp(24))
+        }
         root.addView(ScrollView(this).apply {
-            addView(ZoomImageView(this@DocumentViewerActivity).apply {
-                setImageBitmap(bitmap)
-                adjustViewBounds = true
-                scaleType = ImageView.ScaleType.FIT_CENTER
-                contentDescription = name
-                setPadding(dp(16), dp(8), dp(16), dp(24))
-            })
+            addView(image)
         }, LinearLayout.LayoutParams(-1, 0, 1f))
-        MapUi.applySystemBarInsets(root)
+        status.text = "Opening this image locally…"
+        status.visibility = View.VISIBLE
         setContentView(root)
+        val generation = pdfRenderGeneration
+        pdfExecutor.execute {
+            val bitmap = runCatching { decodeImage() }.getOrNull()
+            val delivered = image.post {
+                if (bitmap == null) {
+                    if (generation == pdfRenderGeneration && !isFinishing && !isDestroyed) {
+                        database.markUnavailable(uri.toString())
+                        showUnavailable("MAP could not read this file directly.")
+                    }
+                } else if (generation == pdfRenderGeneration && !isFinishing && !isDestroyed && image.isAttachedToWindow) {
+                    image.setImageBitmap(bitmap)
+                    status.visibility = View.GONE
+                } else {
+                    bitmap.recycle()
+                }
+            }
+            if (!delivered) bitmap?.recycle()
+        }
     }
 
     private fun decodeImage(): Bitmap? {
