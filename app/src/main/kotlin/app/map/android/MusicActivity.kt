@@ -798,7 +798,7 @@ class MusicActivity : Activity() {
         val retriever = android.media.MediaMetadataRetriever()
         val bitmap = runCatching {
             retriever.setDataSource(this, Uri.parse(item.uri))
-            retriever.embeddedPicture?.let { bytes -> BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }
+            retriever.embeddedPicture?.let { bytes -> decodeArtwork(bytes, size) }
         }.getOrNull()
         retriever.release()
         if (bitmap != null) image.setImageBitmap(bitmap) else {
@@ -807,6 +807,17 @@ class MusicActivity : Activity() {
             image.imageTintList = ColorStateList.valueOf(getColor(R.color.map_accent))
         }
         return image
+    }
+
+    private fun decodeArtwork(bytes: ByteArray, requestedSize: Int): android.graphics.Bitmap? {
+        if (bytes.size > MAX_ARTWORK_BYTES) return null
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+        val maxDimension = requestedSize.coerceAtMost(dp(MAX_ARTWORK_DP))
+        var sample = 1
+        while (bounds.outWidth / sample > maxDimension || bounds.outHeight / sample > maxDimension) sample *= 2
+        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })
     }
 
     private fun actionRow(title: String, detail: String, click: () -> Unit): View = LinearLayout(this).apply {
@@ -862,5 +873,7 @@ class MusicActivity : Activity() {
         const val EXTRA_OPEN_PLAYER = "open_player"
         private const val FOLDER_REQUEST = 30
         private const val NOTIFICATION_REQUEST = 31
+        private const val MAX_ARTWORK_DP = 1024
+        private const val MAX_ARTWORK_BYTES = 8 * 1024 * 1024
     }
 }
