@@ -137,7 +137,7 @@ class MusicActivity : Activity() {
         super.onCreate(savedInstanceState)
         database = MusicDatabase(this)
         currentUri = database.current()
-        playing = database.playing()
+        playing = MusicService.isRunning && database.playing()
         if (Build.VERSION.SDK_INT >= 33) {
             val callback = OnBackInvokedCallback { handleBack() }
             backCallback = callback

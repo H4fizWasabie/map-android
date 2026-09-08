@@ -129,7 +129,7 @@ class ToolsActivity : Activity() {
     private fun addMusic(parent: LinearLayout) {
         val music = MusicDatabase(this)
         val current = music.track(music.current())
-        val playing = music.playing()
+        val playing = MusicService.isRunning && music.playing()
         music.close()
         addToolRow(parent, "Music", current?.let { if (playing) "Playing ${it.title}" else "Ready with ${it.title}" } ?: "Play music stored on this device", "Open music", R.drawable.ic_map_music) {
             startActivity(Intent(this, MusicActivity::class.java).putExtra(MusicActivity.EXTRA_OPEN_PLAYER, true))

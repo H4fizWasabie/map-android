@@ -4,7 +4,10 @@ import android.app.Activity
 import android.app.DatePickerDialog
 import android.app.Dialog
 import android.app.TimePickerDialog
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.view.Gravity
@@ -18,6 +21,7 @@ import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
@@ -28,7 +32,19 @@ class MainActivity : Activity() {
     private var undoState: UndoState? = null
     private var selectedView = "Home"
     private var pendingTaskId: Long? = null
+    private var musicPlayButton: Button? = null
     private val preferences by lazy { getSharedPreferences("map-focus", MODE_PRIVATE) }
+
+    private val musicStateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val button = musicPlayButton ?: return
+            val event = intent ?: return
+            if (!event.hasExtra(MusicService.EXTRA_PLAYING)) return
+            val playing = event.getBooleanExtra(MusicService.EXTRA_PLAYING, false)
+            button.text = if (playing) "Pause" else "Play"
+            button.contentDescription = button.text
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,6 +61,16 @@ class MainActivity : Activity() {
     override fun onDestroy() {
         if (::database.isInitialized) database.close()
         super.onDestroy()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        ContextCompat.registerReceiver(this, musicStateReceiver, IntentFilter(MusicService.ACTION_STATE), ContextCompat.RECEIVER_NOT_EXPORTED)
+    }
+
+    override fun onStop() {
+        runCatching { unregisterReceiver(musicStateReceiver) }
+        super.onStop()
     }
 
     override fun onResume() {
@@ -129,6 +155,7 @@ class MainActivity : Activity() {
     }
 
     private fun render(title: String, selected: String = title, fill: (LinearLayout) -> Unit) {
+        musicPlayButton = null
         content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(24), dp(24), dp(24), dp(24))
@@ -406,7 +433,7 @@ class MainActivity : Activity() {
     private fun addMusicMiniPlayer(parent: LinearLayout) {
         val music = MusicDatabase(this)
         val item = music.track(music.current())
-        val playing = music.playing()
+        val playing = MusicService.isRunning && music.playing()
         music.close()
         if (item == null) return
         addHeading(parent, "Music")
@@ -422,7 +449,7 @@ class MainActivity : Activity() {
                 textSize = 15f
                 setTextColor(getColor(R.color.map_text))
             }, LinearLayout.LayoutParams(0, -2, 1f))
-            addView(Button(this@MainActivity).apply {
+            val playButton = Button(this@MainActivity).apply {
                 text = if (playing) "Pause" else "Play"
                 isAllCaps = false
                 contentDescription = text
@@ -430,7 +457,9 @@ class MainActivity : Activity() {
                     val intent = Intent(this@MainActivity, MusicService::class.java).setAction(MusicService.ACTION_TOGGLE)
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) startForegroundService(intent) else startService(intent)
                 }
-            })
+            }
+            musicPlayButton = playButton
+            addView(playButton)
         }.also { parent.addView(it) }
     }
 
