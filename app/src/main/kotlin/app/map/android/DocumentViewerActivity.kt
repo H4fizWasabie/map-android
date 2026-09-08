@@ -12,6 +12,7 @@ import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.os.Bundle
 import android.os.ParcelFileDescriptor
+import android.content.res.ColorStateList
 import android.text.InputType
 import android.view.Gravity
 import android.view.ScaleGestureDetector
@@ -20,6 +21,7 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
 import android.widget.HorizontalScrollView
+import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -186,7 +188,14 @@ class DocumentViewerActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(16), dp(24), dp(16), dp(4))
-            addView(button("Back") { finish() })
+            addView(ImageButton(this@DocumentViewerActivity).apply {
+                setImageResource(R.drawable.ic_map_back)
+                imageTintList = ColorStateList.valueOf(getColor(R.color.map_text))
+                setBackgroundResource(R.drawable.map_button_surface)
+                backgroundTintList = null
+                contentDescription = "Back"
+                setOnClickListener { finish() }
+            }, LinearLayout.LayoutParams(dp(48), dp(48)))
             addView(TextView(this@DocumentViewerActivity).apply {
                 text = name
                 textSize = 18f
@@ -356,7 +365,11 @@ class DocumentViewerActivity : Activity() {
             setTextColor(getColor(R.color.map_muted))
             setPadding(0, 0, 0, dp(16))
         })
-        root.addView(button("Open with another app") { openExternally() })
+        root.addView(Button(this, null, 0, R.style.MapPrimaryButton).apply {
+            text = "Open with another app"
+            isAllCaps = false
+            setOnClickListener { openExternally() }
+        })
         setContentView(root)
     }
 
