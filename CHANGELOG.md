@@ -34,6 +34,7 @@
 - Refined Scan and Document Viewer entry states with compact back navigation and clearer primary capture, export, and recovery actions.
 - Added a clear separation between Scan capture and PDF export actions.
 - Added the current date to Today and promoted Save/Add task actions to the primary visual treatment.
+- Moved notification permission from app launch to the due-task reminder action that actually needs it.
 - Replaced the native MediaPlayer path with AndroidX Media3 ExoPlayer for more reliable local Opus playback and safe pause/seek during buffering.
 - Made selected music-folder URI permissions persist using the provider-granted SAF flags; uninstalling still intentionally clears them with app data.
 - Fixed PDF search navigation inside the nested viewer scroll containers so a match jumps to its page reliably.
