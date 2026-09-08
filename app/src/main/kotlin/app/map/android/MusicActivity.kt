@@ -259,6 +259,7 @@ class MusicActivity : Activity() {
         libraryAdapter = LibraryAdapter()
         list.adapter = libraryAdapter
         root.addView(list, LinearLayout.LayoutParams(-1, 0, 1f))
+        MapUi.applySystemBarInsets(root)
         setContentView(root)
         renderResults()
     }
@@ -426,6 +427,7 @@ class MusicActivity : Activity() {
         scroll.addView(body)
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         currentTrack()?.let { root.addView(miniPlayer(it)) }
+        MapUi.applySystemBarInsets(root)
         setContentView(root)
     }
 
@@ -537,6 +539,7 @@ class MusicActivity : Activity() {
         body.addView(sleepLabel)
         scroll.addView(body)
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        MapUi.applySystemBarInsets(root)
         setContentView(root)
         updatePlaybackViews()
     }

@@ -167,6 +167,7 @@ class DocumentViewerActivity : Activity() {
                 setPadding(dp(16), dp(8), dp(16), dp(24))
             })
         }, LinearLayout.LayoutParams(-1, 0, 1f))
+        MapUi.applySystemBarInsets(root)
         setContentView(root)
     }
 
@@ -184,6 +185,7 @@ class DocumentViewerActivity : Activity() {
     private fun viewerRoot(): LinearLayout = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         setBackgroundColor(getColor(R.color.map_background))
+        MapUi.applySystemBarInsets(this)
         addView(LinearLayout(this@DocumentViewerActivity).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -370,6 +372,7 @@ class DocumentViewerActivity : Activity() {
             isAllCaps = false
             setOnClickListener { openExternally() }
         })
+        MapUi.applySystemBarInsets(root)
         setContentView(root)
     }
 

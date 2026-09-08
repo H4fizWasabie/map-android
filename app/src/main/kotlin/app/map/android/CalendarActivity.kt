@@ -84,6 +84,7 @@ class CalendarActivity : Activity() {
             addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         }
         MapUi.addPrimaryNavigation(root, content, MapUi.bottomNavigation(this, "Calendar", ::navigate))
+        MapUi.applySystemBarInsets(root)
         setContentView(root)
     }
 

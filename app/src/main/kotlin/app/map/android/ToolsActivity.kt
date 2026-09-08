@@ -66,6 +66,7 @@ class ToolsActivity : Activity() {
             addView(ScrollView(this@ToolsActivity).apply { addView(body) }, LinearLayout.LayoutParams(-1, 0, 1f))
         }
         MapUi.addPrimaryNavigation(root, content, MapUi.bottomNavigation(this, "Tools", ::navigate))
+        MapUi.applySystemBarInsets(root)
         setContentView(root)
     }
 

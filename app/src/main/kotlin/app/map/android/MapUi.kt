@@ -6,9 +6,29 @@ import android.view.Gravity
 import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 
 object MapUi {
     fun dp(context: Context, value: Int): Int = (value * context.resources.displayMetrics.density).toInt()
+
+    fun applySystemBarInsets(view: View) {
+        val initialLeft = view.paddingLeft
+        val initialTop = view.paddingTop
+        val initialRight = view.paddingRight
+        val initialBottom = view.paddingBottom
+        ViewCompat.setOnApplyWindowInsetsListener(view) { target, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+            target.setPadding(
+                initialLeft + bars.left,
+                initialTop + bars.top,
+                initialRight + bars.right,
+                initialBottom + bars.bottom,
+            )
+            insets
+        }
+        ViewCompat.requestApplyInsets(view)
+    }
 
     fun addPrimaryNavigation(root: LinearLayout, content: View, navigation: View) {
         if (root.resources.configuration.screenWidthDp >= 600) {

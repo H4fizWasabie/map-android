@@ -174,7 +174,9 @@ class ScanActivity : Activity() {
         }
         root.addView(pages)
         addMusicMiniPlayer(root)
-        setContentView(ScrollView(this).apply { addView(root) })
+        val scroll = ScrollView(this).apply { addView(root) }
+        MapUi.applySystemBarInsets(scroll)
+        setContentView(scroll)
     }
 
     private fun addMusicMiniPlayer(parent: LinearLayout) {
