@@ -9,7 +9,6 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.res.ColorStateList
 import android.graphics.BitmapFactory
-import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Build
@@ -742,9 +741,9 @@ class MusicActivity : Activity() {
         }.getOrNull()
         retriever.release()
         if (bitmap != null) image.setImageBitmap(bitmap) else {
-            image.setBackground(GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(getColor(R.color.map_accent), getColor(R.color.map_card))).apply { cornerRadius = dp(18).toFloat() })
-            image.setImageResource(android.R.drawable.ic_media_play)
-            image.imageTintList = ColorStateList.valueOf(Color.WHITE)
+            image.setBackgroundResource(R.drawable.map_focus_surface)
+            image.setImageResource(if (size >= dp(100)) R.drawable.ic_map_music_artwork else R.drawable.ic_map_music)
+            image.imageTintList = ColorStateList.valueOf(getColor(R.color.map_accent))
         }
         return image
     }
