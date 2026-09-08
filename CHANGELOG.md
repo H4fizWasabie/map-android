@@ -106,3 +106,4 @@
 - Opened local document images off the UI thread with an explicit loading and recovery state.
 - Kept Scan and Calendar Music controls synchronized with live local playback state.
 - Respected Android reduced-motion settings when jumping to document search results.
+- Preserved a task's time and all-day mode when changing only its date.
