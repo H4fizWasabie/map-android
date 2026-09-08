@@ -29,6 +29,7 @@
 
 ### Changed
 
+- Enabled Android predictive Back dispatch for the native MAP navigation contract.
 - Routed Music player Back through Android's modern system callback while retaining older-device support.
 - Virtualized Music result rows with a native list so large local libraries do not build every row at once.
 - Disabled Android app backup and cleartext traffic for MAP's private local state.
