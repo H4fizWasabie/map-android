@@ -330,12 +330,14 @@ class MainActivity : Activity() {
             isAllCaps = false
             setOnClickListener {
                 val today = Calendar.getInstance().apply { dueAt?.let { timeInMillis = it } }
+                val keepAllDay = allDay
+                val keepHour = today.get(Calendar.HOUR_OF_DAY)
+                val keepMinute = today.get(Calendar.MINUTE)
                 DatePickerDialog(this@MainActivity, { _, year, month, day ->
                     dueAt = Calendar.getInstance().apply {
-                        set(year, month, day, 12, 0, 0)
+                        set(year, month, day, if (keepAllDay) 12 else keepHour, if (keepAllDay) 0 else keepMinute, 0)
                         set(Calendar.MILLISECOND, 0)
                     }.timeInMillis
-                    allDay = true
                     text = formatDate(dueAt!!)
                 }, today.get(Calendar.YEAR), today.get(Calendar.MONTH), today.get(Calendar.DAY_OF_MONTH)).show()
             }
