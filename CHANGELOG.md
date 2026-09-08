@@ -43,6 +43,7 @@
 - Made recurring task completion atomic so a next occurrence cannot be lost mid-write.
 - Kept Recent activity bounded to the latest 20 completions while preserving full local history.
 - Made task reminder notifications unique and opened the specific task from a reminder.
+- Removed redundant first-resume destination redraws so cold-start actions reach the finished UI sooner.
 - Made task rows open details from any non-checkbox tap across Home, Tasks, and Calendar.
 - Used a lightweight Music row count instead of loading the full library twice when opening or rerendering Music.
 - Refined Tools into a calm single-surface list with contextual states, compact actions, and readable large-text rows.

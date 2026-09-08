@@ -20,6 +20,7 @@ class CalendarActivity : Activity() {
     private lateinit var database: TaskDatabase
     private var selectedDay = dayStart(System.currentTimeMillis())
     private var weekMode = false
+    private var initialResumePending = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,6 +36,10 @@ class CalendarActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        if (initialResumePending) {
+            initialResumePending = false
+            return
+        }
         if (::database.isInitialized) render()
     }
 

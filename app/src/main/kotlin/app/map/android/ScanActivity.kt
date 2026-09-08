@@ -44,6 +44,7 @@ class ScanActivity : Activity() {
     private val exportExecutor = Executors.newSingleThreadExecutor()
     private var exportButton: Button? = null
     private var exporting = false
+    private var initialResumePending = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,6 +69,10 @@ class ScanActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        if (initialResumePending) {
+            initialResumePending = false
+            return
+        }
         if (::database.isInitialized) render()
     }
 

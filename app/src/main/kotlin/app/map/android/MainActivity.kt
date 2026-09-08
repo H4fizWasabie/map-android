@@ -33,6 +33,7 @@ class MainActivity : Activity() {
     private var selectedView = "Home"
     private var pendingTaskId: Long? = null
     private var musicPlayButton: Button? = null
+    private var initialResumePending = true
     private val preferences by lazy { getSharedPreferences("map-focus", MODE_PRIVATE) }
 
     private val musicStateReceiver = object : BroadcastReceiver() {
@@ -75,6 +76,10 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        if (initialResumePending) {
+            initialResumePending = false
+            return
+        }
         if (::database.isInitialized) {
             if (selectedView == "Tasks") showTasks() else showHome()
             pendingTaskId?.let { id ->
