@@ -20,6 +20,8 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
+import android.widget.AbsListView
+import android.widget.BaseAdapter
 import android.widget.Button
 import android.widget.EditText
 import android.widget.FrameLayout
@@ -27,6 +29,7 @@ import android.widget.HorizontalScrollView
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ListView
 import android.widget.PopupMenu
 import android.widget.ScrollView
 import android.widget.SeekBar
@@ -53,6 +56,14 @@ private data class MusicFilters(
     var duration: String = "Any length",
     var availability: String = "All files"
 )
+
+private sealed class LibraryRow {
+    data class Track(val item: AudioItem, val visibleTracks: List<AudioItem>) : LibraryRow()
+    data class Group(val name: String, val detail: String, val kind: String) : LibraryRow()
+    data class Playlist(val item: MusicPlaylist) : LibraryRow()
+    data object NewPlaylist : LibraryRow()
+    data class Empty(val message: String) : LibraryRow()
+}
 
 class MusicActivity : Activity() {
     private lateinit var database: MusicDatabase
@@ -82,6 +93,7 @@ class MusicActivity : Activity() {
     private var virtualizerSupported = false
     private var bassLevel: Short = 0
     private var virtualizerLevel: Short = 0
+    private lateinit var libraryAdapter: LibraryAdapter
 
     private val stateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -172,10 +184,9 @@ class MusicActivity : Activity() {
             setBackgroundColor(getColor(R.color.map_background))
         }
         root.addView(header("Music", false))
-        val scroll = ScrollView(this)
         val body = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(24), 0, dp(24), dp(24))
+            setPadding(0, 0, 0, dp(24))
         }
         body.addView(TextView(this).apply {
             text = "Your music"
@@ -204,7 +215,7 @@ class MusicActivity : Activity() {
             contentDescription = "Search music"
             addTextChangedListener(object : TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
-                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) { query = s?.toString().orEmpty(); renderResults(results) }
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) { query = s?.toString().orEmpty(); renderResults() }
                 override fun afterTextChanged(s: Editable?) = Unit
             })
         }
@@ -221,32 +232,37 @@ class MusicActivity : Activity() {
                 setPadding(dp(8), 0, 0, 0)
             }, LinearLayout.LayoutParams(0, -1, 1f))
         }.also { body.addView(it) }
-        results = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        body.addView(results, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
-        scroll.addView(body)
-        root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
-        currentTrack()?.let { root.addView(miniPlayer(it)) }
+        val list = ListView(this).apply {
+            divider = null
+            dividerHeight = 0
+            isVerticalScrollBarEnabled = false
+            setPadding(dp(24), 0, dp(24), dp(12))
+            clipToPadding = false
+        }
+        list.addHeaderView(body, null, false)
+        currentTrack()?.let { list.addFooterView(miniPlayer(it), null, false) }
+        libraryAdapter = LibraryAdapter()
+        list.adapter = libraryAdapter
+        root.addView(list, LinearLayout.LayoutParams(-1, 0, 1f))
         setContentView(root)
-        renderResults(results)
+        renderResults()
     }
 
-    private lateinit var results: LinearLayout
-
-    private fun renderResults(target: LinearLayout) {
-        if (!::results.isInitialized || target !== results) return
-        target.removeAllViews()
+    private fun renderResults() {
+        if (!::libraryAdapter.isInitialized) return
+        // ponytail: metadata still loads in one query; paginate only if profiling shows DB memory pressure.
         val all = database.tracks()
-        when (mode) {
-            MusicViewMode.SONGS -> addTrackRows(target, filteredTracks(all))
-            MusicViewMode.FAVORITES -> addTrackRows(target, filteredTracks(all.filter { it.favorite }))
-            MusicViewMode.RECENT -> addTrackRows(target, filteredTracks(all.filter { it.lastPlayed > 0 }).sortedByDescending { it.lastPlayed })
-            MusicViewMode.ALBUMS -> addGroups(target, filteredTracks(all), { it.album }, "album")
-            MusicViewMode.ARTISTS -> addGroups(target, filteredTracks(all), { it.artist }, "artist")
-            MusicViewMode.GENRES -> addGroups(target, filteredTracks(all), { it.genre }, "genre")
-            MusicViewMode.FOLDERS -> addGroups(target, filteredTracks(all), { it.folderName }, "folder")
-            MusicViewMode.PLAYLISTS -> addPlaylists(target)
+        val rows = when (mode) {
+            MusicViewMode.SONGS -> trackRows(filteredTracks(all))
+            MusicViewMode.FAVORITES -> trackRows(filteredTracks(all.filter { it.favorite }))
+            MusicViewMode.RECENT -> trackRows(filteredTracks(all.filter { it.lastPlayed > 0 }).sortedByDescending { it.lastPlayed })
+            MusicViewMode.ALBUMS -> groupRows(filteredTracks(all), { it.album }, "album")
+            MusicViewMode.ARTISTS -> groupRows(filteredTracks(all), { it.artist }, "artist")
+            MusicViewMode.GENRES -> groupRows(filteredTracks(all), { it.genre }, "genre")
+            MusicViewMode.FOLDERS -> groupRows(filteredTracks(all), { it.folderName }, "folder")
+            MusicViewMode.PLAYLISTS -> playlistRows()
         }
-        if (target.childCount == 0) addEmpty(target, if (all.isEmpty()) "Add a local folder to start listening." else "Nothing matches these filters.")
+        libraryAdapter.replace(if (rows.isEmpty()) listOf(LibraryRow.Empty(if (all.isEmpty()) "Add a local folder to start listening." else "Nothing matches these filters.")) else rows)
     }
 
     private fun horizontalModes(): View = HorizontalScrollView(this).apply {
@@ -285,61 +301,89 @@ class MusicActivity : Activity() {
         }
     }
 
-    private fun addTrackRows(parent: LinearLayout, tracks: List<AudioItem>) {
-        tracks.forEach { item ->
-            val row = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(12), dp(10), dp(8), dp(10))
-                background = rounded(getColor(R.color.map_card), dp(14))
-                contentDescription = "${item.title}, ${item.artist}"
-                setOnClickListener { playTracks(tracks, item) }
-            }
-            val text = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-            text.addView(TextView(this).apply {
-                this.text = item.title
-                textSize = 16f
-                setTextColor(getColor(R.color.map_text))
-            })
-            text.addView(TextView(this).apply {
-                this.text = listOf(item.artist, item.album, formatDuration(item.durationMs)).joinToString(" · ")
-                textSize = 13f
-                setTextColor(getColor(R.color.map_muted))
-                setPadding(0, dp(3), 0, 0)
-            })
-            if (!item.available) text.addView(TextView(this).apply {
-                this.text = "Unavailable — refresh the folder or remove it"
-                textSize = 12f
-                setTextColor(getColor(R.color.map_accent))
-            })
-            row.addView(text, LinearLayout.LayoutParams(0, -2, 1f))
-            row.addView(actionButton("More") { showTrackMenu(item, tracks) })
-            parent.addView(row, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
+    private fun trackRows(tracks: List<AudioItem>) = tracks.map { LibraryRow.Track(it, tracks) }
+
+    private fun groupRows(tracks: List<AudioItem>, name: (AudioItem) -> String, kind: String) =
+        tracks.groupBy(name).toSortedMap(String.CASE_INSENSITIVE_ORDER).map { (group, items) ->
+            LibraryRow.Group(group, "${items.size} ${if (items.size == 1) "track" else "tracks"}", kind)
         }
+
+    private fun playlistRows(): List<LibraryRow> = listOf(LibraryRow.NewPlaylist) + database.playlists().map(LibraryRow::Playlist)
+
+    private fun trackRow(item: AudioItem, tracks: List<AudioItem>): View = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        setPadding(dp(12), dp(10), dp(8), dp(10))
+        background = rounded(getColor(R.color.map_card), dp(14))
+        contentDescription = "${item.title}, ${item.artist}"
+        setOnClickListener { playTracks(tracks, item) }
+        val text = LinearLayout(this@MusicActivity).apply { orientation = LinearLayout.VERTICAL }
+        text.addView(TextView(this@MusicActivity).apply {
+            this.text = item.title
+            textSize = 16f
+            setTextColor(getColor(R.color.map_text))
+        })
+        text.addView(TextView(this@MusicActivity).apply {
+            this.text = listOf(item.artist, item.album, formatDuration(item.durationMs)).joinToString(" · ")
+            textSize = 13f
+            setTextColor(getColor(R.color.map_muted))
+            setPadding(0, dp(3), 0, 0)
+        })
+        if (!item.available) text.addView(TextView(this@MusicActivity).apply {
+            this.text = "Unavailable — refresh the folder or remove it"
+            textSize = 12f
+            setTextColor(getColor(R.color.map_accent))
+        })
+        addView(text, LinearLayout.LayoutParams(0, -2, 1f))
+        addView(actionButton("More") { showTrackMenu(item, tracks) })
+    }.apply { layoutParams = AbsListView.LayoutParams(-1, -2) }
+
+    private fun emptyRow(message: String): View = TextView(this).apply {
+        text = message
+        textSize = 15f
+        setTextColor(getColor(R.color.map_muted))
+        setPadding(0, dp(16), 0, dp(16))
     }
 
-    private fun addGroups(parent: LinearLayout, tracks: List<AudioItem>, name: (AudioItem) -> String, kind: String) {
-        tracks.groupBy(name).toSortedMap(String.CASE_INSENSITIVE_ORDER).forEach { (group, items) ->
-            parent.addView(actionRow(group, "${items.size} ${if (items.size == 1) "track" else "tracks"}") {
-                when (kind) {
-                    "album" -> filters.album = group
-                    "artist" -> filters.artist = group
-                    "genre" -> filters.genre = group
-                    "folder" -> filters.folder = group
+    private fun addEmpty(parent: LinearLayout, text: String) = parent.addView(emptyRow(text))
+
+    private inner class LibraryAdapter(
+        private var rows: List<LibraryRow> = emptyList()
+    ) : BaseAdapter() {
+        override fun getCount(): Int = rows.size
+        override fun getItem(position: Int): LibraryRow = rows[position]
+        override fun getItemId(position: Int): Long = position.toLong()
+
+        override fun getView(position: Int, recycled: View?, parent: ViewGroup): View {
+            val view = when (val row = rows[position]) {
+                is LibraryRow.Track -> trackRow(row.item, row.visibleTracks)
+                is LibraryRow.Group -> actionRow(row.name, row.detail) {
+                    when (row.kind) {
+                        "album" -> filters.album = row.name
+                        "artist" -> filters.artist = row.name
+                        "genre" -> filters.genre = row.name
+                        "folder" -> filters.folder = row.name
+                    }
+                    mode = MusicViewMode.SONGS
+                    renderLibrary()
                 }
-                mode = MusicViewMode.SONGS
-                renderLibrary()
-            })
+                is LibraryRow.Playlist -> actionRow(row.item.name, "${row.item.trackCount} tracks") {
+                    activePlaylist = row.item.id
+                    showPlaylist(row.item.id)
+                }
+                LibraryRow.NewPlaylist -> actionButton("New playlist") { promptPlaylist() }
+                is LibraryRow.Empty -> emptyRow(row.message)
+            }
+            return FrameLayout(this@MusicActivity).apply {
+                setPadding(0, 0, 0, dp(8))
+                addView(view, FrameLayout.LayoutParams(-1, -2))
+                layoutParams = AbsListView.LayoutParams(-1, -2)
+            }
         }
-    }
 
-    private fun addPlaylists(parent: LinearLayout) {
-        parent.addView(actionButton("New playlist") { promptPlaylist() })
-        database.playlists().forEach { playlist ->
-            parent.addView(actionRow(playlist.name, "${playlist.trackCount} tracks") {
-                activePlaylist = playlist.id
-                showPlaylist(playlist.id)
-            })
+        fun replace(value: List<LibraryRow>) {
+            rows = value
+            notifyDataSetChanged()
         }
     }
 
@@ -651,7 +695,7 @@ class MusicActivity : Activity() {
                 if (!isFinishing && !isDestroyed) {
                     refreshing = false
                     currentUri = database.current()
-                    renderLibrary()
+                    if (showingPlayer) renderPlayer() else renderLibrary()
                     if (failure != null) Toast.makeText(this, "Could not refresh a music folder. Existing tracks were kept.", Toast.LENGTH_LONG).show()
                 }
             }
@@ -667,7 +711,7 @@ class MusicActivity : Activity() {
             runOnUiThread {
                 if (!isFinishing && !isDestroyed) {
                     refreshing = false
-                    renderLibrary()
+                    if (showingPlayer) renderPlayer() else renderLibrary()
                     if (failure != null) Toast.makeText(this, "Could not refresh this music folder. Existing tracks were kept.", Toast.LENGTH_LONG).show()
                 }
             }
@@ -755,7 +799,6 @@ class MusicActivity : Activity() {
         setOnClickListener { click() }
         addView(TextView(this@MusicActivity).apply { text = title; textSize = 16f; setTextColor(getColor(R.color.map_text)) })
         addView(TextView(this@MusicActivity).apply { text = detail; textSize = 13f; setTextColor(getColor(R.color.map_muted)); setPadding(0, dp(3), 0, 0) })
-        layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) }
     }
 
     private fun actionButton(text: String, click: () -> Unit): Button = Button(this).apply {
@@ -780,7 +823,6 @@ class MusicActivity : Activity() {
         setOnClickListener { click() }
     }
 
-    private fun addEmpty(parent: LinearLayout, text: String) = parent.addView(TextView(this).apply { this.text = text; textSize = 15f; setTextColor(getColor(R.color.map_muted)); setPadding(0, dp(16), 0, dp(16)) })
     private fun activeFilterSummary(): String = listOf(filters.format, filters.artist, filters.album, filters.genre, filters.folder, filters.duration, filters.availability).filterNot { it.startsWith("All") || it == "Any length" }.joinToString(" · ")
     private fun formatDuration(ms: Long): String = if (ms <= 0) "–" else "%d:%02d".format(ms / 60_000, (ms / 1_000) % 60)
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).roundToInt()
