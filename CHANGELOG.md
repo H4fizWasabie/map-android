@@ -34,6 +34,7 @@
 - Kept Now Playing secondary actions reachable on narrow screens and with larger system text.
 - Kept Now Playing artwork within its content margins on narrow phones.
 - Opened the task composer ready for immediate title entry with the keyboard visible.
+- Kept long track names compact in the Home music mini-player while preserving artist context.
 - Made task rows open details from any non-checkbox tap across Home, Tasks, and Calendar.
 - Used a lightweight Music row count instead of loading the full library twice when opening or rerendering Music.
 - Refined Tools into a calm single-surface list with contextual states, compact actions, and readable large-text rows.
