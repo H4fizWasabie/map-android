@@ -148,9 +148,8 @@ class MusicActivity : Activity() {
         }
         window.statusBarColor = getColor(R.color.map_background)
         window.navigationBarColor = getColor(R.color.map_background)
-        renderLibrary()
+        if (intent.getBooleanExtra(EXTRA_OPEN_PLAYER, false) && currentUri != null) renderPlayer() else renderLibrary()
         refreshFolders()
-        if (intent.getBooleanExtra(EXTRA_OPEN_PLAYER, false) && currentUri != null) renderPlayer()
     }
 
     override fun onStart() {
@@ -702,9 +701,9 @@ class MusicActivity : Activity() {
     private fun refreshFolders() {
         if (refreshing) return
         val folders = database.folders()
-        if (folders.isEmpty()) { renderLibrary(); return }
+        if (folders.isEmpty()) { if (showingPlayer) renderPlayer() else renderLibrary(); return }
         refreshing = true
-        renderLibrary()
+        if (showingPlayer) renderPlayer() else renderLibrary()
         executor.execute {
             val failure = runCatching {
                 folders.forEach { folder -> database.replaceFolderTracks(folder, scanFolder(folder)) }
