@@ -29,6 +29,7 @@
 
 ### Changed
 
+- Kept Home, Calendar, Tasks, and Tools in a predictable single navigation stack.
 - Enabled Android predictive Back dispatch for the native MAP navigation contract.
 - Routed Music player Back through Android's modern system callback while retaining older-device support.
 - Virtualized Music result rows with a native list so large local libraries do not build every row at once.

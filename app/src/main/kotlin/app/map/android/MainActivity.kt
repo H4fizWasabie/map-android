@@ -33,10 +33,13 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         database = TaskDatabase(this)
-        selectedView = if (intent.getBooleanExtra(EXTRA_OPEN_TASKS, false)) "Tasks" else "Home"
-        pendingTaskId = intent.getLongExtra(EXTRA_OPEN_TASK_ID, -1L).takeIf { it != -1L }
-        if (selectedView == "Tasks") showTasks() else showHome()
-        if (intent.getBooleanExtra(EXTRA_OPEN_COMPOSER, false)) showAddTaskDialog()
+        applyNavigationIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        applyNavigationIntent(intent)
     }
 
     override fun onDestroy() {
@@ -53,6 +56,13 @@ class MainActivity : Activity() {
                 database.openTasks().firstOrNull { it.id == id }?.let(::showTaskDetails)
             }
         }
+    }
+
+    private fun applyNavigationIntent(intent: Intent) {
+        selectedView = if (intent.getBooleanExtra(EXTRA_OPEN_TASKS, false)) "Tasks" else "Home"
+        pendingTaskId = intent.getLongExtra(EXTRA_OPEN_TASK_ID, -1L).takeIf { it != -1L }
+        if (selectedView == "Tasks") showTasks() else showHome()
+        if (intent.getBooleanExtra(EXTRA_OPEN_COMPOSER, false)) showAddTaskDialog()
     }
 
     private fun showHome() {
@@ -148,9 +158,9 @@ class MainActivity : Activity() {
     private fun navigate(label: String) {
         when (label) {
             "Home" -> showHome()
-            "Calendar" -> startActivity(Intent(this, CalendarActivity::class.java))
+            "Calendar" -> startActivity(Intent(this, CalendarActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
             "Tasks" -> showTasks()
-            "Tools" -> startActivity(Intent(this, ToolsActivity::class.java))
+            "Tools" -> startActivity(Intent(this, ToolsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
         }
     }
 
