@@ -29,6 +29,7 @@
 
 ### Changed
 
+- Refined Tools into a calm single-surface list with contextual states, compact actions, and readable large-text rows.
 - Treated the running playback service, not stale persisted metadata, as the source of truth for Music state after a cold launch.
 - Kept Home's Music play control synchronized with foreground playback state and TalkBack labels.
 - Bounded embedded music artwork decoding so oversized local album art cannot exhaust MAP while rendering playback surfaces.
