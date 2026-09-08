@@ -29,6 +29,7 @@
 
 ### Changed
 
+- Kept completion Undo visible when tasks are completed from the Tasks destination.
 - Opened Music directly in Now Playing when requested instead of rendering the full library first.
 - Applied system-bar insets across MAP screens so edge-to-edge status and gesture bars do not cover content.
 - Adapted primary navigation to use a native rail on expanded Android windows while retaining the compact phone bar.
