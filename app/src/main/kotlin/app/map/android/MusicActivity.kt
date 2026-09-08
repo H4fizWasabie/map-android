@@ -522,18 +522,24 @@ class MusicActivity : Activity() {
             addView(playButton)
             addView(iconButton(android.R.drawable.ic_media_next, "Next") { startMusicAction(MusicService.ACTION_NEXT) })
         }, LinearLayout.LayoutParams(-1, dp(72)))
-        body.addView(LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            addView(actionButton(if (database.shuffle()) "Shuffle on" else "Shuffle") { startMusicAction(MusicService.ACTION_SHUFFLE) })
-            addView(actionButton("Repeat: ${database.repeat()}") { startMusicAction(MusicService.ACTION_REPEAT) })
-            addView(actionButton(if (item.favorite) "Favorite" else "Add favorite") { database.setFavorite(item.uri, !item.favorite); renderPlayer() })
-        })
-        body.addView(LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            addView(actionButton("Queue") { showQueueDialog() })
-            addView(actionButton("Equalizer") { showEqualizerDialog() })
-            addView(actionButton("Sleep") { showSleepDialog() })
-        })
+        body.addView(HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            addView(LinearLayout(this@MusicActivity).apply {
+                orientation = LinearLayout.HORIZONTAL
+                addView(actionButton(if (database.shuffle()) "Shuffle on" else "Shuffle") { startMusicAction(MusicService.ACTION_SHUFFLE) })
+                addView(actionButton("Repeat: ${database.repeat()}") { startMusicAction(MusicService.ACTION_REPEAT) })
+                addView(actionButton(if (item.favorite) "Favorite" else "Add favorite") { database.setFavorite(item.uri, !item.favorite); renderPlayer() })
+            })
+        }, LinearLayout.LayoutParams(-1, -2))
+        body.addView(HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            addView(LinearLayout(this@MusicActivity).apply {
+                orientation = LinearLayout.HORIZONTAL
+                addView(actionButton("Queue") { showQueueDialog() })
+                addView(actionButton("Equalizer") { showEqualizerDialog() })
+                addView(actionButton("Sleep") { showSleepDialog() })
+            })
+        }, LinearLayout.LayoutParams(-1, -2))
         sleepLabel = TextView(this).apply { text = ""; textSize = 13f; setTextColor(getColor(R.color.map_muted)); gravity = Gravity.CENTER; setPadding(0, dp(6), 0, 0) }
         body.addView(sleepLabel)
         scroll.addView(body)
