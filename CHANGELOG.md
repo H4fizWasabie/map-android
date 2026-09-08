@@ -31,6 +31,7 @@
 
 - Disabled Android app backup and cleartext traffic for MAP's private local state.
 - Removed dependency-added network permissions from the merged app manifest; local features now ship without app network access.
+- Added an authored adaptive MAP launcher icon for the application and round launcher slot.
 - Started the issue #14 premium visual foundation with authored graphite/linen themes, signal-accent actions, and icon-led primary navigation.
 - Added visual anchors to Documents, Scan, and Music tools and aligned Music controls with the shared pressed-state treatment.
 - Refined Scan and Document Viewer entry states with compact back navigation and clearer primary capture, export, and recovery actions.
