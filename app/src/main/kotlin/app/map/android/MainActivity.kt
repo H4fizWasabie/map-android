@@ -154,6 +154,7 @@ class MainActivity : Activity() {
             ScrollView(this).apply { addView(content) },
             MapUi.bottomNavigation(this, selected, ::navigate),
         )
+        MapUi.applySystemBarInsets(root)
         setContentView(root)
     }
 

@@ -29,6 +29,7 @@
 
 ### Changed
 
+- Applied system-bar insets across MAP screens so edge-to-edge status and gesture bars do not cover content.
 - Adapted primary navigation to use a native rail on expanded Android windows while retaining the compact phone bar.
 - Moved Scan PDF processing and writing off the UI thread with explicit export progress state.
 - Ignored late document OCR callbacks after the viewer has been destroyed.
