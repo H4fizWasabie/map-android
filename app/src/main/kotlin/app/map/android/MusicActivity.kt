@@ -96,6 +96,7 @@ class MusicActivity : Activity() {
     private var virtualizerLevel: Short = 0
     private lateinit var libraryAdapter: LibraryAdapter
     private var backCallback: Any? = null
+    private var resultsGeneration = 0L
 
     private val stateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -163,6 +164,7 @@ class MusicActivity : Activity() {
     }
 
     override fun onDestroy() {
+        resultsGeneration++
         if (Build.VERSION.SDK_INT >= 33) (backCallback as? OnBackInvokedCallback)?.let(onBackInvokedDispatcher::unregisterOnBackInvokedCallback)
         executor.shutdownNow()
         database.close()
@@ -265,19 +267,33 @@ class MusicActivity : Activity() {
 
     private fun renderResults() {
         if (!::libraryAdapter.isInitialized) return
+        val generation = ++resultsGeneration
+        val selectedMode = mode
+        val selectedFilters = filters.copy()
+        val selectedQuery = query
+        val selectedSort = sort
         // ponytail: metadata still loads in one query; paginate only if profiling shows DB memory pressure.
-        val all = database.tracks()
-        val rows = when (mode) {
-            MusicViewMode.SONGS -> trackRows(filteredTracks(all))
-            MusicViewMode.FAVORITES -> trackRows(filteredTracks(all.filter { it.favorite }))
-            MusicViewMode.RECENT -> trackRows(filteredTracks(all.filter { it.lastPlayed > 0 }).sortedByDescending { it.lastPlayed })
-            MusicViewMode.ALBUMS -> groupRows(filteredTracks(all), { it.album }, "album")
-            MusicViewMode.ARTISTS -> groupRows(filteredTracks(all), { it.artist }, "artist")
-            MusicViewMode.GENRES -> groupRows(filteredTracks(all), { it.genre }, "genre")
-            MusicViewMode.FOLDERS -> groupRows(filteredTracks(all), { it.folderName }, "folder")
-            MusicViewMode.PLAYLISTS -> playlistRows()
+        executor.execute {
+            val result = runCatching {
+                val all = database.tracks()
+                val rows = when (selectedMode) {
+                    MusicViewMode.SONGS -> trackRows(filteredTracks(all, selectedQuery, selectedFilters, selectedSort))
+                    MusicViewMode.FAVORITES -> trackRows(filteredTracks(all.filter { it.favorite }, selectedQuery, selectedFilters, selectedSort))
+                    MusicViewMode.RECENT -> trackRows(filteredTracks(all.filter { it.lastPlayed > 0 }.sortedByDescending { it.lastPlayed }, selectedQuery, selectedFilters, selectedSort))
+                    MusicViewMode.ALBUMS -> groupRows(filteredTracks(all, selectedQuery, selectedFilters, selectedSort), { it.album }, "album")
+                    MusicViewMode.ARTISTS -> groupRows(filteredTracks(all, selectedQuery, selectedFilters, selectedSort), { it.artist }, "artist")
+                    MusicViewMode.GENRES -> groupRows(filteredTracks(all, selectedQuery, selectedFilters, selectedSort), { it.genre }, "genre")
+                    MusicViewMode.FOLDERS -> groupRows(filteredTracks(all, selectedQuery, selectedFilters, selectedSort), { it.folderName }, "folder")
+                    MusicViewMode.PLAYLISTS -> listOf(LibraryRow.NewPlaylist) + database.playlists().map(LibraryRow::Playlist)
+                }
+                if (rows.isEmpty()) listOf(LibraryRow.Empty(if (all.isEmpty()) "Add a local folder to start listening." else "Nothing matches these filters.")) else rows
+            }
+            runOnUiThread {
+                if (!isFinishing && !isDestroyed && generation == resultsGeneration) {
+                    libraryAdapter.replace(result.getOrElse { listOf(LibraryRow.Empty("Could not load your local music library. Try again.")) })
+                }
+            }
         }
-        libraryAdapter.replace(if (rows.isEmpty()) listOf(LibraryRow.Empty(if (all.isEmpty()) "Add a local folder to start listening." else "Nothing matches these filters.")) else rows)
     }
 
     private fun horizontalModes(): View = HorizontalScrollView(this).apply {
@@ -290,9 +306,9 @@ class MusicActivity : Activity() {
         })
     }
 
-    private fun filteredTracks(source: List<AudioItem>): List<AudioItem> {
+    private fun filteredTracks(source: List<AudioItem>, query: String, filters: MusicFilters, sort: String): List<AudioItem> {
+        val needle = query.trim().lowercase()
         val result = source.filter { item ->
-            val needle = query.trim().lowercase()
             (needle.isBlank() || listOf(item.title, item.artist, item.album, item.genre, item.folderName).any { it.lowercase().contains(needle) }) &&
                 (filters.format == "All formats" || item.format == filters.format) &&
                 (filters.artist == "All artists" || item.artist == filters.artist) &&
@@ -322,8 +338,6 @@ class MusicActivity : Activity() {
         tracks.groupBy(name).toSortedMap(String.CASE_INSENSITIVE_ORDER).map { (group, items) ->
             LibraryRow.Group(group, "${items.size} ${if (items.size == 1) "track" else "tracks"}", kind)
         }
-
-    private fun playlistRows(): List<LibraryRow> = listOf(LibraryRow.NewPlaylist) + database.playlists().map(LibraryRow::Playlist)
 
     private fun trackRow(item: AudioItem, tracks: List<AudioItem>): View = LinearLayout(this).apply {
         orientation = LinearLayout.HORIZONTAL
