@@ -32,6 +32,7 @@ import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.Executors
 
 class ScanActivity : Activity() {
     private lateinit var database: ScanDatabase
@@ -40,6 +41,9 @@ class ScanActivity : Activity() {
     private lateinit var pages: LinearLayout
     private val selectedPageIds = mutableSetOf<Long>()
     private var selectionInitialized = false
+    private val exportExecutor = Executors.newSingleThreadExecutor()
+    private var exportButton: Button? = null
+    private var exporting = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,6 +61,7 @@ class ScanActivity : Activity() {
     }
 
     override fun onDestroy() {
+        exportExecutor.shutdownNow()
         database.close()
         super.onDestroy()
     }
@@ -129,12 +134,13 @@ class ScanActivity : Activity() {
         }
         selectedPageIds.retainAll(storedPages.map { it.id }.toSet())
         val exportButton = Button(this, null, 0, R.style.MapPrimaryButton).apply {
-            text = "Export PDF (${selectedPageIds.size})"
+            text = if (exporting) "Exporting PDF…" else "Export PDF (${selectedPageIds.size})"
             isAllCaps = false
-            isEnabled = selectedPageIds.isNotEmpty()
+            isEnabled = selectedPageIds.isNotEmpty() && !exporting
             setOnClickListener { exportPdf() }
             layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) }
         }
+        this.exportButton = exportButton
         root.addView(exportButton)
         root.addView(View(this).apply {
             setBackgroundColor(getColor(R.color.map_divider))
@@ -157,6 +163,7 @@ class ScanActivity : Activity() {
                 text = "Page ${index + 1}: ${File(page.path).name}$status"
                 setTextColor(if (status.isEmpty()) getColor(R.color.map_text) else getColor(R.color.map_muted))
                 isChecked = page.id in selectedPageIds
+                isEnabled = !exporting
                 contentDescription = "Include page ${index + 1}"
                 setOnCheckedChangeListener { _, checked ->
                     if (checked) selectedPageIds.add(page.id) else selectedPageIds.remove(page.id)
@@ -238,10 +245,34 @@ class ScanActivity : Activity() {
     }
 
     private fun exportPdf() {
+        if (exporting) return
+        val selectedIds = selectedPageIds.toSet()
+        if (selectedIds.isEmpty()) return
+        exporting = true
+        exportButton?.apply {
+            text = "Exporting PDF…"
+            isEnabled = false
+        }
+        exportExecutor.execute {
+            val result = runCatching { exportPdfFile(selectedIds) }
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                exporting = false
+                exportButton?.apply {
+                    text = "Export PDF (${selectedPageIds.size})"
+                    isEnabled = selectedPageIds.isNotEmpty()
+                }
+                result.onSuccess { file -> sharePdf(file) }
+                    .onFailure { Toast.makeText(this, "Could not export the PDF", Toast.LENGTH_LONG).show() }
+            }
+        }
+    }
+
+    private fun exportPdfFile(selectedIds: Set<Long>): File {
         val document = PdfDocument()
         var exportedPages = 0
         try {
-            val selectedPages = database.pages(sessionId).filter { it.id in selectedPageIds }
+            val selectedPages = database.pages(sessionId).filter { it.id in selectedIds }
             if (selectedPages.isEmpty()) error("No pages selected")
             selectedPages.forEach { page ->
                 val bitmap = decodePage(page.path) ?: return@forEach
@@ -258,17 +289,19 @@ class ScanActivity : Activity() {
             val output = File(filesDir, "scans/MAP-${timestamp()}.pdf")
             output.parentFile?.mkdirs()
             FileOutputStream(output).use { document.writeTo(it) }
-            val shareUri = FileProvider.getUriForFile(this, "$packageName.fileprovider", output)
-            startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+            return output
+        } finally {
+            document.close()
+        }
+    }
+
+    private fun sharePdf(output: File) {
+        val shareUri = FileProvider.getUriForFile(this, "$packageName.fileprovider", output)
+        startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
                 type = "application/pdf"
                 putExtra(Intent.EXTRA_STREAM, shareUri)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }, "Share PDF"))
-        } catch (_: Exception) {
-            Toast.makeText(this, "Could not export the PDF", Toast.LENGTH_LONG).show()
-        } finally {
-            document.close()
-        }
     }
 
     private fun decodePage(path: String): Bitmap? {
