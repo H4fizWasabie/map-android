@@ -1,7 +1,10 @@
 package app.map.android
 
 import android.app.Activity
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -12,6 +15,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -22,6 +26,17 @@ class CalendarActivity : Activity() {
     private var selectedDay = dayStart(System.currentTimeMillis())
     private var weekMode = false
     private var initialResumePending = true
+    private var musicPlayButton: Button? = null
+
+    private val musicStateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val button = musicPlayButton ?: return
+            val event = intent ?: return
+            if (!event.hasExtra(MusicService.EXTRA_PLAYING)) return
+            button.text = if (event.getBooleanExtra(MusicService.EXTRA_PLAYING, false)) "Pause" else "Play"
+            button.contentDescription = button.text
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,6 +57,16 @@ class CalendarActivity : Activity() {
             return
         }
         if (::database.isInitialized) render()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        ContextCompat.registerReceiver(this, musicStateReceiver, IntentFilter(MusicService.ACTION_STATE), ContextCompat.RECEIVER_NOT_EXPORTED)
+    }
+
+    override fun onStop() {
+        runCatching { unregisterReceiver(musicStateReceiver) }
+        super.onStop()
     }
 
     override fun onDestroy() {
@@ -272,7 +297,7 @@ class CalendarActivity : Activity() {
                 setTextColor(getColor(R.color.map_text))
                 setPadding(0, 0, dp(8), 0)
             }, LinearLayout.LayoutParams(0, -2, 1f))
-            addView(Button(this@CalendarActivity).apply {
+            val playButton = Button(this@CalendarActivity).apply {
                 text = if (playing) "Pause" else "Play"
                 isAllCaps = false
                 contentDescription = text
@@ -283,7 +308,9 @@ class CalendarActivity : Activity() {
                         Toast.makeText(this@CalendarActivity, "MAP could not start Music. Try Play again.", Toast.LENGTH_LONG).show()
                     }
                 }
-            })
+            }
+            musicPlayButton = playButton
+            addView(playButton)
         }, LinearLayout.LayoutParams(-1, -2))
     }
 
