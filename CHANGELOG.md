@@ -29,6 +29,7 @@
 
 ### Changed
 
+- Used a lightweight Music row count instead of loading the full library twice when opening or rerendering Music.
 - Refined Tools into a calm single-surface list with contextual states, compact actions, and readable large-text rows.
 - Treated the running playback service, not stale persisted metadata, as the source of truth for Music state after a cold launch.
 - Kept Home's Music play control synchronized with foreground playback state and TalkBack labels.

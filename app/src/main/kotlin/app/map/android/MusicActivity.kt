@@ -209,7 +209,7 @@ class MusicActivity : Activity() {
             setPadding(0, dp(8), 0, dp(4))
         })
         body.addView(TextView(this).apply {
-            val count = database.tracks().size
+            val count = database.trackCount()
             text = if (refreshing) "Refreshing your selected folders…" else "$count local ${if (count == 1) "track" else "tracks"}"
             textSize = 15f
             setTextColor(getColor(R.color.map_muted))
