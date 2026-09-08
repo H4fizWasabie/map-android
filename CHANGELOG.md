@@ -30,6 +30,7 @@
 ### Changed
 
 - Kept Music library management actions readable and non-overlapping at large text sizes.
+- Kept Music playlist controls usable at large text sizes and narrow widths.
 - Kept foreground Music commands and notification startup from taking down the app when a local playback transition fails.
 - Requested Music notification access when playback starts from Home or Scan so controls remain visible across entry points.
 - Kept Now Playing secondary actions reachable on narrow screens and with larger system text.
