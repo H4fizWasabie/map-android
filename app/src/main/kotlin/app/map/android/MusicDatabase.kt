@@ -134,6 +134,10 @@ class MusicDatabase(context: Context) : SQLiteOpenHelper(context, "map-music.db"
         "tracks", TRACK_COLUMNS, null, null, null, null, "title COLLATE NOCASE ASC"
     ).use { cursor -> buildList { while (cursor.moveToNext()) add(cursor.audioItem()) } }
 
+    fun trackCount(): Int = readableDatabase.rawQuery("SELECT COUNT(*) FROM tracks", null).use { cursor ->
+        if (cursor.moveToFirst()) cursor.getInt(0) else 0
+    }
+
     fun track(uri: String?): AudioItem? {
         if (uri == null) return null
         return readableDatabase.query(
