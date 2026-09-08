@@ -15,6 +15,7 @@ import android.widget.Toast
 
 class ToolsActivity : Activity() {
     private lateinit var documents: DocumentDatabase
+    private var initialResumePending = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,6 +31,10 @@ class ToolsActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        if (initialResumePending) {
+            initialResumePending = false
+            return
+        }
         if (::documents.isInitialized) render()
     }
 
