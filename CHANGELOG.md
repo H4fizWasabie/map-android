@@ -47,6 +47,7 @@
 - Moved scanned-page copying and database inserts off the UI thread with partial-import feedback.
 - Preserved cold-start task deep links while suppressing redundant destination redraws.
 - Let phone navigation grow with large system text so destination labels remain readable.
+- Use compact primary navigation in landscape phone windows so short content stays usable.
 - Made task rows open details from any non-checkbox tap across Home, Tasks, and Calendar.
 - Used a lightweight Music row count instead of loading the full library twice when opening or rerendering Music.
 - Refined Tools into a calm single-surface list with contextual states, compact actions, and readable large-text rows.
