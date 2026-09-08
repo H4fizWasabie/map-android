@@ -62,8 +62,14 @@ class CalendarActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             addView(actionButton("Today") { selectedDay = dayStart(System.currentTimeMillis()); weekMode = false; render() })
             addView(actionButton(if (weekMode) "Today agenda" else "Week") { weekMode = !weekMode; render() })
-            addView(actionButton("Add task") {
+            addView(Button(this@CalendarActivity, null, 0, R.style.MapPrimaryButton).apply {
+                text = "Add task"
+                isAllCaps = false
+                minHeight = dp(48)
+                minWidth = dp(48)
+                setOnClickListener {
                 startActivity(Intent(this@CalendarActivity, MainActivity::class.java).putExtra(MainActivity.EXTRA_OPEN_COMPOSER, true))
+                }
             })
         }.also { body.addView(it) }
         if (weekMode) addWeek(body) else addDay(body)

@@ -19,6 +19,8 @@ import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 class MainActivity : Activity() {
     private lateinit var database: TaskDatabase
@@ -68,6 +70,12 @@ class MainActivity : Activity() {
         val startOfTomorrow = startOfToday + DAY
 
         render("Today", "Home") { body ->
+            body.addView(TextView(this).apply {
+                text = java.text.SimpleDateFormat("EEEE, d MMMM", Locale.getDefault()).format(Date())
+                textSize = 14f
+                setTextColor(getColor(R.color.map_accent))
+                setPadding(0, 0, 0, dp(4))
+            })
             body.addView(TextView(this).apply {
                 text = "A clear view of what needs your attention."
                 textSize = 16f
@@ -298,7 +306,7 @@ class MainActivity : Activity() {
                 isAllCaps = false
                 setOnClickListener { dialog.dismiss(); completeTask(task) }
             })
-            addView(Button(this@MainActivity).apply {
+            addView(Button(this@MainActivity, null, 0, R.style.MapPrimaryButton).apply {
                 text = "Save"
                 isAllCaps = false
                 setOnClickListener {
@@ -544,7 +552,7 @@ class MainActivity : Activity() {
                     isAllCaps = false
                     setOnClickListener { dialog.dismiss() }
                 })
-                addView(Button(this@MainActivity).apply {
+                addView(Button(this@MainActivity, null, 0, R.style.MapPrimaryButton).apply {
                     text = "Save"
                     isAllCaps = false
                     setOnClickListener {
