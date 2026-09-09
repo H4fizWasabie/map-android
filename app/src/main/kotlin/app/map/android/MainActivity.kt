@@ -33,6 +33,8 @@ class MainActivity : Activity() {
     private var undoState: UndoState? = null
     private var selectedView = "Home"
     private var pendingTaskId: Long? = null
+    private var contentScroll: ScrollView? = null
+    private var restoredScrollY = 0
     private var musicPlayButton: Button? = null
     private var composerDialog: Dialog? = null
     private var composerTitle: EditText? = null
@@ -62,6 +64,7 @@ class MainActivity : Activity() {
         if (savedInstanceState?.containsKey(STATE_SELECTED_VIEW) == true) {
             selectedView = savedInstanceState.getString(STATE_SELECTED_VIEW, "Home")
             pendingTaskId = savedInstanceState.getLong(STATE_PENDING_TASK_ID, -1L).takeIf { it != -1L }
+            restoredScrollY = savedInstanceState.getInt(STATE_SCROLL_Y, 0)
             if (selectedView == "Tasks") showTasks() else showHome()
         } else {
             applyNavigationIntent(intent)
@@ -93,6 +96,7 @@ class MainActivity : Activity() {
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putString(STATE_SELECTED_VIEW, selectedView)
         pendingTaskId?.let { outState.putLong(STATE_PENDING_TASK_ID, it) }
+        outState.putInt(STATE_SCROLL_Y, contentScroll?.scrollY ?: 0)
         if (composerDialog?.isShowing == true) {
             outState.putBoolean(STATE_COMPOSER_OPEN, true)
             outState.putString(STATE_COMPOSER_TITLE, composerTitle?.text?.toString().orEmpty())
@@ -229,11 +233,17 @@ class MainActivity : Activity() {
         }
         MapUi.addPrimaryNavigation(
             root,
-            ScrollView(this).apply { addView(content) },
+            ScrollView(this).apply {
+                contentScroll = this
+                addView(content)
+            },
             MapUi.bottomNavigation(this, selected, ::navigate),
         )
         MapUi.applySystemBarInsets(root)
         setContentView(root)
+        val scrollY = restoredScrollY
+        restoredScrollY = 0
+        contentScroll?.post { contentScroll?.scrollTo(0, scrollY) }
     }
 
     private fun navigate(label: String) {
@@ -838,6 +848,7 @@ class MainActivity : Activity() {
         private const val NOTIFICATION_REQUEST = 40
         private const val STATE_SELECTED_VIEW = "selected_view"
         private const val STATE_PENDING_TASK_ID = "pending_task_id"
+        private const val STATE_SCROLL_Y = "scroll_y"
         private const val STATE_COMPOSER_OPEN = "composer_open"
         private const val STATE_COMPOSER_TITLE = "composer_title"
         private const val STATE_COMPOSER_NOTES = "composer_notes"

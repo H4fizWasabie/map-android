@@ -25,6 +25,8 @@ class CalendarActivity : Activity() {
     private lateinit var database: TaskDatabase
     private var selectedDay = dayStart(System.currentTimeMillis())
     private var weekMode = false
+    private var contentScroll: ScrollView? = null
+    private var restoredScrollY = 0
     private var initialResumePending = true
     private var musicPlayButton: Button? = null
 
@@ -43,12 +45,14 @@ class CalendarActivity : Activity() {
         database = TaskDatabase(this)
         savedInstanceState?.takeIf { it.containsKey(STATE_SELECTED_DAY) }?.getLong(STATE_SELECTED_DAY)?.let { selectedDay = dayStart(it) }
         weekMode = savedInstanceState?.getBoolean(STATE_WEEK_MODE, false) ?: false
+        restoredScrollY = savedInstanceState?.getInt(STATE_SCROLL_Y, 0) ?: 0
         render()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putLong(STATE_SELECTED_DAY, selectedDay)
         outState.putBoolean(STATE_WEEK_MODE, weekMode)
+        outState.putInt(STATE_SCROLL_Y, contentScroll?.scrollY ?: 0)
         super.onSaveInstanceState(outState)
     }
 
@@ -86,7 +90,7 @@ class CalendarActivity : Activity() {
         val root = LinearLayout(this).apply {
             setBackgroundColor(getColor(R.color.map_background))
         }
-        val scroll = ScrollView(this)
+        val scroll = ScrollView(this).also { contentScroll = it }
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(24), 0, dp(24), dp(24)) }
         body.addView(TextView(this).apply {
             text = if (weekMode) "This week" else "Today"
@@ -126,6 +130,9 @@ class CalendarActivity : Activity() {
         MapUi.addPrimaryNavigation(root, content, MapUi.bottomNavigation(this, "Calendar", ::navigate))
         MapUi.applySystemBarInsets(root)
         setContentView(root)
+        val scrollY = restoredScrollY
+        restoredScrollY = 0
+        contentScroll?.post { contentScroll?.scrollTo(0, scrollY) }
     }
 
     private fun header(): View = LinearLayout(this).apply {
@@ -361,6 +368,7 @@ class CalendarActivity : Activity() {
         private const val NOTIFICATION_REQUEST = 14
         private const val STATE_SELECTED_DAY = "selected_day"
         private const val STATE_WEEK_MODE = "week_mode"
+        private const val STATE_SCROLL_Y = "scroll_y"
         private fun dayStart(value: Long): Long = Calendar.getInstance().apply { timeInMillis = value; set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
         private fun addDays(value: Long, amount: Int): Long = Calendar.getInstance().apply { timeInMillis = value; add(Calendar.DAY_OF_YEAR, amount) }.timeInMillis
         private fun monday(value: Long): Long {

@@ -15,12 +15,20 @@ import android.widget.Toast
 
 class ToolsActivity : Activity() {
     private lateinit var documents: DocumentDatabase
+    private var contentScroll: ScrollView? = null
+    private var restoredScrollY = 0
     private var initialResumePending = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         documents = DocumentDatabase(this)
+        restoredScrollY = savedInstanceState?.getInt(STATE_SCROLL_Y, 0) ?: 0
         render()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putInt(STATE_SCROLL_Y, contentScroll?.scrollY ?: 0)
+        super.onSaveInstanceState(outState)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -68,11 +76,17 @@ class ToolsActivity : Activity() {
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             addView(header())
-            addView(ScrollView(this@ToolsActivity).apply { addView(body) }, LinearLayout.LayoutParams(-1, 0, 1f))
+            addView(ScrollView(this@ToolsActivity).apply {
+                contentScroll = this
+                addView(body)
+            }, LinearLayout.LayoutParams(-1, 0, 1f))
         }
         MapUi.addPrimaryNavigation(root, content, MapUi.bottomNavigation(this, "Tools", ::navigate))
         MapUi.applySystemBarInsets(root)
         setContentView(root)
+        val scrollY = restoredScrollY
+        restoredScrollY = 0
+        contentScroll?.post { contentScroll?.scrollTo(0, scrollY) }
     }
 
     private fun header(): View = LinearLayout(this).apply {
@@ -246,5 +260,6 @@ class ToolsActivity : Activity() {
 
     companion object {
         private const val DOCUMENT_REQUEST = 31
+        private const val STATE_SCROLL_Y = "scroll_y"
     }
 }
