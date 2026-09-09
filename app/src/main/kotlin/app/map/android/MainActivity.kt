@@ -34,6 +34,14 @@ class MainActivity : Activity() {
     private var selectedView = "Home"
     private var pendingTaskId: Long? = null
     private var musicPlayButton: Button? = null
+    private var composerDialog: Dialog? = null
+    private var composerTitle: EditText? = null
+    private var composerNotes: EditText? = null
+    private var composerTags: EditText? = null
+    private var composerRecurrence: Spinner? = null
+    private var composerDueAt: Long? = null
+    private var composerAllDay = true
+    private var composerDetailsVisible = false
     private var initialResumePending = true
     private val preferences by lazy { getSharedPreferences("map-focus", MODE_PRIVATE) }
 
@@ -58,6 +66,17 @@ class MainActivity : Activity() {
         } else {
             applyNavigationIntent(intent)
         }
+        if (savedInstanceState?.getBoolean(STATE_COMPOSER_OPEN, false) == true) {
+            showAddTaskDialog(
+                initialTitle = savedInstanceState.getString(STATE_COMPOSER_TITLE).orEmpty(),
+                initialNotes = savedInstanceState.getString(STATE_COMPOSER_NOTES).orEmpty(),
+                initialTags = savedInstanceState.getString(STATE_COMPOSER_TAGS).orEmpty(),
+                initialDueAt = savedInstanceState.getLong(STATE_COMPOSER_DUE_AT, Long.MIN_VALUE).takeIf { it != Long.MIN_VALUE },
+                initialRecurrence = savedInstanceState.getString(STATE_COMPOSER_RECURRENCE) ?: "Does not repeat",
+                initialAllDay = savedInstanceState.getBoolean(STATE_COMPOSER_ALL_DAY, true),
+                initialDetailsVisible = savedInstanceState.getBoolean(STATE_COMPOSER_DETAILS_VISIBLE, false),
+            )
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -74,6 +93,16 @@ class MainActivity : Activity() {
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putString(STATE_SELECTED_VIEW, selectedView)
         pendingTaskId?.let { outState.putLong(STATE_PENDING_TASK_ID, it) }
+        if (composerDialog?.isShowing == true) {
+            outState.putBoolean(STATE_COMPOSER_OPEN, true)
+            outState.putString(STATE_COMPOSER_TITLE, composerTitle?.text?.toString().orEmpty())
+            outState.putString(STATE_COMPOSER_NOTES, composerNotes?.text?.toString().orEmpty())
+            outState.putString(STATE_COMPOSER_TAGS, composerTags?.text?.toString().orEmpty())
+            composerDueAt?.let { outState.putLong(STATE_COMPOSER_DUE_AT, it) }
+            outState.putString(STATE_COMPOSER_RECURRENCE, composerRecurrence?.selectedItem?.toString() ?: "Does not repeat")
+            outState.putBoolean(STATE_COMPOSER_ALL_DAY, composerAllDay)
+            outState.putBoolean(STATE_COMPOSER_DETAILS_VISIBLE, composerDetailsVisible)
+        }
         super.onSaveInstanceState(outState)
     }
 
@@ -583,35 +612,51 @@ class MainActivity : Activity() {
         })
     }
 
-    private fun showAddTaskDialog() {
+    private fun showAddTaskDialog(
+        initialTitle: String = "",
+        initialNotes: String = "",
+        initialTags: String = "",
+        initialDueAt: Long? = null,
+        initialRecurrence: String = "Does not repeat",
+        initialAllDay: Boolean = true,
+        initialDetailsVisible: Boolean = false,
+    ) {
         val fields = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(24), 0, dp(24), 0)
         }
         val title = EditText(this).apply {
             hint = "Task title"
+            setText(initialTitle)
             contentDescription = "Task title"
         }
         val notes = EditText(this).apply {
             hint = "Notes (optional)"
+            setText(initialNotes)
             contentDescription = "Task notes"
         }
         val tags = EditText(this).apply {
             hint = "Tags (optional)"
+            setText(initialTags)
             contentDescription = "Task tags"
         }
+        val recurrenceValues = listOf("Does not repeat", "Daily", "Weekly", "Monthly")
         val recurrence = Spinner(this).apply {
             adapter = ArrayAdapter(
                 this@MainActivity,
                 android.R.layout.simple_spinner_dropdown_item,
-                listOf("Does not repeat", "Daily", "Weekly", "Monthly")
+                recurrenceValues
             )
+            setSelection(recurrenceValues.indexOf(initialRecurrence).coerceAtLeast(0))
             contentDescription = "Task recurrence"
         }
-        var dueAt: Long? = null
-        var allDay = true
+        var dueAt: Long? = initialDueAt
+        var allDay = initialAllDay
+        composerDueAt = dueAt
+        composerAllDay = allDay
+        composerDetailsVisible = initialDetailsVisible
         val dueButton = Button(this).apply {
-            text = "No due date"
+            text = dueAt?.let(::formatDate) ?: "No due date"
             isAllCaps = false
             setOnClickListener {
                 val today = Calendar.getInstance()
@@ -620,13 +665,15 @@ class MainActivity : Activity() {
                         set(year, month, day, 12, 0, 0)
                         set(Calendar.MILLISECOND, 0)
                     }.timeInMillis
+                    composerDueAt = dueAt
                     allDay = true
+                    composerAllDay = true
                     text = formatDate(dueAt!!)
                 }, today.get(Calendar.YEAR), today.get(Calendar.MONTH), today.get(Calendar.DAY_OF_MONTH)).show()
             }
         }
         val timeButton = Button(this).apply {
-            text = "All day"
+            text = if (dueAt == null || allDay) "All day" else SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(dueAt!!))
             isAllCaps = false
             setOnClickListener {
                 val selected = dueAt ?: run {
@@ -641,19 +688,23 @@ class MainActivity : Activity() {
                             set(Calendar.HOUR_OF_DAY, hour)
                             set(Calendar.MINUTE, minute)
                         }.timeInMillis
+                        composerDueAt = dueAt
                         allDay = false
+                        composerAllDay = false
                         text = "%02d:%02d".format(hour, minute)
                     }, current.get(Calendar.HOUR_OF_DAY), current.get(Calendar.MINUTE), true).show()
                 } else {
                     allDay = true
+                    composerAllDay = true
                     text = "All day"
                     dueAt = Calendar.getInstance().apply { timeInMillis = selected; set(Calendar.HOUR_OF_DAY, 12); set(Calendar.MINUTE, 0) }.timeInMillis
+                    composerDueAt = dueAt
                 }
             }
         }
         val details = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            visibility = View.GONE
+            visibility = if (initialDetailsVisible) View.VISIBLE else View.GONE
             addView(notes)
             addView(tags)
             addView(dueButton)
@@ -667,9 +718,11 @@ class MainActivity : Activity() {
         val detailsButton = Button(this).apply {
             text = "Add details"
             isAllCaps = false
+            visibility = if (initialDetailsVisible) View.GONE else View.VISIBLE
             setOnClickListener {
                 visibility = View.GONE
                 details.visibility = View.VISIBLE
+                composerDetailsVisible = true
                 if (resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE && resources.configuration.fontScale >= 1.5f) fitLargeDialog(dialog)
             }
         }
@@ -723,6 +776,12 @@ class MainActivity : Activity() {
                 })
             }, LinearLayout.LayoutParams(-1, -2))
         }
+        composerDialog = dialog
+        composerTitle = title
+        composerNotes = notes
+        composerTags = tags
+        composerRecurrence = recurrence
+        dialog.setOnDismissListener { clearComposerState() }
         dialog.setContentView(sheet)
         dialog.show()
         dialog.window?.apply {
@@ -736,6 +795,17 @@ class MainActivity : Activity() {
             (getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager)
                 .showSoftInput(title, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
         }
+    }
+
+    private fun clearComposerState() {
+        composerDialog = null
+        composerTitle = null
+        composerNotes = null
+        composerTags = null
+        composerRecurrence = null
+        composerDueAt = null
+        composerAllDay = true
+        composerDetailsVisible = false
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
@@ -768,6 +838,14 @@ class MainActivity : Activity() {
         private const val NOTIFICATION_REQUEST = 40
         private const val STATE_SELECTED_VIEW = "selected_view"
         private const val STATE_PENDING_TASK_ID = "pending_task_id"
+        private const val STATE_COMPOSER_OPEN = "composer_open"
+        private const val STATE_COMPOSER_TITLE = "composer_title"
+        private const val STATE_COMPOSER_NOTES = "composer_notes"
+        private const val STATE_COMPOSER_TAGS = "composer_tags"
+        private const val STATE_COMPOSER_DUE_AT = "composer_due_at"
+        private const val STATE_COMPOSER_RECURRENCE = "composer_recurrence"
+        private const val STATE_COMPOSER_ALL_DAY = "composer_all_day"
+        private const val STATE_COMPOSER_DETAILS_VISIBLE = "composer_details_visible"
     }
 
     private data class UndoState(val task: Task, val nextId: Long?)
