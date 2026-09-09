@@ -149,7 +149,8 @@ class MusicActivity : Activity() {
         }
         window.statusBarColor = getColor(R.color.map_background)
         window.navigationBarColor = getColor(R.color.map_background)
-        if (intent.getBooleanExtra(EXTRA_OPEN_PLAYER, false) && currentUri != null) renderPlayer() else renderLibrary()
+        val restorePlayer = savedInstanceState?.getBoolean(STATE_SHOWING_PLAYER, false) == true
+        if ((restorePlayer || intent.getBooleanExtra(EXTRA_OPEN_PLAYER, false)) && currentUri != null) renderPlayer() else renderLibrary()
         refreshFolders()
     }
 
@@ -169,6 +170,11 @@ class MusicActivity : Activity() {
         executor.shutdownNow()
         database.close()
         super.onDestroy()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putBoolean(STATE_SHOWING_PLAYER, showingPlayer)
+        super.onSaveInstanceState(outState)
     }
 
     override fun onBackPressed() {
@@ -950,6 +956,7 @@ class MusicActivity : Activity() {
 
     companion object {
         const val EXTRA_OPEN_PLAYER = "open_player"
+        private const val STATE_SHOWING_PLAYER = "showing_player"
         private const val FOLDER_REQUEST = 30
         private const val NOTIFICATION_REQUEST = 31
         private const val MAX_ARTWORK_PIXELS = 1024

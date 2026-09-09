@@ -51,7 +51,13 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         database = TaskDatabase(this)
-        applyNavigationIntent(intent)
+        if (savedInstanceState?.containsKey(STATE_SELECTED_VIEW) == true) {
+            selectedView = savedInstanceState.getString(STATE_SELECTED_VIEW, "Home")
+            pendingTaskId = savedInstanceState.getLong(STATE_PENDING_TASK_ID, -1L).takeIf { it != -1L }
+            if (selectedView == "Tasks") showTasks() else showHome()
+        } else {
+            applyNavigationIntent(intent)
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -63,6 +69,12 @@ class MainActivity : Activity() {
     override fun onDestroy() {
         if (::database.isInitialized) database.close()
         super.onDestroy()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putString(STATE_SELECTED_VIEW, selectedView)
+        pendingTaskId?.let { outState.putLong(STATE_PENDING_TASK_ID, it) }
+        super.onSaveInstanceState(outState)
     }
 
     override fun onStart() {
@@ -754,6 +766,8 @@ class MainActivity : Activity() {
         private const val DAY = 24 * 60 * 60 * 1000L
         private const val PINNED_FOCUS_ID = "pinned_focus_id"
         private const val NOTIFICATION_REQUEST = 40
+        private const val STATE_SELECTED_VIEW = "selected_view"
+        private const val STATE_PENDING_TASK_ID = "pending_task_id"
     }
 
     private data class UndoState(val task: Task, val nextId: Long?)
