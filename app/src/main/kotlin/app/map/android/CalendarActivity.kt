@@ -29,6 +29,7 @@ class CalendarActivity : Activity() {
     private var restoredScrollY = 0
     private var initialResumePending = true
     private var musicPlayButton: Button? = null
+    private var undoState: UndoState? = null
 
     private val musicStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -119,6 +120,7 @@ class CalendarActivity : Activity() {
                 }
             })
         }.also { body.addView(it) }
+        addUndoBar(body)
         if (weekMode) addWeek(body) else addDay(body)
         scroll.addView(body)
         val content = LinearLayout(this).apply {
@@ -283,8 +285,38 @@ class CalendarActivity : Activity() {
         val completedAt = System.currentTimeMillis()
         val nextDueAt = database.nextDueAt(task, completedAt)
         val nextId = database.complete(task)
+        undoState = UndoState(task, nextId)
         if (nextId != null && nextDueAt != null) ReminderScheduler.schedule(this, nextId, task.title, nextDueAt)
         render()
+    }
+
+    private fun addUndoBar(parent: LinearLayout) {
+        val state = undoState ?: return
+        parent.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(14), dp(8), dp(8), dp(8))
+            setBackgroundResource(R.drawable.map_surface)
+            addView(TextView(this@CalendarActivity).apply {
+                text = "Completed ${state.task.title}"
+                textSize = 14f
+                setTextColor(getColor(R.color.map_text))
+            }, LinearLayout.LayoutParams(0, -2, 1f))
+            addView(Button(this@CalendarActivity).apply {
+                text = "Undo"
+                isAllCaps = false
+                setOnClickListener {
+                    ReminderScheduler.cancel(this@CalendarActivity, state.nextId ?: state.task.id)
+                    if (database.undoComplete(state.task, state.nextId)) {
+                        state.task.dueAt?.takeIf { it > System.currentTimeMillis() }?.let {
+                            ReminderScheduler.schedule(this@CalendarActivity, state.task.id, state.task.title, it)
+                        }
+                    }
+                    undoState = null
+                    render()
+                }
+            })
+        }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
     }
 
     private fun addMusicMiniPlayer(parent: LinearLayout) {
@@ -379,4 +411,6 @@ class CalendarActivity : Activity() {
         }
         private fun formatDate(value: Long) = SimpleDateFormat("EEE, d MMM", Locale.getDefault()).format(Date(value))
     }
+
+    private data class UndoState(val task: Task, val nextId: Long?)
 }

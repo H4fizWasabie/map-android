@@ -4,6 +4,8 @@
 
 ### Added
 
+- Added an immediate Undo action after completing a task from Calendar.
+
 - Added an instrumented Music transition regression gate using synthetic local media.
 
 - Allowed panning across both axes when inspecting a zoomed image.
