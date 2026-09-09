@@ -29,6 +29,7 @@
 
 ### Changed
 
+- Harden release builds with R8 code shrinking and resource shrinking.
 - Restore future task reminders after Android device reboot.
 - Show pressed and focused states when the Home Focus panel opens a task.
 - Keep one-day task snoozes at the same local time across daylight-saving changes.
