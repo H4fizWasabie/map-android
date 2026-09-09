@@ -49,6 +49,8 @@ class DocumentViewerActivity : Activity() {
     private var pdfBaseWidth = 0
     private var pdfZoom = 1f
     private var imageView: ZoomImageView? = null
+    private var imageScroll: ScrollView? = null
+    private var imageHorizontalScroll: HorizontalScrollView? = null
     private var imageZoom = 1f
     private var restoredPdfScrollY = 0
     private var pdfRenderGeneration = 0L
@@ -270,6 +272,10 @@ class DocumentViewerActivity : Activity() {
     private fun setImageZoom(value: Float) {
         imageZoom = value.coerceIn(1f, 3f)
         imageView?.setZoom(imageZoom)
+        if (imageZoom == 1f) {
+            imageScroll?.post { imageScroll?.scrollTo(0, 0) }
+            imageHorizontalScroll?.post { imageHorizontalScroll?.scrollTo(0, 0) }
+        }
     }
 
     private fun showImage() {
@@ -281,12 +287,20 @@ class DocumentViewerActivity : Activity() {
             setPadding(dp(16), dp(8), dp(16), dp(24))
         }
         imageView = image
-        root.addView(ScrollView(this).apply {
+        val horizontal = HorizontalScrollView(this).apply {
+            imageHorizontalScroll = this
+            isFillViewport = true
             addView(image)
+        }
+        root.addView(ScrollView(this).apply {
+            imageScroll = this
+            isFillViewport = true
+            addView(horizontal)
         }, LinearLayout.LayoutParams(-1, 0, 1f))
         status.text = "Opening this image locally…"
         status.visibility = View.VISIBLE
         setContentView(root)
+        image.post { image.setZoom(imageZoom) }
         val generation = pdfRenderGeneration
         pdfExecutor.execute {
             val bitmap = runCatching { decodeImage() }.getOrNull()
@@ -597,24 +611,41 @@ class DocumentViewerActivity : Activity() {
     private class ZoomImageView(context: android.content.Context, initialZoom: Float) : ImageView(context) {
         var zoom = initialZoom.coerceIn(1f, 3f)
             private set
+        private var baseWidth = 0
+        private var baseHeight = 0
         private val detector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
             override fun onScale(detector: ScaleGestureDetector): Boolean {
-                zoom = (zoom * detector.scaleFactor).coerceIn(1f, 3f)
-                scaleX = zoom
-                scaleY = zoom
+                setZoom(zoom * detector.scaleFactor)
                 return true
             }
         })
 
-        init {
-            scaleX = zoom
-            scaleY = zoom
+        override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+            super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+            if (baseWidth == 0 || baseHeight == 0 || zoom == 1f) {
+                baseWidth = measuredWidth
+                baseHeight = measuredHeight
+            }
+            if (zoom != 1f && baseWidth > 0 && baseHeight > 0) {
+                setMeasuredDimension((baseWidth * zoom).roundToInt(), (baseHeight * zoom).roundToInt())
+            }
         }
 
         fun setZoom(value: Float) {
             zoom = value.coerceIn(1f, 3f)
-            scaleX = zoom
-            scaleY = zoom
+            if (drawable != null && baseWidth > 0 && baseHeight > 0) {
+                layoutParams = layoutParams?.apply {
+                    width = (baseWidth * zoom).roundToInt()
+                    height = (baseHeight * zoom).roundToInt()
+                }
+            }
+            requestLayout()
+        }
+
+        override fun setImageBitmap(bitmap: Bitmap?) {
+            baseWidth = 0
+            baseHeight = 0
+            super.setImageBitmap(bitmap)
         }
 
         override fun onTouchEvent(event: android.view.MotionEvent): Boolean {
