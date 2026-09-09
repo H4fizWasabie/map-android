@@ -377,8 +377,12 @@ class MusicActivity : Activity() {
         gravity = Gravity.CENTER_VERTICAL
         setPadding(dp(12), dp(10), dp(8), dp(10))
         background = rounded(getColor(R.color.map_card), dp(14))
-        contentDescription = "${item.title}, ${item.artist}"
+        contentDescription = "Play ${item.title} by ${item.artist}"
         setOnClickListener { playTracks(tracks, item) }
+        addView(cover(item, dp(56)).apply {
+            contentDescription = null
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        }, LinearLayout.LayoutParams(dp(56), dp(56)).apply { rightMargin = dp(12) })
         val text = LinearLayout(this@MusicActivity).apply { orientation = LinearLayout.VERTICAL }
         text.addView(TextView(this@MusicActivity).apply {
             this.text = item.title
@@ -397,7 +401,9 @@ class MusicActivity : Activity() {
             setTextColor(getColor(R.color.map_accent))
         })
         addView(text, LinearLayout.LayoutParams(0, -2, 1f))
-        addView(actionButton("More") { showTrackMenu(item, tracks) })
+        addView(actionButton("More") { showTrackMenu(item, tracks) }.apply {
+            contentDescription = "More actions for ${item.title}"
+        })
     }.apply { layoutParams = AbsListView.LayoutParams(-1, -2) }
 
     private fun emptyRow(message: String): View = TextView(this).apply {
