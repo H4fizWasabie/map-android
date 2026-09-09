@@ -9,6 +9,13 @@ From the repository root:
 ./scripts/check-changelog.sh
 ```
 
+With a running emulator or connected Android device, also run the local-media
+transition regression gate:
+
+```sh
+./gradlew connectedDebugAndroidTest
+```
+
 The debug APK is `app/build/outputs/apk/debug/app-debug.apk`.
 
 ## Release

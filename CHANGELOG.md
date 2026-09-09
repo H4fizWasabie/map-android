@@ -4,6 +4,8 @@
 
 ### Added
 
+- Added an instrumented Music transition regression gate using synthetic local media.
+
 - Allowed panning across both axes when inspecting a zoomed image.
 
 - Made image viewer zoom controls work for local image files.
