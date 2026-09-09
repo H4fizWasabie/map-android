@@ -24,6 +24,6 @@ jobs:
           java-version: '17'
           cache: gradle
       - name: Verify Android app
-        run: ./gradlew test lint assembleDebug
+        run: ./gradlew test lint assembleDebug assembleDebugAndroidTest
       - name: Verify changelog
         run: ./scripts/check-changelog.sh
