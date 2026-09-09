@@ -50,6 +50,7 @@ class DocumentViewerActivity : Activity() {
     private var pdfZoom = 1f
     private var restoredPdfScrollY = 0
     private var pdfRenderGeneration = 0L
+    private var pdfLoadGeneration = 0L
     private val pdfRenderLock = Any()
     private val pdfExecutor = Executors.newSingleThreadExecutor()
     private val ocrExecutor = Executors.newSingleThreadExecutor()
@@ -84,6 +85,7 @@ class DocumentViewerActivity : Activity() {
 
     override fun onDestroy() {
         pdfRenderGeneration++
+        pdfLoadGeneration++
         pdfExecutor.shutdownNow()
         synchronized(pdfRenderLock) {
             pdfRenderer?.close()
@@ -99,19 +101,66 @@ class DocumentViewerActivity : Activity() {
             isPdf = mime == "application/pdf" || name.endsWith(".pdf", ignoreCase = true)
             if (isPdf) showPdf() else showImage()
         } catch (_: Exception) {
-            database.markUnavailable(uri.toString())
-            showUnavailable("MAP could not read this file directly.")
+            showDocumentUnavailable()
         }
     }
 
     private fun showPdf() {
-        pdfDescriptor = contentResolver.openFileDescriptor(uri, "r") ?: error("File is unavailable")
-        pdfRenderer = PdfRenderer(pdfDescriptor!!)
-        val dimensions = buildList {
-            repeat(pdfRenderer!!.pageCount) { index ->
-                pdfRenderer!!.openPage(index).use { page -> add(page.width to page.height) }
+        val root = viewerRoot()
+        status.text = "Opening this document locally…"
+        status.visibility = View.VISIBLE
+        setContentView(root)
+        val generation = ++pdfLoadGeneration
+        pdfExecutor.execute {
+            val result = runCatching { loadPdfSource() }
+            runOnUiThread {
+                val source = result.getOrNull()
+                if (generation != pdfLoadGeneration || isFinishing || isDestroyed) {
+                    source?.close()
+                    return@runOnUiThread
+                }
+                result.onSuccess {
+                    pdfDescriptor = it.descriptor
+                    pdfRenderer = it.renderer
+                    runCatching { displayPdf(it.dimensions) }.onFailure {
+                        synchronized(pdfRenderLock) {
+                            runCatching { pdfRenderer?.close() }
+                            runCatching { pdfDescriptor?.close() }
+                            pdfRenderer = null
+                            pdfDescriptor = null
+                        }
+                        showDocumentUnavailable()
+                    }
+                }.onFailure {
+                    showDocumentUnavailable()
+                }
             }
         }
+    }
+
+    private fun loadPdfSource(): PdfSource {
+        val descriptor = contentResolver.openFileDescriptor(uri, "r") ?: error("File is unavailable")
+        val renderer = try {
+            PdfRenderer(descriptor)
+        } catch (error: Exception) {
+            descriptor.close()
+            throw error
+        }
+        return try {
+            val dimensions = buildList {
+                repeat(renderer.pageCount) { index ->
+                    renderer.openPage(index).use { page -> add(page.width to page.height) }
+                }
+            }
+            PdfSource(descriptor, renderer, dimensions)
+        } catch (error: Exception) {
+            runCatching { renderer.close() }
+            runCatching { descriptor.close() }
+            throw error
+        }
+    }
+
+    private fun displayPdf(dimensions: List<Pair<Int, Int>>) {
         pdfBaseWidth = (resources.displayMetrics.widthPixels - dp(32)).coerceAtLeast(dp(240))
         val pages = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -145,6 +194,22 @@ class DocumentViewerActivity : Activity() {
             vertical.scrollTo(0, restoredPdfScrollY)
             renderVisiblePages()
         }
+    }
+
+    private data class PdfSource(
+        val descriptor: ParcelFileDescriptor,
+        val renderer: PdfRenderer,
+        val dimensions: List<Pair<Int, Int>>,
+    ) {
+        fun close() {
+            runCatching { renderer.close() }
+            runCatching { descriptor.close() }
+        }
+    }
+
+    private fun showDocumentUnavailable() {
+        database.markUnavailable(uri.toString())
+        showUnavailable("MAP could not read this file directly.")
     }
 
     private fun renderVisiblePages() {

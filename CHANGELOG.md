@@ -4,6 +4,8 @@
 
 ### Added
 
+- Loaded PDF page metadata off the UI thread with a visible local-loading state.
+
 - Added local artwork and clearer playback labels to Music library rows.
 
 - Preserved primary screen scroll position across configuration changes.
