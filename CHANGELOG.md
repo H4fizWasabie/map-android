@@ -29,6 +29,7 @@
 
 ### Changed
 
+- Preserve Scan page selections across configuration changes.
 - Preserve selected Calendar day and view mode across configuration changes.
 - Preserve in-progress task composer drafts across configuration changes.
 - Preserve the active Home/Tasks and Music player surface across configuration changes.
