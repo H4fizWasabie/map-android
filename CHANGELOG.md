@@ -29,6 +29,7 @@
 
 ### Changed
 
+- Keep one-day task snoozes at the same local time across daylight-saving changes.
 - Calculate Home's Today and Upcoming boundaries by local calendar days across daylight-saving changes.
 - Let task details edit due date, time, recurrence, and all-day state while keeping large-text actions reachable.
 - Kept Music library management actions readable and non-overlapping at large text sizes.

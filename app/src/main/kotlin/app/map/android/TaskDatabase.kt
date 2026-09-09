@@ -113,7 +113,7 @@ class TaskDatabase(context: Context) : SQLiteOpenHelper(context, "map.db", null,
     }
 
     fun snooze(task: Task): Long? {
-        val dueAt = System.currentTimeMillis() + DAY
+        val dueAt = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }.timeInMillis
         val updated = writableDatabase.update(
             "tasks",
             ContentValues().apply { put("due_at", dueAt) },
@@ -168,7 +168,4 @@ class TaskDatabase(context: Context) : SQLiteOpenHelper(context, "map.db", null,
         return if (isNull(index)) null else getLong(index)
     }
 
-    companion object {
-        private const val DAY = 24 * 60 * 60 * 1000L
-    }
 }
