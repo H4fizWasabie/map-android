@@ -683,7 +683,7 @@ class MusicActivity : ComponentActivity() {
             body.addView(actionButton("Apply preset") { startMusicAction(MusicService.ACTION_EQ_PRESET, extras = mapOf(MusicService.EXTRA_PRESET to preset.selectedItemPosition.toShort())) })
         }
         eqLevels.forEachIndexed { index, level ->
-            val frequency = if (index < eqFrequencies.size) "${eqFrequencies[index] / 1000} kHz" else "Band ${index + 1}"
+            val frequency = if (index < eqFrequencies.size) "${eqFrequencies[index] / 1000} Hz" else "Band ${index + 1}"
             body.addView(TextView(this).apply { text = frequency; setTextColor(getColor(R.color.map_muted)); setPadding(0, dp(8), 0, 0) })
             body.addView(SeekBar(this).apply {
                 max = (eqRange[1] - eqRange[0]).toInt()
