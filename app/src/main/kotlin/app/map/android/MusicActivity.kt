@@ -17,6 +17,7 @@ import android.provider.DocumentsContract
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.Gravity
+import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.window.OnBackInvokedCallback
@@ -217,12 +218,14 @@ class MusicActivity : Activity() {
         }
     }
 
-    override fun onBackPressed() {
+    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
+        if (keyCode != KeyEvent.KEYCODE_BACK) return super.onKeyUp(keyCode, event)
         handleBack()
+        return true
     }
 
     private fun handleBack() {
-        if (showingPlayer || activePlaylist != null) renderLibrary() else super.onBackPressed()
+        if (showingPlayer || activePlaylist != null) renderLibrary() else finish()
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
