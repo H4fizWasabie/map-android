@@ -48,6 +48,8 @@ class DocumentViewerActivity : Activity() {
     private var pdfPagesContainer: LinearLayout? = null
     private var pdfBaseWidth = 0
     private var pdfZoom = 1f
+    private var imageView: ZoomImageView? = null
+    private var imageZoom = 1f
     private var restoredPdfScrollY = 0
     private var pdfRenderGeneration = 0L
     private var pdfLoadGeneration = 0L
@@ -72,6 +74,7 @@ class DocumentViewerActivity : Activity() {
             contentResolver.getType(uri).orEmpty().ifBlank { "application/pdf" }
         }
         pdfZoom = savedInstanceState?.getFloat(STATE_PDF_ZOOM, 1f)?.coerceIn(0.75f, 2.5f) ?: 1f
+        imageZoom = savedInstanceState?.getFloat(STATE_IMAGE_ZOOM, 1f)?.coerceIn(1f, 3f) ?: 1f
         restoredPdfScrollY = savedInstanceState?.getInt(STATE_PDF_SCROLL_Y, 0) ?: 0
         database.markOpened(uri.toString())
         loadDocument()
@@ -79,6 +82,7 @@ class DocumentViewerActivity : Activity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putFloat(STATE_PDF_ZOOM, pdfZoom)
+        outState.putFloat(STATE_IMAGE_ZOOM, imageView?.zoom ?: imageZoom)
         outState.putInt(STATE_PDF_SCROLL_Y, pdfScroll?.scrollY ?: 0)
         super.onSaveInstanceState(outState)
     }
@@ -265,12 +269,13 @@ class DocumentViewerActivity : Activity() {
 
     private fun showImage() {
         val root = viewerRoot()
-        val image = ZoomImageView(this).apply {
+        val image = ZoomImageView(this, imageZoom).apply {
             adjustViewBounds = true
             scaleType = ImageView.ScaleType.FIT_CENTER
             contentDescription = name
             setPadding(dp(16), dp(8), dp(16), dp(24))
         }
+        imageView = image
         root.addView(ScrollView(this).apply {
             addView(image)
         }, LinearLayout.LayoutParams(-1, 0, 1f))
@@ -584,8 +589,9 @@ class DocumentViewerActivity : Activity() {
     }
 
     @Suppress("AppCompatCustomView")
-    private class ZoomImageView(context: android.content.Context) : ImageView(context) {
-        private var zoom = 1f
+    private class ZoomImageView(context: android.content.Context, initialZoom: Float) : ImageView(context) {
+        var zoom = initialZoom.coerceIn(1f, 3f)
+            private set
         private val detector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
             override fun onScale(detector: ScaleGestureDetector): Boolean {
                 zoom = (zoom * detector.scaleFactor).coerceIn(1f, 3f)
@@ -594,6 +600,11 @@ class DocumentViewerActivity : Activity() {
                 return true
             }
         })
+
+        init {
+            scaleX = zoom
+            scaleY = zoom
+        }
 
         override fun onTouchEvent(event: android.view.MotionEvent): Boolean {
             detector.onTouchEvent(event)
@@ -606,6 +617,7 @@ class DocumentViewerActivity : Activity() {
         const val EXTRA_NAME = "document_name"
         const val EXTRA_MIME = "document_mime"
         private const val STATE_PDF_ZOOM = "pdf_zoom"
+        private const val STATE_IMAGE_ZOOM = "image_zoom"
         private const val STATE_PDF_SCROLL_Y = "pdf_scroll_y"
     }
 }

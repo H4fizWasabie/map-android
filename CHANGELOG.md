@@ -4,6 +4,8 @@
 
 ### Added
 
+- Preserved image viewer pinch zoom across rotation and recreation.
+
 - Preserved the Now Playing scroll position across rotation and recreation.
 
 - Kept Now Playing elapsed and remaining time labels synchronized with playback.
