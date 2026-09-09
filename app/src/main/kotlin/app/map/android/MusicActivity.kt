@@ -519,7 +519,7 @@ class MusicActivity : Activity() {
             setTextColor(getColor(R.color.map_text))
             setPadding(dp(12), 0, dp(8), 0)
         }, LinearLayout.LayoutParams(0, -2, 1f))
-        addView(iconButton(if (playing) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play, if (playing) "Pause" else "Play") { startMusicAction(MusicService.ACTION_TOGGLE) })
+        addView(iconButton(if (playing) R.drawable.ic_map_pause else R.drawable.ic_map_play, if (playing) "Pause" else "Play") { startMusicAction(MusicService.ACTION_TOGGLE) })
     }
 
     private fun renderPlayer() {
@@ -554,10 +554,10 @@ class MusicActivity : Activity() {
         body.addView(LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            addView(iconButton(android.R.drawable.ic_media_previous, "Previous") { startMusicAction(MusicService.ACTION_PREVIOUS) })
-            playButton = iconButton(if (playing) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play, if (playing) "Pause" else "Play") { requestNotificationsIfNeeded(); startMusicAction(MusicService.ACTION_TOGGLE) }
+            addView(iconButton(R.drawable.ic_map_skip_previous, "Previous") { startMusicAction(MusicService.ACTION_PREVIOUS) })
+            playButton = iconButton(if (playing) R.drawable.ic_map_pause else R.drawable.ic_map_play, if (playing) "Pause" else "Play") { requestNotificationsIfNeeded(); startMusicAction(MusicService.ACTION_TOGGLE) }
             addView(playButton)
-            addView(iconButton(android.R.drawable.ic_media_next, "Next") { startMusicAction(MusicService.ACTION_NEXT) })
+            addView(iconButton(R.drawable.ic_map_skip_next, "Next") { startMusicAction(MusicService.ACTION_NEXT) })
         }, LinearLayout.LayoutParams(-1, dp(72)))
         body.addView(HorizontalScrollView(this).apply {
             isHorizontalScrollBarEnabled = false
@@ -587,7 +587,7 @@ class MusicActivity : Activity() {
     }
 
     private fun updatePlaybackViews() {
-        playButton?.setImageResource(if (playing) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play)
+        playButton?.setImageResource(if (playing) R.drawable.ic_map_pause else R.drawable.ic_map_play)
         playButton?.contentDescription = if (playing) "Pause" else "Play"
         seekBar?.let { bar -> if (!bar.isPressed) { bar.max = maxOf(duration, 1); bar.progress = position.coerceIn(0, bar.max) } }
         sleepLabel?.text = if (sleepModeText.isBlank()) "" else sleepModeText
