@@ -29,6 +29,7 @@
 
 ### Changed
 
+- Restore future task reminders after Android device reboot.
 - Show pressed and focused states when the Home Focus panel opens a task.
 - Keep one-day task snoozes at the same local time across daylight-saving changes.
 - Calculate Home's Today and Upcoming boundaries by local calendar days across daylight-saving changes.

@@ -11,6 +11,10 @@ import android.os.Build
 
 class TaskReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
+            restoreReminders(context)
+            return
+        }
         val taskId = intent.getLongExtra(ReminderScheduler.EXTRA_TASK_ID, -1L)
         val channelId = "map_tasks"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -39,5 +43,19 @@ class TaskReminderReceiver : BroadcastReceiver() {
                 .setAutoCancel(true)
                 .build()
         )
+    }
+
+    private fun restoreReminders(context: Context) {
+        val now = System.currentTimeMillis()
+        val database = TaskDatabase(context)
+        try {
+            database.openTasks().forEach { task ->
+                task.dueAt?.takeIf { it > now }?.let { dueAt ->
+                    ReminderScheduler.schedule(context, task.id, task.title, dueAt)
+                }
+            }
+        } finally {
+            database.close()
+        }
     }
 }
