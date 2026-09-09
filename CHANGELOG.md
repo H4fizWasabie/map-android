@@ -29,6 +29,7 @@
 
 ### Changed
 
+- Align in-app Music transport controls with MAP's authored icon system.
 - Harden release builds with R8 code shrinking and resource shrinking.
 - Restore future task reminders after Android device reboot.
 - Show pressed and focused states when the Home Focus panel opens a task.
