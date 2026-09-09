@@ -45,6 +45,8 @@
 
 ### Changed
 
+- Aligned Android build tooling with compileSdk 36 using AGP 8.13.2 and Gradle 8.13.
+
 - Return from Music playlist details to the Music library with Back.
 - Preserve Music library context across configuration changes.
 - Harden PDF viewer zoom and preserve its position across configuration changes.
