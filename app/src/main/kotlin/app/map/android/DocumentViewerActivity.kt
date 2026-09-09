@@ -267,6 +267,11 @@ class DocumentViewerActivity : Activity() {
         status.visibility = View.VISIBLE
     }
 
+    private fun setImageZoom(value: Float) {
+        imageZoom = value.coerceIn(1f, 3f)
+        imageView?.setZoom(imageZoom)
+    }
+
     private fun showImage() {
         val root = viewerRoot()
         val image = ZoomImageView(this, imageZoom).apply {
@@ -345,19 +350,19 @@ class DocumentViewerActivity : Activity() {
                 text = "-"
                 isAllCaps = false
                 contentDescription = "Zoom out"
-                setOnClickListener { if (isPdf) setPdfZoom(pdfZoom - 0.25f) }
+                setOnClickListener { if (isPdf) setPdfZoom(pdfZoom - 0.25f) else setImageZoom((imageView?.zoom ?: imageZoom) - 0.25f) }
             })
             addView(Button(this@DocumentViewerActivity).apply {
                 text = "100%"
                 isAllCaps = false
                 contentDescription = "Reset zoom"
-                setOnClickListener { if (isPdf) setPdfZoom(1f) }
+                setOnClickListener { if (isPdf) setPdfZoom(1f) else setImageZoom(1f) }
             })
             addView(Button(this@DocumentViewerActivity).apply {
                 text = "+"
                 isAllCaps = false
                 contentDescription = "Zoom in"
-                setOnClickListener { if (isPdf) setPdfZoom(pdfZoom + 0.25f) }
+                setOnClickListener { if (isPdf) setPdfZoom(pdfZoom + 0.25f) else setImageZoom((imageView?.zoom ?: imageZoom) + 0.25f) }
             })
         }
         ocrButton = button("Read text") { runOcr() }
@@ -602,6 +607,12 @@ class DocumentViewerActivity : Activity() {
         })
 
         init {
+            scaleX = zoom
+            scaleY = zoom
+        }
+
+        fun setZoom(value: Float) {
+            zoom = value.coerceIn(1f, 3f)
             scaleX = zoom
             scaleY = zoom
         }

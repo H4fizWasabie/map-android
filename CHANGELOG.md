@@ -4,6 +4,8 @@
 
 ### Added
 
+- Made image viewer zoom controls work for local image files.
+
 - Preserved image viewer pinch zoom across rotation and recreation.
 
 - Preserved the Now Playing scroll position across rotation and recreation.
