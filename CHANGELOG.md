@@ -135,6 +135,7 @@
 - Added clearer accent hierarchy and pressed/focused states to shared actions and primary navigation.
 - Prevented Bluetooth/media-session reconnect commands from auto-resuming paused music.
 - Kept device audio-effect initialization failures from crashing local playback.
+- Rejected empty and non-positive custom Music sleep timers without stopping playback.
 - Kept unavailable selected music folders from crashing Music while refreshing.
 - Guarded every Music foreground-service entry point so Android start failures show a retry message instead of crashing MAP.
 - Kept the active Music mini-player visible above Calendar navigation, including at large text.

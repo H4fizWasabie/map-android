@@ -76,7 +76,7 @@ class MusicService : Service() {
             if (currentPlayer != null && currentPlayer.isPlaying && ++tickCount % 5 == 0) {
                 database.setPosition(runCatching { currentPlayer.currentPosition.toInt() }.getOrDefault(0))
             }
-            if (sleepMode == SLEEP_TIMER && sleepEndsAt <= SystemClock.elapsedRealtime()) stopPlayback()
+            if (sleepMode == SLEEP_TIMER && sleepEndsAt > 0L && sleepEndsAt <= SystemClock.elapsedRealtime()) stopPlayback()
             else {
                 broadcastState()
                 handler.postDelayed(this, 1_000)
@@ -331,6 +331,10 @@ class MusicService : Service() {
     }
 
     private fun setSleep(mode: String, minutes: Int) {
+        if (mode == SLEEP_TIMER && minutes <= 0) {
+            broadcastError("Enter a sleep duration greater than zero minutes.")
+            return
+        }
         sleepMode = mode
         sleepEndsAt = if (mode == SLEEP_TIMER && minutes > 0) SystemClock.elapsedRealtime() + minutes * 60_000L else 0L
         broadcastState()
