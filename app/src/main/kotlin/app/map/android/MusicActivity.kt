@@ -139,6 +139,23 @@ class MusicActivity : Activity() {
         database = MusicDatabase(this)
         currentUri = database.current()
         playing = MusicService.isRunning && database.playing()
+        savedInstanceState?.getString(STATE_MODE)?.let { value ->
+            mode = runCatching { MusicViewMode.valueOf(value) }.getOrDefault(mode)
+        }
+        activePlaylist = savedInstanceState?.getLong(STATE_ACTIVE_PLAYLIST, -1L)?.takeIf { it > 0L }
+        query = savedInstanceState?.getString(STATE_QUERY).orEmpty()
+        sort = savedInstanceState?.getString(STATE_SORT).orEmpty().ifBlank { "Title" }
+        savedInstanceState?.getStringArray(STATE_FILTERS)?.let { values ->
+            filters = MusicFilters(
+                format = values.getOrNull(0) ?: filters.format,
+                artist = values.getOrNull(1) ?: filters.artist,
+                album = values.getOrNull(2) ?: filters.album,
+                genre = values.getOrNull(3) ?: filters.genre,
+                folder = values.getOrNull(4) ?: filters.folder,
+                duration = values.getOrNull(5) ?: filters.duration,
+                availability = values.getOrNull(6) ?: filters.availability,
+            )
+        }
         if (Build.VERSION.SDK_INT >= 33) {
             val callback = OnBackInvokedCallback { handleBack() }
             backCallback = callback
@@ -150,7 +167,12 @@ class MusicActivity : Activity() {
         window.statusBarColor = getColor(R.color.map_background)
         window.navigationBarColor = getColor(R.color.map_background)
         val restorePlayer = savedInstanceState?.getBoolean(STATE_SHOWING_PLAYER, false) == true
-        if ((restorePlayer || intent.getBooleanExtra(EXTRA_OPEN_PLAYER, false)) && currentUri != null) renderPlayer() else renderLibrary()
+        when {
+            restorePlayer && currentUri != null -> renderPlayer()
+            savedInstanceState != null && !restorePlayer && activePlaylist != null -> showPlaylist(activePlaylist!!)
+            savedInstanceState == null && intent.getBooleanExtra(EXTRA_OPEN_PLAYER, false) && currentUri != null -> renderPlayer()
+            else -> renderLibrary()
+        }
         refreshFolders()
     }
 
@@ -174,6 +196,11 @@ class MusicActivity : Activity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putBoolean(STATE_SHOWING_PLAYER, showingPlayer)
+        outState.putString(STATE_MODE, mode.name)
+        outState.putLong(STATE_ACTIVE_PLAYLIST, activePlaylist ?: -1L)
+        outState.putString(STATE_QUERY, query)
+        outState.putString(STATE_SORT, sort)
+        outState.putStringArray(STATE_FILTERS, arrayOf(filters.format, filters.artist, filters.album, filters.genre, filters.folder, filters.duration, filters.availability))
         super.onSaveInstanceState(outState)
     }
 
@@ -201,6 +228,7 @@ class MusicActivity : Activity() {
 
     private fun renderLibrary() {
         showingPlayer = false
+        activePlaylist = null
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(getColor(R.color.map_background))
@@ -422,6 +450,7 @@ class MusicActivity : Activity() {
     }
 
     private fun showPlaylist(id: Long) {
+        showingPlayer = false
         val playlist = database.playlists().firstOrNull { it.id == id } ?: run { renderLibrary(); return }
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(getColor(R.color.map_background)) }
         root.addView(header(playlist.name, false))
@@ -747,12 +776,20 @@ class MusicActivity : Activity() {
 
     private fun requestFolder() = startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), FOLDER_REQUEST)
 
+    private fun renderSurface() {
+        when {
+            showingPlayer -> renderPlayer()
+            activePlaylist != null -> showPlaylist(activePlaylist!!)
+            else -> renderLibrary()
+        }
+    }
+
     private fun refreshFolders() {
         if (refreshing) return
         val folders = database.folders()
-        if (folders.isEmpty()) { if (showingPlayer) renderPlayer() else renderLibrary(); return }
+        if (folders.isEmpty()) { renderSurface(); return }
         refreshing = true
-        if (showingPlayer) renderPlayer() else renderLibrary()
+        renderSurface()
         executor.execute {
             val failure = runCatching {
                 folders.forEach { folder -> database.replaceFolderTracks(folder, scanFolder(folder)) }
@@ -761,7 +798,7 @@ class MusicActivity : Activity() {
                 if (!isFinishing && !isDestroyed) {
                     refreshing = false
                     currentUri = database.current()
-                    if (showingPlayer) renderPlayer() else renderLibrary()
+                    renderSurface()
                     if (failure != null) Toast.makeText(this, "Could not refresh a music folder. Existing tracks were kept.", Toast.LENGTH_LONG).show()
                 }
             }
@@ -771,13 +808,13 @@ class MusicActivity : Activity() {
     private fun refreshFolder(folder: MusicFolder) {
         if (refreshing) return
         refreshing = true
-        renderLibrary()
+        renderSurface()
         executor.execute {
             val failure = runCatching { database.replaceFolderTracks(folder, scanFolder(folder)) }.exceptionOrNull()
             runOnUiThread {
                 if (!isFinishing && !isDestroyed) {
                     refreshing = false
-                    if (showingPlayer) renderPlayer() else renderLibrary()
+                    renderSurface()
                     if (failure != null) Toast.makeText(this, "Could not refresh this music folder. Existing tracks were kept.", Toast.LENGTH_LONG).show()
                 }
             }
@@ -957,6 +994,11 @@ class MusicActivity : Activity() {
     companion object {
         const val EXTRA_OPEN_PLAYER = "open_player"
         private const val STATE_SHOWING_PLAYER = "showing_player"
+        private const val STATE_MODE = "mode"
+        private const val STATE_ACTIVE_PLAYLIST = "active_playlist"
+        private const val STATE_QUERY = "query"
+        private const val STATE_SORT = "sort"
+        private const val STATE_FILTERS = "filters"
         private const val FOLDER_REQUEST = 30
         private const val NOTIFICATION_REQUEST = 31
         private const val MAX_ARTWORK_PIXELS = 1024
