@@ -209,7 +209,7 @@ class MusicActivity : Activity() {
     }
 
     private fun handleBack() {
-        if (showingPlayer) renderLibrary() else super.onBackPressed()
+        if (showingPlayer || activePlaylist != null) renderLibrary() else super.onBackPressed()
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -453,7 +453,7 @@ class MusicActivity : Activity() {
         showingPlayer = false
         val playlist = database.playlists().firstOrNull { it.id == id } ?: run { renderLibrary(); return }
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(getColor(R.color.map_background)) }
-        root.addView(header(playlist.name, false))
+        root.addView(header(playlist.name, true))
         val scroll = ScrollView(this)
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(24), 0, dp(24), dp(24)) }
         body.addView(TextView(this).apply {
@@ -864,7 +864,7 @@ class MusicActivity : Activity() {
         return AudioItem(uri.toString(), folderUri, folderName, name, title, artist, album, genre, MusicFormats.extension(name, mime), duration)
     }
 
-    private fun header(title: String, player: Boolean): View = LinearLayout(this).apply {
+    private fun header(title: String, returnToLibrary: Boolean): View = LinearLayout(this).apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
         setPadding(dp(16), dp(24), dp(16), dp(4))
@@ -874,7 +874,7 @@ class MusicActivity : Activity() {
             setBackgroundResource(R.drawable.map_button_surface)
             backgroundTintList = null
             contentDescription = "Back"
-            setOnClickListener { if (player) renderLibrary() else finish() }
+            setOnClickListener { if (returnToLibrary) renderLibrary() else finish() }
         }, LinearLayout.LayoutParams(dp(48), dp(48)))
         addView(TextView(this@MusicActivity).apply { text = title; textSize = 18f; setTextColor(getColor(R.color.map_text)); setTypeface(typeface, android.graphics.Typeface.BOLD); gravity = Gravity.CENTER_VERTICAL; setPadding(dp(12), 0, 0, 0) }, LinearLayout.LayoutParams(0, -1, 1f))
     }
