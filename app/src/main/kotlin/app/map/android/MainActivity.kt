@@ -45,6 +45,7 @@ class MainActivity : Activity() {
     private var composerAllDay = true
     private var composerDetailsVisible = false
     private var initialResumePending = true
+    private var homePrimaryActionSettled = false
     private val preferences by lazy { getSharedPreferences("map-focus", MODE_PRIVATE) }
 
     private val musicStateReceiver = object : BroadcastReceiver() {
@@ -159,21 +160,27 @@ class MainActivity : Activity() {
         render("Today", "Home") { body ->
             body.addView(TextView(this).apply {
                 text = java.text.SimpleDateFormat("EEEE, d MMMM", Locale.getDefault()).format(Date())
-                textSize = 14f
+                MapUi.label(this)
                 setTextColor(getColor(R.color.map_accent))
                 setPadding(0, 0, 0, dp(4))
             })
             body.addView(TextView(this).apply {
                 text = "A clear view of what needs your attention."
-                textSize = 16f
+                MapUi.body(this)
                 setTextColor(getColor(R.color.map_muted))
                 setPadding(0, 0, 0, dp(16))
             })
-            body.addView(Button(this, null, 0, R.style.MapPrimaryButton).apply {
+            val addTaskButton = Button(this, null, 0, R.style.MapPrimaryButton).apply {
                 text = "Add a task"
                 isAllCaps = false
                 setOnClickListener { showAddTaskDialog() }
-            })
+            }
+            MapUi.markPrimaryAction(addTaskButton)
+            body.addView(addTaskButton)
+            if (!homePrimaryActionSettled) {
+                MapUi.settlePrimaryAction(addTaskButton)
+                homePrimaryActionSettled = true
+            }
             addUndoBar(body)
             addFocusArea(body, openTasks, startOfToday, startOfTomorrow)
             val inbox = openTasks.filter { it.dueAt == null }
@@ -196,11 +203,13 @@ class MainActivity : Activity() {
     private fun showTasks() {
         selectedView = "Tasks"
         render("Tasks") { body ->
-            body.addView(Button(this, null, 0, R.style.MapPrimaryButton).apply {
+            val addTaskButton = Button(this, null, 0, R.style.MapPrimaryButton).apply {
                 text = "Add a task"
                 isAllCaps = false
                 setOnClickListener { showAddTaskDialog() }
-            })
+            }
+            MapUi.markPrimaryAction(addTaskButton)
+            body.addView(addTaskButton)
             addUndoBar(body)
             val tasks = database.openTasks()
             if (tasks.isEmpty()) addEmpty(body, "No tasks yet.") else tasks.forEach { addTaskRow(body, it) }
@@ -217,14 +226,13 @@ class MainActivity : Activity() {
         }
         content.addView(TextView(this).apply {
             text = "MAP"
-            textSize = 14f
+            MapUi.label(this)
             setTextColor(getColor(R.color.map_accent))
             contentDescription = "MAP home"
         })
         content.addView(TextView(this).apply {
             text = title
-            textSize = 32f
-            setTextColor(getColor(R.color.map_text))
+            MapUi.display(this)
             setPadding(0, dp(8), 0, dp(16))
         })
         fill(content)
@@ -302,8 +310,7 @@ class MainActivity : Activity() {
 
     private fun focusLine(label: String, value: String) = TextView(this).apply {
         text = "$label  $value"
-        textSize = 16f
-        setTextColor(getColor(R.color.map_text))
+        MapUi.body(this)
         setPadding(0, dp(2), 0, dp(6))
     }
 
@@ -328,9 +335,8 @@ class MainActivity : Activity() {
             setPadding(dp(8), 0, dp(8), 0)
             addView(TextView(this@MainActivity).apply {
                 text = task.title
-                textSize = 17f
+                MapUi.body(this)
                 maxLines = 2
-                setTextColor(getColor(R.color.map_text))
             })
             val metadata = buildList {
                 task.dueAt?.let { add(if (task.allDay) "All day · ${formatDate(it)}" else formatDateTime(it)) }
@@ -338,8 +344,7 @@ class MainActivity : Activity() {
             }
             if (metadata.isNotEmpty()) addView(TextView(this@MainActivity).apply {
                 text = metadata.joinToString(" · ")
-                textSize = 13f
-                setTextColor(getColor(R.color.map_muted))
+                MapUi.metadata(this)
                 setPadding(0, dp(3), 0, 0)
             })
         }, LinearLayout.LayoutParams(0, -2, 1f))
@@ -491,8 +496,7 @@ class MainActivity : Activity() {
             setBackgroundColor(getColor(R.color.map_card))
             addView(TextView(this@MainActivity).apply {
                 text = "Task details"
-                textSize = 22f
-                setTextColor(getColor(R.color.map_text))
+                MapUi.headline(this)
                 setPadding(dp(24), dp(20), dp(24), dp(4))
             })
             addView(ScrollView(this@MainActivity).apply {
@@ -519,8 +523,7 @@ class MainActivity : Activity() {
             setBackgroundResource(R.drawable.map_surface)
             addView(TextView(this@MainActivity).apply {
                 text = "Completed ${state.task.title}"
-                textSize = 14f
-                setTextColor(getColor(R.color.map_text))
+                MapUi.label(this)
             }, LinearLayout.LayoutParams(0, -2, 1f))
             addView(Button(this@MainActivity).apply {
                 text = "Undo"
@@ -545,8 +548,7 @@ class MainActivity : Activity() {
         completed.forEach { task ->
             parent.addView(TextView(this).apply {
                 text = "Completed: ${task.title}"
-                textSize = 15f
-                setTextColor(getColor(R.color.map_muted))
+                MapUi.metadata(this)
                 setPadding(0, 0, 0, dp(8))
             })
         }
@@ -570,17 +572,15 @@ class MainActivity : Activity() {
                 orientation = LinearLayout.VERTICAL
                 addView(TextView(this@MainActivity).apply {
                     text = item.title
-                    textSize = 15f
+                    MapUi.body(this)
                     maxLines = 2
                     ellipsize = android.text.TextUtils.TruncateAt.END
-                    setTextColor(getColor(R.color.map_text))
                 })
                 addView(TextView(this@MainActivity).apply {
                     text = item.artist
-                    textSize = 13f
+                    MapUi.metadata(this)
                     maxLines = 1
                     ellipsize = android.text.TextUtils.TruncateAt.END
-                    setTextColor(getColor(R.color.map_muted))
                 })
             }, LinearLayout.LayoutParams(0, -2, 1f))
             val playButton = Button(this@MainActivity).apply {
@@ -608,8 +608,7 @@ class MainActivity : Activity() {
         })
         parent.addView(TextView(this).apply {
             text = title
-            textSize = 18f
-            setTextColor(getColor(R.color.map_text))
+            MapUi.section(this)
             setPadding(0, dp(12), 0, dp(8))
         })
     }
@@ -617,7 +616,7 @@ class MainActivity : Activity() {
     private fun addEmpty(parent: LinearLayout, message: String) {
         parent.addView(TextView(this).apply {
             text = message
-            textSize = 15f
+            MapUi.body(this)
             setTextColor(getColor(R.color.map_muted))
             setPadding(0, 0, 0, dp(4))
         })
@@ -746,8 +745,7 @@ class MainActivity : Activity() {
             setBackgroundColor(getColor(R.color.map_card))
             addView(TextView(this@MainActivity).apply {
                 text = "New task"
-                textSize = 22f
-                setTextColor(getColor(R.color.map_text))
+                MapUi.headline(this)
                 setPadding(dp(24), dp(20), dp(24), dp(4))
             })
             addView(ScrollView(this@MainActivity).apply {

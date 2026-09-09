@@ -4,6 +4,10 @@
 
 ### Added
 
+- Added MAP's coordinate mark to the Home primary action and a reduced-motion-safe settle animation.
+
+- Added shared display, headline, section, body, label, metadata, and caption text roles.
+
 - Kept Home Music reachable ahead of a compact three-item Recent activity preview.
 
 - Persisted the selected Music equalizer preset when the dialog is reopened.

@@ -160,22 +160,19 @@ class ScanActivity : Activity() {
             }, LinearLayout.LayoutParams(dp(48), dp(48)))
             addView(TextView(this@ScanActivity).apply {
                 text = "Scan"
-                textSize = 18f
-                setTypeface(typeface, android.graphics.Typeface.BOLD)
-                setTextColor(getColor(R.color.map_text))
+                MapUi.section(this)
                 gravity = Gravity.CENTER_VERTICAL
                 setPadding(dp(12), 0, 0, 0)
             })
         })
         root.addView(TextView(this).apply {
             text = "Capture documents"
-            textSize = 30f
-            setTextColor(getColor(R.color.map_text))
+            MapUi.display(this)
             setPadding(0, dp(16), 0, dp(4))
         })
         root.addView(TextView(this).apply {
             text = "Corrected pages stay on this device until you export them."
-            textSize = 15f
+            MapUi.body(this)
             setTextColor(getColor(R.color.map_muted))
             setPadding(0, 0, 0, dp(16))
         })
@@ -210,8 +207,7 @@ class ScanActivity : Activity() {
         })
         root.addView(TextView(this).apply {
             text = "Pages · corners corrected in the scanner"
-            textSize = 18f
-            setTextColor(getColor(R.color.map_text))
+            MapUi.section(this)
             setPadding(0, dp(12), 0, dp(8))
         })
         pages = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -253,8 +249,7 @@ class ScanActivity : Activity() {
         })
         parent.addView(TextView(this).apply {
             text = "Music"
-            textSize = 18f
-            setTextColor(getColor(R.color.map_text))
+            MapUi.section(this)
             setPadding(0, dp(12), 0, dp(8))
         })
         LinearLayout(this).apply {
@@ -266,8 +261,7 @@ class ScanActivity : Activity() {
             setOnClickListener { startActivity(Intent(this@ScanActivity, MusicActivity::class.java).putExtra(MusicActivity.EXTRA_OPEN_PLAYER, true)) }
             addView(TextView(this@ScanActivity).apply {
                 text = "${item.title}\n${item.artist}"
-                textSize = 15f
-                setTextColor(getColor(R.color.map_text))
+                MapUi.body(this)
             }, LinearLayout.LayoutParams(0, -2, 1f))
             val playButton = Button(this@ScanActivity).apply {
                 text = if (playing) "Pause" else "Play"

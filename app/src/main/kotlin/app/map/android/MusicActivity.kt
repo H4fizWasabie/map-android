@@ -242,14 +242,13 @@ class MusicActivity : ComponentActivity() {
         }
         body.addView(TextView(this).apply {
             text = "Your music"
-            textSize = 30f
-            setTextColor(getColor(R.color.map_text))
+            MapUi.display(this)
             setPadding(0, dp(8), 0, dp(4))
         })
         body.addView(TextView(this).apply {
             val count = database.trackCount()
             text = if (refreshing) "Refreshing your selected folders…" else "$count local ${if (count == 1) "track" else "tracks"}"
-            textSize = 15f
+            MapUi.body(this)
             setTextColor(getColor(R.color.map_muted))
             setPadding(0, 0, 0, dp(16))
         })
@@ -277,8 +276,7 @@ class MusicActivity : ComponentActivity() {
             addView(actionButton("Sort: $sort") { showSortDialog() })
             addView(TextView(this@MusicActivity).apply {
                 text = activeFilterSummary()
-                textSize = 13f
-                setTextColor(getColor(R.color.map_muted))
+                MapUi.metadata(this)
                 gravity = Gravity.CENTER_VERTICAL
                 setPadding(dp(8), 0, 0, 0)
             }, LinearLayout.LayoutParams(0, -1, 1f))
@@ -388,18 +386,16 @@ class MusicActivity : ComponentActivity() {
         val text = LinearLayout(this@MusicActivity).apply { orientation = LinearLayout.VERTICAL }
         text.addView(TextView(this@MusicActivity).apply {
             this.text = item.title
-            textSize = 16f
-            setTextColor(getColor(R.color.map_text))
+            MapUi.body(this)
         })
         text.addView(TextView(this@MusicActivity).apply {
             this.text = listOf(item.artist, item.album, formatDuration(item.durationMs)).joinToString(" · ")
-            textSize = 13f
-            setTextColor(getColor(R.color.map_muted))
+            MapUi.metadata(this)
             setPadding(0, dp(3), 0, 0)
         })
         if (!item.available) text.addView(TextView(this@MusicActivity).apply {
             this.text = "Unavailable — refresh the folder or remove it"
-            textSize = 12f
+            MapUi.label(this)
             setTextColor(getColor(R.color.map_accent))
         })
         addView(text, LinearLayout.LayoutParams(0, -2, 1f))
@@ -410,7 +406,7 @@ class MusicActivity : ComponentActivity() {
 
     private fun emptyRow(message: String): View = TextView(this).apply {
         text = message
-        textSize = 15f
+        MapUi.body(this)
         setTextColor(getColor(R.color.map_muted))
         setPadding(0, dp(16), 0, dp(16))
     }
@@ -466,8 +462,7 @@ class MusicActivity : ComponentActivity() {
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(24), 0, dp(24), dp(24)) }
         body.addView(TextView(this).apply {
             text = "${playlist.trackCount} tracks"
-            textSize = 15f
-            setTextColor(getColor(R.color.map_muted))
+            MapUi.metadata(this)
             setPadding(0, 0, 0, dp(12))
         })
         body.addView(actionGroup(
@@ -490,8 +485,7 @@ class MusicActivity : ComponentActivity() {
             val largeText = isLargeTextLayout()
             val title = TextView(this).apply {
                 text = "${item.title}\n${item.artist}"
-                textSize = 15f
-                setTextColor(getColor(R.color.map_text))
+                MapUi.body(this)
             }
             val actions = listOf(
                 actionButton("Up") { database.movePlaylistItem(playlistId, item.uri, -1); showPlaylist(playlistId) },
@@ -558,7 +552,7 @@ class MusicActivity : ComponentActivity() {
         addView(cover(item, dp(52)), LinearLayout.LayoutParams(dp(52), dp(52)))
         addView(TextView(this@MusicActivity).apply {
             text = "${item.title}\n${item.artist}"
-            textSize = 14f
+            MapUi.body(this)
             setTextColor(getColor(R.color.map_text))
             setPadding(dp(12), 0, dp(8), 0)
         }, LinearLayout.LayoutParams(0, -2, 1f))
@@ -578,9 +572,9 @@ class MusicActivity : ComponentActivity() {
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL; setPadding(dp(24), 0, dp(24), dp(28)) }
         val artworkSize = minOf(dp(292), resources.displayMetrics.widthPixels - dp(48))
         body.addView(cover(item, artworkSize), LinearLayout.LayoutParams(artworkSize, artworkSize).apply { topMargin = dp(20); bottomMargin = dp(24) })
-        nowPlayingTitle = TextView(this).apply { text = item.title; textSize = 24f; setTextColor(getColor(R.color.map_text)); gravity = Gravity.CENTER; setTypeface(typeface, android.graphics.Typeface.BOLD) }
+        nowPlayingTitle = TextView(this).apply { text = item.title; MapUi.headline(this); gravity = Gravity.CENTER }
         body.addView(nowPlayingTitle)
-        nowPlayingArtist = TextView(this).apply { text = "${item.artist} · ${item.album}"; textSize = 15f; setTextColor(getColor(R.color.map_muted)); gravity = Gravity.CENTER; setPadding(0, dp(6), 0, dp(16)) }
+        nowPlayingArtist = TextView(this).apply { text = "${item.artist} · ${item.album}"; MapUi.body(this); setTextColor(getColor(R.color.map_muted)); gravity = Gravity.CENTER; setPadding(0, dp(6), 0, dp(16)) }
         body.addView(nowPlayingArtist)
         seekBar = SeekBar(this).apply {
             max = maxOf(duration, item.durationMs.toInt(), 1)
@@ -626,7 +620,7 @@ class MusicActivity : ComponentActivity() {
                 addView(actionButton("Sleep") { showSleepDialog() })
             })
         }, LinearLayout.LayoutParams(-1, -2))
-        sleepLabel = TextView(this).apply { text = ""; textSize = 13f; setTextColor(getColor(R.color.map_muted)); gravity = Gravity.CENTER; setPadding(0, dp(6), 0, 0) }
+        sleepLabel = TextView(this).apply { text = ""; MapUi.metadata(this); gravity = Gravity.CENTER; setPadding(0, dp(6), 0, 0) }
         body.addView(sleepLabel)
         scroll.addView(body)
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
@@ -901,7 +895,7 @@ class MusicActivity : ComponentActivity() {
             contentDescription = "Back"
             setOnClickListener { if (returnToLibrary) renderLibrary() else finish() }
         }, LinearLayout.LayoutParams(dp(48), dp(48)))
-        addView(TextView(this@MusicActivity).apply { text = title; textSize = 18f; setTextColor(getColor(R.color.map_text)); setTypeface(typeface, android.graphics.Typeface.BOLD); gravity = Gravity.CENTER_VERTICAL; setPadding(dp(12), 0, 0, 0) }, LinearLayout.LayoutParams(0, -1, 1f))
+        addView(TextView(this@MusicActivity).apply { text = title; MapUi.section(this); gravity = Gravity.CENTER_VERTICAL; setPadding(dp(12), 0, 0, 0) }, LinearLayout.LayoutParams(0, -1, 1f))
     }
 
     private fun cover(item: AudioItem, size: Int): View {
@@ -956,8 +950,8 @@ class MusicActivity : ComponentActivity() {
         setPadding(dp(14), dp(12), dp(14), dp(12))
         background = rounded(getColor(R.color.map_card), dp(14))
         setOnClickListener { click() }
-        addView(TextView(this@MusicActivity).apply { text = title; textSize = 16f; setTextColor(getColor(R.color.map_text)) })
-        addView(TextView(this@MusicActivity).apply { text = detail; textSize = 13f; setTextColor(getColor(R.color.map_muted)); setPadding(0, dp(3), 0, 0) })
+        addView(TextView(this@MusicActivity).apply { text = title; MapUi.body(this) })
+        addView(TextView(this@MusicActivity).apply { text = detail; MapUi.metadata(this); setPadding(0, dp(3), 0, 0) })
     }
 
     private fun isLargeTextLayout(): Boolean = resources.configuration.screenWidthDp < 360 || resources.configuration.fontScale >= 1.3f
