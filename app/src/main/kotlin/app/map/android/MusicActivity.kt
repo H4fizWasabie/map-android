@@ -730,6 +730,10 @@ class MusicActivity : ComponentActivity() {
     }
 
     private fun setSleep(mode: String, minutes: Int = 0) {
+        if (mode == MusicService.SLEEP_TIMER && minutes <= 0) {
+            Toast.makeText(this, "Enter a sleep duration greater than zero minutes.", Toast.LENGTH_LONG).show()
+            return
+        }
         sleepModeText = when (mode) { MusicService.SLEEP_TRACK -> "Stops after this track"; MusicService.SLEEP_QUEUE -> "Stops after this queue"; MusicService.SLEEP_TIMER -> "Stops in $minutes minutes"; else -> "" }
         startMusicAction(MusicService.ACTION_SLEEP, extras = mapOf(MusicService.EXTRA_SLEEP_MODE to mode, MusicService.EXTRA_MINUTES to minutes))
         updatePlaybackViews()
