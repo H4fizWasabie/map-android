@@ -84,6 +84,8 @@ class MusicActivity : Activity() {
     private var positionLabel: TextView? = null
     private var durationLabel: TextView? = null
     private var playButton: ImageButton? = null
+    private var playerScroll: ScrollView? = null
+    private var playerScrollY = 0
     private var nowPlayingTitle: TextView? = null
     private var nowPlayingArtist: TextView? = null
     private var sleepLabel: TextView? = null
@@ -147,6 +149,7 @@ class MusicActivity : Activity() {
         activePlaylist = savedInstanceState?.getLong(STATE_ACTIVE_PLAYLIST, -1L)?.takeIf { it > 0L }
         query = savedInstanceState?.getString(STATE_QUERY).orEmpty()
         sort = savedInstanceState?.getString(STATE_SORT).orEmpty().ifBlank { "Title" }
+        playerScrollY = savedInstanceState?.getInt(STATE_PLAYER_SCROLL_Y, 0) ?: 0
         savedInstanceState?.getStringArray(STATE_FILTERS)?.let { values ->
             filters = MusicFilters(
                 format = values.getOrNull(0) ?: filters.format,
@@ -203,7 +206,15 @@ class MusicActivity : Activity() {
         outState.putString(STATE_QUERY, query)
         outState.putString(STATE_SORT, sort)
         outState.putStringArray(STATE_FILTERS, arrayOf(filters.format, filters.artist, filters.album, filters.genre, filters.folder, filters.duration, filters.availability))
+        outState.putInt(STATE_PLAYER_SCROLL_Y, playerScroll?.scrollY ?: playerScrollY)
         super.onSaveInstanceState(outState)
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus && showingPlayer && playerScrollY > 0) {
+            playerScroll?.post { playerScroll?.scrollTo(0, playerScrollY) }
+        }
     }
 
     override fun onBackPressed() {
@@ -571,7 +582,10 @@ class MusicActivity : Activity() {
         nowPlayingDuration = item.durationMs
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(getColor(R.color.map_background)) }
         root.addView(header("Now Playing", true))
-        val scroll = ScrollView(this)
+        val scroll = ScrollView(this).apply {
+            playerScroll = this
+            setOnScrollChangeListener { _, _, scrollY, _, _ -> playerScrollY = scrollY }
+        }
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL; setPadding(dp(24), 0, dp(24), dp(28)) }
         val artworkSize = minOf(dp(292), resources.displayMetrics.widthPixels - dp(48))
         body.addView(cover(item, artworkSize), LinearLayout.LayoutParams(artworkSize, artworkSize).apply { topMargin = dp(20); bottomMargin = dp(24) })
@@ -629,6 +643,7 @@ class MusicActivity : Activity() {
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         MapUi.applySystemBarInsets(root)
         setContentView(root)
+        scroll.post { scroll.scrollTo(0, playerScrollY) }
         updatePlaybackViews()
     }
 
@@ -1008,6 +1023,7 @@ class MusicActivity : Activity() {
     companion object {
         const val EXTRA_OPEN_PLAYER = "open_player"
         private const val STATE_SHOWING_PLAYER = "showing_player"
+        private const val STATE_PLAYER_SCROLL_Y = "player_scroll_y"
         private const val STATE_MODE = "mode"
         private const val STATE_ACTIVE_PLAYLIST = "active_playlist"
         private const val STATE_QUERY = "query"
