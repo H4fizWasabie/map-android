@@ -4,6 +4,8 @@
 
 ### Added
 
+- Preserved primary screen scroll position across configuration changes.
+
 - Created the native Android foundation and project operating rules.
 - Added the first Home/Today layout with task groups and recent activity state.
 - Added local task storage, task creation, completion, recurrence selection, and one-day snooze.
