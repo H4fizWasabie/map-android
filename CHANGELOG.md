@@ -4,6 +4,8 @@
 
 ### Added
 
+- Kept Now Playing elapsed and remaining time labels synchronized with playback.
+
 - Loaded PDF page metadata off the UI thread with a visible local-loading state.
 
 - Added local artwork and clearer playback labels to Music library rows.

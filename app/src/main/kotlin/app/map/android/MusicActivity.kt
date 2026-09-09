@@ -81,6 +81,8 @@ class MusicActivity : Activity() {
     private var position = 0
     private var duration = 0
     private var seekBar: SeekBar? = null
+    private var positionLabel: TextView? = null
+    private var durationLabel: TextView? = null
     private var playButton: ImageButton? = null
     private var nowPlayingTitle: TextView? = null
     private var nowPlayingArtist: TextView? = null
@@ -566,6 +568,7 @@ class MusicActivity : Activity() {
     private fun renderPlayer() {
         showingPlayer = true
         val item = currentTrack() ?: run { renderLibrary(); return }
+        nowPlayingDuration = item.durationMs
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(getColor(R.color.map_background)) }
         root.addView(header("Now Playing", true))
         val scroll = ScrollView(this)
@@ -589,8 +592,10 @@ class MusicActivity : Activity() {
         body.addView(seekBar, LinearLayout.LayoutParams(-1, dp(48)))
         body.addView(LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            addView(TextView(this@MusicActivity).apply { text = formatDuration(position.toLong()); setTextColor(getColor(R.color.map_muted)) }, LinearLayout.LayoutParams(0, -2, 1f))
-            addView(TextView(this@MusicActivity).apply { text = formatDuration((if (duration > 0) duration else item.durationMs.toInt()).toLong()); setTextColor(getColor(R.color.map_muted)); gravity = Gravity.END })
+            positionLabel = TextView(this@MusicActivity).apply { setTextColor(getColor(R.color.map_muted)) }
+            durationLabel = TextView(this@MusicActivity).apply { setTextColor(getColor(R.color.map_muted)); gravity = Gravity.END }
+            addView(positionLabel, LinearLayout.LayoutParams(0, -2, 1f))
+            addView(durationLabel)
         }, LinearLayout.LayoutParams(-1, -2))
         body.addView(LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -631,10 +636,13 @@ class MusicActivity : Activity() {
         playButton?.setImageResource(if (playing) R.drawable.ic_map_pause else R.drawable.ic_map_play)
         playButton?.contentDescription = if (playing) "Pause" else "Play"
         seekBar?.let { bar -> if (!bar.isPressed) { bar.max = maxOf(duration, 1); bar.progress = position.coerceIn(0, bar.max) } }
+        positionLabel?.text = formatDuration(position.toLong())
+        durationLabel?.text = formatDuration((if (duration > 0) duration else nowPlayingDuration).toLong())
         sleepLabel?.text = if (sleepModeText.isBlank()) "" else sleepModeText
     }
 
     private var sleepModeText = ""
+    private var nowPlayingDuration = 0L
 
     private fun showQueueDialog() {
         val queue = database.queue()
