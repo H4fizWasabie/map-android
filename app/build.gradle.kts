@@ -34,6 +34,7 @@ android {
 }
 
 dependencies {
+    implementation("androidx.activity:activity:1.10.1")
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.media3:media3-exoplayer:1.11.0")
     implementation("com.google.mlkit:text-recognition:16.0.1")

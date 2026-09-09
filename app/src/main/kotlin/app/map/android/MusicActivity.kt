@@ -1,7 +1,6 @@
 package app.map.android
 
 import android.Manifest
-import android.app.Activity
 import android.app.AlertDialog
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -17,10 +16,8 @@ import android.provider.DocumentsContract
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.Gravity
-import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
-import android.window.OnBackInvokedCallback
 import android.widget.ArrayAdapter
 import android.widget.AbsListView
 import android.widget.BaseAdapter
@@ -39,6 +36,8 @@ import android.widget.Spinner
 import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 import androidx.core.content.ContextCompat
 import java.util.ArrayDeque
 import java.util.concurrent.Executors
@@ -67,7 +66,7 @@ private sealed class LibraryRow {
     data class Empty(val message: String) : LibraryRow()
 }
 
-class MusicActivity : Activity() {
+class MusicActivity : ComponentActivity() {
     private lateinit var database: MusicDatabase
     private val executor = Executors.newSingleThreadExecutor()
     private var mode = MusicViewMode.SONGS
@@ -100,7 +99,6 @@ class MusicActivity : Activity() {
     private var bassLevel: Short = 0
     private var virtualizerLevel: Short = 0
     private lateinit var libraryAdapter: LibraryAdapter
-    private var backCallback: Any? = null
     private var resultsGeneration = 0L
 
     private val stateReceiver = object : BroadcastReceiver() {
@@ -162,14 +160,9 @@ class MusicActivity : Activity() {
                 availability = values.getOrNull(6) ?: filters.availability,
             )
         }
-        if (Build.VERSION.SDK_INT >= 33) {
-            val callback = OnBackInvokedCallback { handleBack() }
-            backCallback = callback
-            onBackInvokedDispatcher.registerOnBackInvokedCallback(
-                android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT,
-                callback
-            )
-        }
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() = handleBack()
+        })
         window.statusBarColor = getColor(R.color.map_background)
         window.navigationBarColor = getColor(R.color.map_background)
         val restorePlayer = savedInstanceState?.getBoolean(STATE_SHOWING_PLAYER, false) == true
@@ -194,7 +187,6 @@ class MusicActivity : Activity() {
 
     override fun onDestroy() {
         resultsGeneration++
-        if (Build.VERSION.SDK_INT >= 33) (backCallback as? OnBackInvokedCallback)?.let(onBackInvokedDispatcher::unregisterOnBackInvokedCallback)
         executor.shutdownNow()
         database.close()
         super.onDestroy()
@@ -216,12 +208,6 @@ class MusicActivity : Activity() {
         if (hasFocus && showingPlayer && playerScrollY > 0) {
             playerScroll?.post { playerScroll?.scrollTo(0, playerScrollY) }
         }
-    }
-
-    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
-        if (keyCode != KeyEvent.KEYCODE_BACK) return super.onKeyUp(keyCode, event)
-        handleBack()
-        return true
     }
 
     private fun handleBack() {
