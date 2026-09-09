@@ -678,7 +678,10 @@ class MusicActivity : ComponentActivity() {
             setOnCheckedChangeListener { _, enabled -> startMusicAction(MusicService.ACTION_EQ_ENABLED, extras = mapOf(MusicService.EXTRA_ENABLED to enabled)) }
         })
         if (eqPresets.isNotEmpty()) {
-            val preset = Spinner(this).apply { adapter = ArrayAdapter(this@MusicActivity, android.R.layout.simple_spinner_dropdown_item, eqPresets.toList()) }
+            val preset = Spinner(this).apply {
+                adapter = ArrayAdapter(this@MusicActivity, android.R.layout.simple_spinner_dropdown_item, eqPresets.toList())
+                database.equalizerPreset()?.toInt()?.takeIf { it in eqPresets.indices }?.let(::setSelection)
+            }
             body.addView(preset)
             body.addView(actionButton("Apply preset") { startMusicAction(MusicService.ACTION_EQ_PRESET, extras = mapOf(MusicService.EXTRA_PRESET to preset.selectedItemPosition.toShort())) })
         }

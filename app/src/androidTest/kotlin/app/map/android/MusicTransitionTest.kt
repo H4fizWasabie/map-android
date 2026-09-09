@@ -11,6 +11,7 @@ import androidx.test.uiautomator.Until
 import java.io.File
 import java.io.FileOutputStream
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -74,6 +75,37 @@ class MusicTransitionTest {
             clickText("Open music")
             assertPlayback()
         }
+    }
+
+    @Test
+    fun equalizerPresetSurvivesDatabaseReopen() {
+        MusicDatabase(context).also { database ->
+            database.setEqualizerPreset(3)
+            database.close()
+        }
+
+        MusicDatabase(context).also { database ->
+            assertEquals(3, database.equalizerPreset())
+            database.close()
+        }
+    }
+
+    @Test
+    fun homeMiniPlayerCanPauseAndResumePlayback() {
+        launchMap()
+        clickText("Tools")
+        clickText("Open music")
+        clickDescription("Play")
+        dismissNotificationPermission()
+        assertPlayback()
+
+        device.pressHome()
+        SystemClock.sleep(500)
+        launchMap()
+        clickDescription("Pause")
+        assertTrue("Home mini-player did not pause", device.wait(Until.hasObject(By.desc("Play")), TIMEOUT))
+        clickDescription("Play")
+        assertTrue("Home mini-player did not resume", device.wait(Until.hasObject(By.desc("Pause")), TIMEOUT))
     }
 
     private fun launchMap() {

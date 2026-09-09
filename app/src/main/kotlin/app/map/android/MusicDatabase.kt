@@ -290,6 +290,8 @@ class MusicDatabase(context: Context) : SQLiteOpenHelper(context, "map-music.db"
     fun repeat(): String = state("repeat") ?: "off"
     fun setEqualizerEnabled(enabled: Boolean) = setState("equalizer", enabled.toString())
     fun equalizerEnabled(): Boolean = state("equalizer").toBoolean()
+    fun setEqualizerPreset(preset: Short) = setState("eq_preset", preset.toString())
+    fun equalizerPreset(): Short? = state("eq_preset")?.toShortOrNull()
     fun setEqualizerBand(band: Int, level: Short) = setState("eq_band_$band", level.toString())
     fun equalizerBand(band: Int): Short? = state("eq_band_$band")?.toShortOrNull()
     fun setBassStrength(strength: Short) = setState("bass", strength.toString())

@@ -187,9 +187,9 @@ class MainActivity : Activity() {
             if (inbox.isEmpty() && overdue.isEmpty() && today.isEmpty() && upcoming.isEmpty()) {
                 addEmpty(body, "Nothing is scheduled. Add a task when something needs a place.")
             }
-            val completed = database.recentCompleted()
-            if (completed.isNotEmpty()) addActivity(body, completed)
             addMusicMiniPlayer(body)
+            val completed = database.recentCompleted()
+            if (completed.isNotEmpty()) addActivity(body, completed.take(3))
         }
     }
 
@@ -589,7 +589,8 @@ class MainActivity : Activity() {
                 contentDescription = text
                 setOnClickListener {
                     requestNotificationsIfNeeded()
-                    val intent = Intent(this@MainActivity, MusicService::class.java).setAction(MusicService.ACTION_TOGGLE)
+                    val action = if (text == "Pause") MusicService.ACTION_PAUSE else MusicService.ACTION_RESUME
+                    val intent = Intent(this@MainActivity, MusicService::class.java).setAction(action)
                     if (!startMapMusicService(this@MainActivity, intent)) {
                         Toast.makeText(this@MainActivity, "MAP could not start Music. Try Play again.", Toast.LENGTH_LONG).show()
                     }
