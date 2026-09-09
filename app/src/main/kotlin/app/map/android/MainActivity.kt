@@ -106,7 +106,10 @@ class MainActivity : Activity() {
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
         }.timeInMillis
-        val startOfTomorrow = startOfToday + DAY
+        val startOfTomorrow = Calendar.getInstance().apply {
+            timeInMillis = startOfToday
+            add(Calendar.DAY_OF_YEAR, 1)
+        }.timeInMillis
 
         render("Today", "Home") { body ->
             body.addView(TextView(this).apply {
