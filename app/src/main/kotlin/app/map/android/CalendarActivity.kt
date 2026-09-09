@@ -41,7 +41,15 @@ class CalendarActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         database = TaskDatabase(this)
+        savedInstanceState?.takeIf { it.containsKey(STATE_SELECTED_DAY) }?.getLong(STATE_SELECTED_DAY)?.let { selectedDay = dayStart(it) }
+        weekMode = savedInstanceState?.getBoolean(STATE_WEEK_MODE, false) ?: false
         render()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putLong(STATE_SELECTED_DAY, selectedDay)
+        outState.putBoolean(STATE_WEEK_MODE, weekMode)
+        super.onSaveInstanceState(outState)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -351,6 +359,8 @@ class CalendarActivity : Activity() {
         private const val FIRST_HOUR = 6
         private const val LAST_HOUR = 22
         private const val NOTIFICATION_REQUEST = 14
+        private const val STATE_SELECTED_DAY = "selected_day"
+        private const val STATE_WEEK_MODE = "week_mode"
         private fun dayStart(value: Long): Long = Calendar.getInstance().apply { timeInMillis = value; set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
         private fun addDays(value: Long, amount: Int): Long = Calendar.getInstance().apply { timeInMillis = value; add(Calendar.DAY_OF_YEAR, amount) }.timeInMillis
         private fun monday(value: Long): Long {
