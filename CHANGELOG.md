@@ -110,3 +110,4 @@
 - Added a GitHub Actions quality gate for Android builds, lint, tests, and changelog checks.
 - Kept the Android quality gate on supported GitHub Actions runtimes.
 - Explicitly kept MAP's internal activities private to the app.
+- Made the Home Focus panel open its current or next task when tapped.
