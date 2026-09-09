@@ -4,6 +4,8 @@
 
 ### Added
 
+- Allowed panning across both axes when inspecting a zoomed image.
+
 - Made image viewer zoom controls work for local image files.
 
 - Preserved image viewer pinch zoom across rotation and recreation.
