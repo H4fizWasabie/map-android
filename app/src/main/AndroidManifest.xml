@@ -21,11 +21,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".CalendarActivity" />
-        <activity android:name=".ToolsActivity" />
-        <activity android:name=".ScanActivity" />
-        <activity android:name=".MusicActivity" />
-        <activity android:name=".DocumentViewerActivity" />
+        <activity android:name=".CalendarActivity" android:exported="false" />
+        <activity android:name=".ToolsActivity" android:exported="false" />
+        <activity android:name=".ScanActivity" android:exported="false" />
+        <activity android:name=".MusicActivity" android:exported="false" />
+        <activity android:name=".DocumentViewerActivity" android:exported="false" />
         <service
             android:name=".MusicService"
             android:exported="false"
