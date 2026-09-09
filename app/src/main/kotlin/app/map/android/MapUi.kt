@@ -2,11 +2,15 @@ package app.map.android
 
 import android.app.Activity
 import android.content.Context
+import android.graphics.Typeface
+import android.animation.ValueAnimator
 import android.view.Gravity
+import android.view.animation.PathInterpolator
 import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import android.widget.TextView
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 
@@ -14,6 +18,46 @@ object MapUi {
     private fun expandedNavigation(context: Context): Boolean = context.resources.configuration.screenWidthDp >= 600
 
     fun dp(context: Context, value: Int): Int = (value * context.resources.displayMetrics.density).toInt()
+
+    private fun textRole(view: TextView, size: Float, weight: Int, color: Int, family: String = "sans-serif") {
+        view.textSize = size
+        view.typeface = Typeface.create(family, weight)
+        view.setTextColor(view.context.getColor(color))
+    }
+
+    fun display(view: TextView) = textRole(view, 30f, Typeface.NORMAL, R.color.map_text, "sans-serif-medium")
+
+    fun headline(view: TextView) = textRole(view, 22f, Typeface.NORMAL, R.color.map_text, "sans-serif-medium")
+
+    fun section(view: TextView) = textRole(view, 18f, Typeface.NORMAL, R.color.map_text, "sans-serif-medium")
+
+    fun body(view: TextView) = textRole(view, 16f, Typeface.NORMAL, R.color.map_text)
+
+    fun label(view: TextView) = textRole(view, 14f, Typeface.NORMAL, R.color.map_text, "sans-serif-medium")
+
+    fun metadata(view: TextView) = textRole(view, 13f, Typeface.NORMAL, R.color.map_muted)
+
+    fun caption(view: TextView) = textRole(view, 12f, Typeface.NORMAL, R.color.map_muted)
+
+    fun markPrimaryAction(button: Button) {
+        val mark = button.context.getDrawable(R.drawable.ic_map_coordinate)?.mutate() ?: return
+        mark.setTint(button.context.getColor(R.color.map_on_accent))
+        button.setCompoundDrawablesWithIntrinsicBounds(mark, null, null, null)
+        button.compoundDrawablePadding = dp(button.context, 8)
+    }
+
+    fun settlePrimaryAction(view: View) {
+        if (!ValueAnimator.areAnimatorsEnabled()) return
+        view.post {
+            if (!view.isAttachedToWindow) return@post
+            view.translationY = dp(view.context, 8).toFloat()
+            view.animate()
+                .translationY(0f)
+                .setDuration(180L)
+                .setInterpolator(PathInterpolator(0.16f, 1f, 0.3f, 1f))
+                .start()
+        }
+    }
 
     fun applySystemBarInsets(view: View) {
         val initialLeft = view.paddingLeft

@@ -95,13 +95,12 @@ class CalendarActivity : Activity() {
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(24), 0, dp(24), dp(24)) }
         body.addView(TextView(this).apply {
             text = if (weekMode) "This week" else "Today"
-            textSize = 30f
-            setTextColor(getColor(R.color.map_text))
+            MapUi.display(this)
             setPadding(0, dp(8), 0, dp(4))
         })
         body.addView(TextView(this).apply {
             text = if (weekMode) "A quiet view of the week ahead." else formatDate(selectedDay)
-            textSize = 15f
+            MapUi.body(this)
             setTextColor(getColor(R.color.map_muted))
             setPadding(0, 0, 0, dp(12))
         })
@@ -110,7 +109,7 @@ class CalendarActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             addView(actionButton("Today") { selectedDay = dayStart(System.currentTimeMillis()); weekMode = false; render() })
             addView(actionButton(if (weekMode) "Today agenda" else "Week") { weekMode = !weekMode; render() })
-            addView(Button(this@CalendarActivity, null, 0, R.style.MapPrimaryButton).apply {
+            val addTaskButton = Button(this@CalendarActivity, null, 0, R.style.MapPrimaryButton).apply {
                 text = "Add task"
                 isAllCaps = false
                 minHeight = dp(48)
@@ -118,7 +117,9 @@ class CalendarActivity : Activity() {
                 setOnClickListener {
                     startActivity(Intent(this@CalendarActivity, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP).putExtra(MainActivity.EXTRA_OPEN_COMPOSER, true))
                 }
-            })
+            }
+            MapUi.markPrimaryAction(addTaskButton)
+            addView(addTaskButton)
         }.also { body.addView(it) }
         addUndoBar(body)
         if (weekMode) addWeek(body) else addDay(body)
@@ -141,14 +142,12 @@ class CalendarActivity : Activity() {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
         setPadding(dp(16), dp(24), dp(16), dp(4))
-        addView(TextView(this@CalendarActivity).apply {
-            text = "Calendar"
-            textSize = 18f
-            gravity = Gravity.CENTER_VERTICAL
-            setTextColor(getColor(R.color.map_text))
-            setTypeface(typeface, android.graphics.Typeface.BOLD)
-            setPadding(0, 0, 0, 0)
-        }, LinearLayout.LayoutParams(0, -1, 1f))
+            addView(TextView(this@CalendarActivity).apply {
+                text = "Calendar"
+                MapUi.section(this)
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, 0, 0, 0)
+            }, LinearLayout.LayoutParams(0, -1, 1f))
     }
 
     private fun navigate(label: String) {
@@ -204,8 +203,7 @@ class CalendarActivity : Activity() {
         }
         row.addView(TextView(this).apply {
             text = "%02d:00".format(hour)
-            textSize = 12f
-            setTextColor(getColor(R.color.map_muted))
+            MapUi.caption(this)
             setPadding(0, dp(8), dp(8), 0)
         }, LinearLayout.LayoutParams(dp(58), -1))
         val slot = LinearLayout(this).apply {
@@ -230,8 +228,7 @@ class CalendarActivity : Activity() {
             val dayTasks = tasks.filter { it.dueAt?.let(::dayStart) == day }.sortedWith(compareByDescending<Task> { it.allDay }.thenBy { it.dueAt })
             parent.addView(TextView(this).apply {
                 text = SimpleDateFormat("EEEE, d MMM", Locale.getDefault()).format(Date(day))
-                textSize = 17f
-                setTextColor(getColor(R.color.map_text))
+                MapUi.section(this)
                 setPadding(0, dp(12), 0, dp(6))
             })
             if (dayTasks.isEmpty()) addEmpty(parent, "Open") else dayTasks.forEach { addTaskRow(parent, it) }
@@ -262,14 +259,12 @@ class CalendarActivity : Activity() {
             setPadding(dp(8), 0, 0, 0)
             addView(TextView(this@CalendarActivity).apply {
                 text = task.title
-                textSize = 16f
                 maxLines = 2
-                setTextColor(getColor(R.color.map_text))
+                MapUi.body(this)
             })
             addView(TextView(this@CalendarActivity).apply {
                 text = if (task.allDay) "All day" else SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(task.dueAt ?: 0))
-                textSize = 13f
-                setTextColor(getColor(R.color.map_muted))
+                MapUi.metadata(this)
                 setPadding(0, dp(3), 0, 0)
             })
         }, LinearLayout.LayoutParams(0, -2, 1f))
@@ -299,8 +294,7 @@ class CalendarActivity : Activity() {
             setBackgroundResource(R.drawable.map_surface)
             addView(TextView(this@CalendarActivity).apply {
                 text = "Completed ${state.task.title}"
-                textSize = 14f
-                setTextColor(getColor(R.color.map_text))
+                MapUi.label(this)
             }, LinearLayout.LayoutParams(0, -2, 1f))
             addView(Button(this@CalendarActivity).apply {
                 text = "Undo"
@@ -338,10 +332,9 @@ class CalendarActivity : Activity() {
             setOnClickListener { startActivity(Intent(this@CalendarActivity, MusicActivity::class.java).putExtra(MusicActivity.EXTRA_OPEN_PLAYER, true)) }
             addView(TextView(this@CalendarActivity).apply {
                 text = "${item.title}\n${item.artist}"
-                textSize = 14f
+                MapUi.body(this)
                 maxLines = 2
                 ellipsize = android.text.TextUtils.TruncateAt.END
-                setTextColor(getColor(R.color.map_text))
                 setPadding(0, 0, dp(8), 0)
             }, LinearLayout.LayoutParams(0, -2, 1f))
             val playButton = Button(this@CalendarActivity).apply {
@@ -378,14 +371,13 @@ class CalendarActivity : Activity() {
 
     private fun addHeading(parent: LinearLayout, text: String) = parent.addView(TextView(this).apply {
         this.text = text
-        textSize = 18f
-        setTextColor(getColor(R.color.map_text))
+        MapUi.section(this)
         setPadding(0, dp(16), 0, dp(8))
     })
 
     private fun addEmpty(parent: LinearLayout, text: String) = parent.addView(TextView(this).apply {
         this.text = text
-        textSize = 15f
+        MapUi.body(this)
         setTextColor(getColor(R.color.map_muted))
         setPadding(0, 0, 0, dp(8))
     })

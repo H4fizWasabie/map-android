@@ -61,12 +61,11 @@ class ToolsActivity : Activity() {
         }
         body.addView(TextView(this).apply {
             text = "Personal tools"
-            textSize = 30f
-            setTextColor(getColor(R.color.map_text))
+            MapUi.display(this)
         })
         body.addView(TextView(this).apply {
             text = "Simple, local tools for the things you return to every day."
-            textSize = 15f
+            MapUi.body(this)
             setTextColor(getColor(R.color.map_muted))
             setPadding(0, dp(4), 0, dp(16))
         })
@@ -95,10 +94,8 @@ class ToolsActivity : Activity() {
         setPadding(dp(16), dp(24), dp(16), dp(4))
         addView(TextView(this@ToolsActivity).apply {
             text = "Tools"
-            textSize = 18f
+            MapUi.section(this)
             gravity = Gravity.CENTER_VERTICAL
-            setTextColor(getColor(R.color.map_text))
-            setTypeface(typeface, android.graphics.Typeface.BOLD)
             setPadding(0, 0, 0, 0)
         })
     }
@@ -123,7 +120,7 @@ class ToolsActivity : Activity() {
         recent.take(3).forEach { item ->
             parent.addView(TextView(this).apply {
                 text = if (item.available) item.name else "${item.name} · unavailable"
-                textSize = 15f
+                MapUi.body(this)
                 setTextColor(if (item.available) getColor(R.color.map_text) else getColor(R.color.map_muted))
                 minHeight = dp(48)
                 gravity = Gravity.CENTER_VERTICAL
@@ -174,13 +171,11 @@ class ToolsActivity : Activity() {
             setPadding(dp(14), 0, 0, 0)
             addView(TextView(this@ToolsActivity).apply {
                 text = title
-                textSize = 19f
-                setTextColor(getColor(R.color.map_text))
+                MapUi.section(this)
             })
             addView(TextView(this@ToolsActivity).apply {
                 text = subtitle
-                textSize = 14f
-                setTextColor(getColor(R.color.map_muted))
+                MapUi.metadata(this)
                 setPadding(0, dp(3), 0, 0)
             })
         }

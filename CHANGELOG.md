@@ -4,6 +4,16 @@
 
 ### Added
 
+- Added MAP's coordinate mark to the Home primary action and a reduced-motion-safe settle animation.
+
+- Added shared display, headline, section, body, label, metadata, and caption text roles.
+
+- Kept Home Music reachable ahead of a compact three-item Recent activity preview.
+
+- Persisted the selected Music equalizer preset when the dialog is reopened.
+
+- Added a Home mini-player pause/resume regression flow.
+
 - Added an immediate Undo action after completing a task from Calendar.
 
 - Added an instrumented Music transition regression gate using synthetic local media.
@@ -48,6 +58,8 @@
 - Added the full Google document-scanner capture flow for automatic corner correction, perspective cleanup, rotation, and multi-page review.
 
 ### Changed
+
+- Made Home mini-player pause and resume commands explicit instead of state-agnostic toggles.
 
 - Aligned Android build tooling with compileSdk 36 using AGP 8.13.2 and Gradle 8.13, including AndroidX predictive-back handling.
 

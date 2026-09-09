@@ -384,6 +384,7 @@ class MusicService : Service() {
         val effect = equalizer ?: return
         if (preset !in 0 until effect.numberOfPresets) return
         effect.usePreset(preset)
+        database.setEqualizerPreset(preset)
         for (band in 0 until effect.numberOfBands.toInt()) database.setEqualizerBand(band, effect.getBandLevel(band.toShort()))
         broadcastState()
     }

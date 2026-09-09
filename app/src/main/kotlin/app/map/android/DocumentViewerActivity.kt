@@ -350,9 +350,8 @@ class DocumentViewerActivity : Activity() {
             }, LinearLayout.LayoutParams(dp(48), dp(48)))
             addView(TextView(this@DocumentViewerActivity).apply {
                 text = name
-                textSize = 18f
+                MapUi.section(this)
                 gravity = Gravity.CENTER_VERTICAL
-                setTextColor(getColor(R.color.map_text))
                 setPadding(dp(12), 0, dp(12), 0)
                 maxLines = 1
                 ellipsize = android.text.TextUtils.TruncateAt.END
@@ -400,8 +399,7 @@ class DocumentViewerActivity : Activity() {
             }
         }, LinearLayout.LayoutParams(-1, -2))
         status = TextView(this@DocumentViewerActivity).apply {
-            textSize = 14f
-            setTextColor(getColor(R.color.map_muted))
+            MapUi.metadata(this)
             setPadding(dp(16), 0, dp(16), dp(4))
             visibility = View.GONE
         }
@@ -524,13 +522,12 @@ class DocumentViewerActivity : Activity() {
         root.addView(button("Back") { finish() })
         root.addView(TextView(this).apply {
             text = "Document unavailable"
-            textSize = 28f
-            setTextColor(getColor(R.color.map_text))
+            MapUi.headline(this)
             setPadding(0, dp(24), 0, dp(8))
         })
         root.addView(TextView(this).apply {
             text = message
-            textSize = 16f
+            MapUi.body(this)
             setTextColor(getColor(R.color.map_muted))
             setPadding(0, 0, 0, dp(16))
         })

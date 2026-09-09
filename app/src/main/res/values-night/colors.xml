@@ -1,12 +1,12 @@
 <resources>
-    <color name="map_background">#101817</color>
-    <color name="map_text">#EEF4EE</color>
-    <color name="map_muted">#ADBCB6</color>
-    <color name="map_accent">#83D6C5</color>
-    <color name="map_accent_pressed">#A4E7D8</color>
-    <color name="map_on_accent">#08251F</color>
-    <color name="map_divider">#34453F</color>
-    <color name="map_card">#182321</color>
-    <color name="map_focus">#24453D</color>
-    <color name="map_nav_background">#15201E</color>
+    <color name="map_background">#10151C</color>
+    <color name="map_text">#EEF2F7</color>
+    <color name="map_muted">#AAB6C2</color>
+    <color name="map_accent">#AFC5FF</color>
+    <color name="map_accent_pressed">#D4DFFF</color>
+    <color name="map_on_accent">#0E1B39</color>
+    <color name="map_divider">#34404D</color>
+    <color name="map_card">#171E27</color>
+    <color name="map_focus">#25365B</color>
+    <color name="map_nav_background">#151C25</color>
 </resources>
