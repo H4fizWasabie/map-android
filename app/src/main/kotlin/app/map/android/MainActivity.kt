@@ -218,11 +218,17 @@ class MainActivity : Activity() {
         val next = tasks.asSequence()
             .filter { it.id != focus?.id && it.dueAt != null && it.dueAt!! >= now }
             .minByOrNull { it.dueAt!! }
+        val actionTask = focus ?: next
         addHeading(parent, "Focus")
         parent.addView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(14), dp(16), dp(14))
             setBackgroundResource(R.drawable.map_focus_surface)
+            actionTask?.let { task ->
+                contentDescription = "Open focus task ${task.title}"
+                isFocusable = true
+                setOnClickListener { showTaskDetails(task) }
+            }
             addView(focusLine("Now", focus?.let(::focusLabel) ?: "Nothing in progress"))
             addView(focusLine("Next", next?.let(::focusLabel) ?: "Nothing queued"))
             focus?.let { task ->
