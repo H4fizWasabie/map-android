@@ -4,6 +4,8 @@
 
 ### Added
 
+- Preserved the Now Playing scroll position across rotation and recreation.
+
 - Kept Now Playing elapsed and remaining time labels synchronized with playback.
 
 - Loaded PDF page metadata off the UI thread with a visible local-loading state.
