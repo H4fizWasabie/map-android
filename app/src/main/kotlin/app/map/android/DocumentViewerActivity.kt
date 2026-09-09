@@ -48,6 +48,7 @@ class DocumentViewerActivity : Activity() {
     private var pdfPagesContainer: LinearLayout? = null
     private var pdfBaseWidth = 0
     private var pdfZoom = 1f
+    private var restoredPdfScrollY = 0
     private var pdfRenderGeneration = 0L
     private val pdfRenderLock = Any()
     private val pdfExecutor = Executors.newSingleThreadExecutor()
@@ -69,8 +70,16 @@ class DocumentViewerActivity : Activity() {
         mime = intent.getStringExtra(EXTRA_MIME).orEmpty().ifBlank {
             contentResolver.getType(uri).orEmpty().ifBlank { "application/pdf" }
         }
+        pdfZoom = savedInstanceState?.getFloat(STATE_PDF_ZOOM, 1f)?.coerceIn(0.75f, 2.5f) ?: 1f
+        restoredPdfScrollY = savedInstanceState?.getInt(STATE_PDF_SCROLL_Y, 0) ?: 0
         database.markOpened(uri.toString())
         loadDocument()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putFloat(STATE_PDF_ZOOM, pdfZoom)
+        outState.putInt(STATE_PDF_SCROLL_Y, pdfScroll?.scrollY ?: 0)
+        super.onSaveInstanceState(outState)
     }
 
     override fun onDestroy() {
@@ -111,6 +120,7 @@ class DocumentViewerActivity : Activity() {
         }
         pdfPages = dimensions.mapIndexed { index, size ->
             PdfPageView(index, size.first, size.second).also { page ->
+                page.zoom = pdfZoom
                 pages.addView(page, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
             }
         }
@@ -127,7 +137,14 @@ class DocumentViewerActivity : Activity() {
         val root = viewerRoot()
         root.addView(vertical, LinearLayout.LayoutParams(-1, 0, 1f))
         setContentView(root)
-        vertical.post { renderVisiblePages() }
+        if (pdfZoom != 1f) {
+            status.text = "Zoom ${(pdfZoom * 100).roundToInt()}%"
+            status.visibility = View.VISIBLE
+        }
+        vertical.post {
+            vertical.scrollTo(0, restoredPdfScrollY)
+            renderVisiblePages()
+        }
     }
 
     private fun renderVisiblePages() {
@@ -171,7 +188,9 @@ class DocumentViewerActivity : Activity() {
     private fun setPdfZoom(value: Float) {
         pdfZoom = value.coerceIn(0.75f, 2.5f)
         pdfRenderGeneration++
-        pdfPagesContainer?.layoutParams = ViewGroup.LayoutParams((pdfBaseWidth * pdfZoom).roundToInt(), -2)
+        pdfPagesContainer?.layoutParams = pdfPagesContainer?.layoutParams?.apply {
+            width = (pdfBaseWidth * pdfZoom).roundToInt()
+        }
         pdfPages.forEach { it.zoom = pdfZoom; it.clearBitmap() }
         pdfPagesContainer?.requestLayout()
         pdfScroll?.post { renderVisiblePages() }
@@ -521,5 +540,7 @@ class DocumentViewerActivity : Activity() {
         const val EXTRA_URI = "document_uri"
         const val EXTRA_NAME = "document_name"
         const val EXTRA_MIME = "document_mime"
+        private const val STATE_PDF_ZOOM = "pdf_zoom"
+        private const val STATE_PDF_SCROLL_Y = "pdf_scroll_y"
     }
 }
