@@ -29,6 +29,7 @@
 
 ### Changed
 
+- Return from Music playlist details to the Music library with Back.
 - Preserve Music library context across configuration changes.
 - Harden PDF viewer zoom and preserve its position across configuration changes.
 - Preserve Scan page selections across configuration changes.
