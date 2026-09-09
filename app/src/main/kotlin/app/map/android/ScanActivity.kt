@@ -74,7 +74,16 @@ class ScanActivity : Activity() {
                 .build()
         )
         sessionId = database.activeSession()
+        savedInstanceState?.getLongArray(STATE_SELECTED_PAGE_IDS)?.let {
+            selectedPageIds += it.toList()
+            selectionInitialized = true
+        }
         render()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putLongArray(STATE_SELECTED_PAGE_IDS, selectedPageIds.toLongArray())
+        super.onSaveInstanceState(outState)
     }
 
     override fun onDestroy() {
@@ -395,6 +404,7 @@ class ScanActivity : Activity() {
     companion object {
         private const val SCANNER_REQUEST = 12
         private const val NOTIFICATION_REQUEST = 13
+        private const val STATE_SELECTED_PAGE_IDS = "selected_page_ids"
         private const val PAGE_WIDTH = 595
         private const val PAGE_HEIGHT = 842
     }
