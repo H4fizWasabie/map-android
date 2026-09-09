@@ -226,7 +226,7 @@ class MainActivity : Activity() {
         parent.addView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(14), dp(16), dp(14))
-            setBackgroundResource(R.drawable.map_focus_surface)
+            setBackgroundResource(if (actionTask == null) R.drawable.map_focus_surface else R.drawable.map_focus_action)
             actionTask?.let { task ->
                 contentDescription = "Open focus task ${task.title}"
                 isFocusable = true
