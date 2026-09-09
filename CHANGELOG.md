@@ -4,6 +4,8 @@
 
 ### Added
 
+- Added local artwork and clearer playback labels to Music library rows.
+
 - Preserved primary screen scroll position across configuration changes.
 
 - Created the native Android foundation and project operating rules.
