@@ -111,3 +111,4 @@
 - Kept the Android quality gate on supported GitHub Actions runtimes.
 - Explicitly kept MAP's internal activities private to the app.
 - Made the Home Focus panel open its current or next task when tapped.
+- Restricted shared file URIs to exported scan PDFs.
