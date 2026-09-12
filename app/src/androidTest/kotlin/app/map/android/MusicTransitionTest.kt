@@ -85,7 +85,7 @@ class MusicTransitionTest {
         }
 
         MusicDatabase(context).also { database ->
-            assertEquals(3, database.equalizerPreset())
+            assertEquals(3.toShort(), database.equalizerPreset())
             database.close()
         }
     }

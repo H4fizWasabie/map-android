@@ -176,6 +176,11 @@ class MusicService : Service() {
         super.onDestroy()
     }
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        stopPlayback()
+        super.onTaskRemoved(rootIntent)
+    }
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun play(uri: String, restorePosition: Boolean = false) {
@@ -319,6 +324,7 @@ class MusicService : Service() {
         abandonAudioFocus()
         sleepMode = SLEEP_OFF
         sleepEndsAt = 0
+        database.setCurrent("")
         updatePlaybackState(false)
         broadcastState()
         stopForeground(STOP_FOREGROUND_REMOVE)
@@ -327,7 +333,7 @@ class MusicService : Service() {
 
     private fun savePosition() {
         val position = runCatching { player?.currentPosition?.toInt() ?: 0 }.getOrDefault(0)
-        if (position > 0) database.setPosition(position)
+        if (position > 0) runCatching { database.setPosition(position) }
     }
 
     private fun setSleep(mode: String, minutes: Int) {

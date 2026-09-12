@@ -66,13 +66,15 @@ class DocumentViewerActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         database = DocumentDatabase(this)
-        uri = intent.getStringExtra(EXTRA_URI)?.let(Uri::parse) ?: Uri.EMPTY
+        uri = intent.data ?: intent.getStringExtra(EXTRA_URI)?.let(Uri::parse) ?: Uri.EMPTY
         if (uri == Uri.EMPTY) {
             showUnavailable("This document link is missing.")
             return
         }
-        name = intent.getStringExtra(EXTRA_NAME).orEmpty().ifBlank { "Document" }
-        mime = intent.getStringExtra(EXTRA_MIME).orEmpty().ifBlank {
+        name = intent.getStringExtra(EXTRA_NAME).orEmpty().ifBlank {
+            Uri.decode(uri.lastPathSegment.orEmpty()).ifBlank { "Document" }
+        }
+        mime = intent.type.orEmpty().ifBlank { intent.getStringExtra(EXTRA_MIME).orEmpty() }.ifBlank {
             contentResolver.getType(uri).orEmpty().ifBlank { "application/pdf" }
         }
         pdfZoom = savedInstanceState?.getFloat(STATE_PDF_ZOOM, 1f)?.coerceIn(0.75f, 2.5f) ?: 1f

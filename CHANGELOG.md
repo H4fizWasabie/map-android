@@ -4,6 +4,8 @@
 
 ### Added
 
+- Let Android offer MAP for opening PDF files and hide stale Music mini-player state after playback stops.
+
 - Added MAP's coordinate mark to the Home primary action and a reduced-motion-safe settle animation.
 
 - Added shared display, headline, section, body, label, metadata, and caption text roles.

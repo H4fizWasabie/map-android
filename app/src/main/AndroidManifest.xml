@@ -26,7 +26,13 @@
         <activity android:name=".ToolsActivity" android:exported="false" />
         <activity android:name=".ScanActivity" android:exported="false" />
         <activity android:name=".MusicActivity" android:exported="false" />
-        <activity android:name=".DocumentViewerActivity" android:exported="false" />
+        <activity android:name=".DocumentViewerActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/pdf" />
+            </intent-filter>
+        </activity>
         <service
             android:name=".MusicService"
             android:exported="false"
