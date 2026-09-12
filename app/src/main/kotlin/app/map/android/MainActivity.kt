@@ -556,6 +556,10 @@ class MainActivity : Activity() {
 
     private fun addMusicMiniPlayer(parent: LinearLayout) {
         val music = MusicDatabase(this)
+        if (!MusicService.isRunning && music.playing()) {
+            music.close()
+            return
+        }
         val item = music.track(music.current())
         val playing = MusicService.isRunning && music.playing()
         music.close()
