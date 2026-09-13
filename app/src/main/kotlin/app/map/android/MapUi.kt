@@ -11,6 +11,7 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 
@@ -19,31 +20,39 @@ object MapUi {
 
     fun dp(context: Context, value: Int): Int = (value * context.resources.displayMetrics.density).toInt()
 
-    private fun textRole(view: TextView, size: Float, weight: Int, color: Int, family: String = "sans-serif") {
+    private fun signage(context: Context): Typeface = ResourcesCompat.getFont(context, R.font.archivo) ?: Typeface.DEFAULT
+
+    private fun plain(context: Context): Typeface = ResourcesCompat.getFont(context, R.font.work_sans) ?: Typeface.SANS_SERIF
+
+    private fun textRole(view: TextView, size: Float, color: Int, typeface: Typeface, weight: Int? = null, width: Int? = null) {
         view.textSize = size
-        view.typeface = Typeface.create(family, weight)
+        view.typeface = typeface
         view.setTextColor(view.context.getColor(color))
+        if (weight != null) {
+            view.fontVariationSettings = if (width != null) "'wght' $weight, 'wdth' $width" else "'wght' $weight"
+        }
     }
 
-    fun display(view: TextView) = textRole(view, 30f, Typeface.NORMAL, R.color.map_text, "sans-serif-medium")
+    fun display(view: TextView) = textRole(view, 34f, R.color.map_text, signage(view.context), weight = 900, width = 112)
 
-    fun headline(view: TextView) = textRole(view, 22f, Typeface.NORMAL, R.color.map_text, "sans-serif-medium")
+    fun headline(view: TextView) = textRole(view, 22f, R.color.map_text, signage(view.context), weight = 800)
 
-    fun section(view: TextView) = textRole(view, 18f, Typeface.NORMAL, R.color.map_text, "sans-serif-medium")
+    fun section(view: TextView) = textRole(view, 16f, R.color.map_text, signage(view.context), weight = 700)
 
-    fun body(view: TextView) = textRole(view, 16f, Typeface.NORMAL, R.color.map_text)
+    fun body(view: TextView) = textRole(view, 16f, R.color.map_text, plain(view.context), weight = 400)
 
-    fun label(view: TextView) = textRole(view, 14f, Typeface.NORMAL, R.color.map_text, "sans-serif-medium")
+    fun label(view: TextView) = textRole(view, 14f, R.color.map_text, signage(view.context), weight = 700)
 
-    fun metadata(view: TextView) = textRole(view, 13f, Typeface.NORMAL, R.color.map_muted)
+    fun metadata(view: TextView) = textRole(view, 13f, R.color.map_muted, plain(view.context), weight = 500)
 
-    fun caption(view: TextView) = textRole(view, 12f, Typeface.NORMAL, R.color.map_muted)
+    fun caption(view: TextView) = textRole(view, 12f, R.color.map_muted, plain(view.context), weight = 400)
+
+    /** Large numeric readouts: clock, group totals — set in the display face at full weight. */
+    fun numeral(view: TextView, size: Float = 16f, color: Int = R.color.map_text) =
+        textRole(view, size, color, signage(view.context), weight = 900)
 
     fun markPrimaryAction(button: Button) {
-        val mark = button.context.getDrawable(R.drawable.ic_map_coordinate)?.mutate() ?: return
-        mark.setTint(button.context.getColor(R.color.map_on_accent))
-        button.setCompoundDrawablesWithIntrinsicBounds(mark, null, null, null)
-        button.compoundDrawablePadding = dp(button.context, 8)
+        // Signal design carries identity through type and hairline rules, not iconography.
     }
 
     fun settlePrimaryAction(view: View) {

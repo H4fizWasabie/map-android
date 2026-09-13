@@ -57,24 +57,32 @@ class ToolsActivity : Activity() {
         }
         val body = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(24), dp(8), dp(24), dp(24))
+            setPadding(dp(24), dp(24), dp(24), dp(24))
         }
         body.addView(TextView(this).apply {
-            text = "Personal tools"
-            MapUi.display(this)
+            text = "MAP"
+            MapUi.label(this)
+            setTextColor(getColor(R.color.map_accent))
         })
+        body.addView(TextView(this).apply {
+            text = "Tools"
+            MapUi.display(this)
+            setPadding(0, dp(4), 0, dp(4))
+        })
+        body.addView(View(this).apply {
+            setBackgroundColor(getColor(R.color.map_divider))
+        }, LinearLayout.LayoutParams(-1, dp(1)).apply { bottomMargin = dp(16) })
         body.addView(TextView(this).apply {
             text = "Simple, local tools for the things you return to every day."
             MapUi.body(this)
             setTextColor(getColor(R.color.map_muted))
-            setPadding(0, dp(4), 0, dp(16))
+            setPadding(0, 0, 0, dp(4))
         })
         addDocuments(body)
         addScan(body)
         addMusic(body)
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            addView(header())
             addView(ScrollView(this@ToolsActivity).apply {
                 contentScroll = this
                 addView(body)
@@ -86,18 +94,6 @@ class ToolsActivity : Activity() {
         val scrollY = restoredScrollY
         restoredScrollY = 0
         contentScroll?.post { contentScroll?.scrollTo(0, scrollY) }
-    }
-
-    private fun header(): View = LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
-        gravity = Gravity.CENTER_VERTICAL
-        setPadding(dp(16), dp(24), dp(16), dp(4))
-        addView(TextView(this@ToolsActivity).apply {
-            text = "Tools"
-            MapUi.section(this)
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, 0, 0, 0)
-        })
     }
 
     private fun navigate(label: String) {
@@ -115,7 +111,6 @@ class ToolsActivity : Activity() {
             "Documents",
             if (recent.isEmpty()) "Read local PDFs and images directly." else "${recent.size} saved document${if (recent.size == 1) "" else "s"}",
             "Open document",
-            R.drawable.ic_map_documents
         ) { openDocument() }
         recent.take(3).forEach { item ->
             parent.addView(TextView(this).apply {
@@ -124,7 +119,7 @@ class ToolsActivity : Activity() {
                 setTextColor(if (item.available) getColor(R.color.map_text) else getColor(R.color.map_muted))
                 minHeight = dp(48)
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(64), dp(6), 0, dp(6))
+                setPadding(0, dp(6), 0, dp(6))
                 contentDescription = "Document: ${item.name}"
                 setOnClickListener {
                     if (!item.available) {
@@ -139,7 +134,7 @@ class ToolsActivity : Activity() {
         val scans = ScanDatabase(this)
         val pages = scans.unfinishedPageCount()
         scans.close()
-        addToolRow(parent, "Scan", if (pages == 0) "Capture pages into a local PDF." else "$pages unfinished page${if (pages == 1) "" else "s"}", "Open scanner", R.drawable.ic_map_scan) {
+        addToolRow(parent, "Scan", if (pages == 0) "Capture pages into a local PDF." else "$pages unfinished page${if (pages == 1) "" else "s"}", "Open scanner") {
             startActivity(Intent(this, ScanActivity::class.java))
         }
     }
@@ -149,26 +144,18 @@ class ToolsActivity : Activity() {
         val current = music.track(music.current())
         val playing = MusicService.isRunning && music.playing()
         music.close()
-        addToolRow(parent, "Music", current?.let { if (playing) "Playing ${it.title}" else "Ready with ${it.title}" } ?: "Play music stored on this device", "Open music", R.drawable.ic_map_music) {
+        addToolRow(parent, "Music", current?.let { if (playing) "Playing ${it.title}" else "Ready with ${it.title}" } ?: "Play music stored on this device", "Open music") {
             startActivity(Intent(this, MusicActivity::class.java).putExtra(MusicActivity.EXTRA_OPEN_PLAYER, true))
         }
     }
 
-    private fun addToolRow(parent: LinearLayout, title: String, subtitle: String, action: String, icon: Int, click: () -> Unit) {
+    private fun addToolRow(parent: LinearLayout, title: String, subtitle: String, action: String, click: () -> Unit) {
         parent.addView(View(this).apply {
             setBackgroundColor(getColor(R.color.map_divider))
             layoutParams = LinearLayout.LayoutParams(-1, dp(1)).apply { topMargin = dp(16) }
         })
-        val mark = android.widget.ImageView(this).apply {
-            setImageResource(icon)
-            imageTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.map_accent))
-            setBackgroundResource(R.drawable.map_focus_surface)
-            setPadding(dp(12), dp(12), dp(12), dp(12))
-            contentDescription = null
-        }
         val copy = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(14), 0, 0, 0)
             addView(TextView(this@ToolsActivity).apply {
                 text = title
                 MapUi.section(this)
@@ -188,15 +175,9 @@ class ToolsActivity : Activity() {
             if (stacked) {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.START
-                addView(LinearLayout(this@ToolsActivity).apply {
-                    orientation = LinearLayout.HORIZONTAL
-                    gravity = Gravity.CENTER_VERTICAL
-                    addView(mark, LinearLayout.LayoutParams(dp(48), dp(48)))
-                    addView(copy, LinearLayout.LayoutParams(0, -2, 1f))
-                }, LinearLayout.LayoutParams(-1, -2))
+                addView(copy, LinearLayout.LayoutParams(-1, -2))
                 addView(actionView, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
             } else {
-                addView(mark, LinearLayout.LayoutParams(dp(48), dp(48)))
                 addView(copy, LinearLayout.LayoutParams(0, -2, 1f))
                 addView(actionView, LinearLayout.LayoutParams(-2, -2).apply { leftMargin = dp(8) })
             }

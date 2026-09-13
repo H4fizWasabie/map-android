@@ -591,8 +591,8 @@ class MusicActivity : ComponentActivity() {
         body.addView(seekBar, LinearLayout.LayoutParams(-1, dp(48)))
         body.addView(LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            positionLabel = TextView(this@MusicActivity).apply { setTextColor(getColor(R.color.map_muted)) }
-            durationLabel = TextView(this@MusicActivity).apply { setTextColor(getColor(R.color.map_muted)); gravity = Gravity.END }
+            positionLabel = TextView(this@MusicActivity).apply { MapUi.numeral(this, size = 13f, color = R.color.map_muted) }
+            durationLabel = TextView(this@MusicActivity).apply { MapUi.numeral(this, size = 13f, color = R.color.map_muted); gravity = Gravity.END }
             addView(positionLabel, LinearLayout.LayoutParams(0, -2, 1f))
             addView(durationLabel)
         }, LinearLayout.LayoutParams(-1, -2))
