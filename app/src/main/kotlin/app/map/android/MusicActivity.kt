@@ -22,7 +22,6 @@ import android.widget.AbsListView
 import android.widget.BaseAdapter
 import android.widget.Button
 import android.widget.EditText
-import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
 import android.widget.ImageButton
 import android.widget.ImageView
@@ -64,6 +63,20 @@ private sealed class LibraryRow {
     data object NewPlaylist : LibraryRow()
     data class Empty(val message: String) : LibraryRow()
 }
+
+private class TrackRowHolder(
+    val cover: ImageView,
+    val title: TextView,
+    val meta: TextView,
+    val unavailable: TextView,
+    val more: Button,
+)
+
+private class ActionRowHolder(
+    val title: TextView,
+    val detail: TextView,
+    val content: View,
+)
 
 class MusicActivity : ComponentActivity() {
     private lateinit var database: MusicDatabase
@@ -371,52 +384,69 @@ class MusicActivity : ComponentActivity() {
             LibraryRow.Group(group, "${items.size} ${if (items.size == 1) "track" else "tracks"}", kind)
         }
 
-    private fun trackRow(item: AudioItem, tracks: List<AudioItem>): View {
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(10), 0, dp(10))
-            contentDescription = "Play ${item.title} by ${item.artist}"
-            setOnClickListener { playTracks(tracks, item) }
-            addView(cover(item, dp(56)).apply {
-                contentDescription = null
-                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-            }, LinearLayout.LayoutParams(dp(56), dp(56)).apply { rightMargin = dp(12) })
-            val text = LinearLayout(this@MusicActivity).apply { orientation = LinearLayout.VERTICAL }
-            text.addView(TextView(this@MusicActivity).apply {
-                this.text = item.title
-                MapUi.body(this)
-            })
-            text.addView(TextView(this@MusicActivity).apply {
-                this.text = listOf(item.artist, item.album, formatDuration(item.durationMs)).joinToString(" · ")
-                MapUi.metadata(this)
-                setPadding(0, dp(3), 0, 0)
-            })
-            if (!item.available) text.addView(TextView(this@MusicActivity).apply {
-                this.text = "Unavailable — refresh the folder or remove it"
+    private fun trackRow(item: AudioItem, tracks: List<AudioItem>, recycled: View?): View {
+        val root: LinearLayout
+        val holder: TrackRowHolder
+        if (recycled != null && recycled.tag is TrackRowHolder) {
+            root = recycled as LinearLayout
+            holder = recycled.tag as TrackRowHolder
+        } else {
+            val cover = ImageView(this).apply { scaleType = ImageView.ScaleType.CENTER_CROP; importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO }
+            val title = TextView(this@MusicActivity).apply { MapUi.body(this) }
+            val meta = TextView(this@MusicActivity).apply { MapUi.metadata(this); setPadding(0, dp(3), 0, 0) }
+            val unavailable = TextView(this@MusicActivity).apply {
                 MapUi.label(this)
                 setTextColor(getColor(R.color.map_accent))
-            })
-            addView(text, LinearLayout.LayoutParams(0, -2, 1f))
-            addView(actionButton("More") { showTrackMenu(item, tracks) }.apply {
-                contentDescription = "More actions for ${item.title}"
-            })
+            }
+            val text = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(title)
+                addView(meta)
+                addView(unavailable)
+            }
+            val more = actionButton("") {}
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, dp(10), 0, dp(10))
+                addView(cover, LinearLayout.LayoutParams(dp(56), dp(56)).apply { rightMargin = dp(12) })
+                addView(text, LinearLayout.LayoutParams(0, -2, 1f))
+                addView(more)
+            }
+            root = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(0, 0, 0, dp(8))
+                addView(row)
+                addView(View(this@MusicActivity).apply {
+                    setBackgroundColor(getColor(R.color.map_divider))
+                }, LinearLayout.LayoutParams(-1, dp(1)))
+                layoutParams = AbsListView.LayoutParams(-1, -2)
+            }
+            holder = TrackRowHolder(cover, title, meta, unavailable, more)
+            root.tag = holder
         }
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            addView(row)
-            addView(View(this@MusicActivity).apply {
-                setBackgroundColor(getColor(R.color.map_divider))
-            }, LinearLayout.LayoutParams(-1, dp(1)))
-            layoutParams = AbsListView.LayoutParams(-1, -2)
-        }
+        root.contentDescription = "Play ${item.title} by ${item.artist}"
+        root.setOnClickListener { playTracks(tracks, item) }
+        bindCover(holder.cover, item, dp(56))
+        holder.title.text = item.title
+        holder.meta.text = listOf(item.artist, item.album, formatDuration(item.durationMs)).joinToString(" · ")
+        holder.unavailable.visibility = if (item.available) View.GONE else View.VISIBLE
+        holder.unavailable.text = "Unavailable — refresh the folder or remove it"
+        holder.more.text = "More"
+        holder.more.contentDescription = "More actions for ${item.title}"
+        holder.more.setOnClickListener { showTrackMenu(item, tracks) }
+        return root
     }
 
-    private fun emptyRow(message: String): View = TextView(this).apply {
-        text = message
-        MapUi.body(this)
-        setTextColor(getColor(R.color.map_muted))
-        setPadding(0, dp(16), 0, dp(16))
+    private fun emptyRow(message: String, recycled: View? = null): View {
+        val view = if (recycled is TextView && recycled.tag == "empty") recycled else TextView(this).apply {
+            MapUi.body(this)
+            setTextColor(getColor(R.color.map_muted))
+            setPadding(0, dp(16), 0, dp(16))
+            tag = "empty"
+        }
+        view.text = message
+        return view
     }
 
     private fun addEmpty(parent: LinearLayout, text: String) = parent.addView(emptyRow(text))
@@ -428,29 +458,37 @@ class MusicActivity : ComponentActivity() {
         override fun getItem(position: Int): LibraryRow = rows[position]
         override fun getItemId(position: Int): Long = position.toLong()
 
-        override fun getView(position: Int, recycled: View?, parent: ViewGroup): View {
-            val view = when (val row = rows[position]) {
-                is LibraryRow.Track -> trackRow(row.item, row.visibleTracks)
-                is LibraryRow.Group -> actionRow(row.name, row.detail) {
-                    when (row.kind) {
-                        "album" -> filters.album = row.name
-                        "artist" -> filters.artist = row.name
-                        "genre" -> filters.genre = row.name
-                        "folder" -> filters.folder = row.name
-                    }
-                    mode = MusicViewMode.SONGS
-                    renderLibrary()
+        override fun getViewTypeCount(): Int = 4
+
+        override fun getItemViewType(position: Int): Int = when (rows[position]) {
+            is LibraryRow.Track -> 0
+            is LibraryRow.Group, is LibraryRow.Playlist -> 1
+            LibraryRow.NewPlaylist -> 2
+            is LibraryRow.Empty -> 3
+        }
+
+        override fun getView(position: Int, recycled: View?, parent: ViewGroup): View = when (val row = rows[position]) {
+            is LibraryRow.Track -> trackRow(row.item, row.visibleTracks, recycled)
+            is LibraryRow.Group -> actionRow(row.name, row.detail, recycled) {
+                when (row.kind) {
+                    "album" -> filters.album = row.name
+                    "artist" -> filters.artist = row.name
+                    "genre" -> filters.genre = row.name
+                    "folder" -> filters.folder = row.name
                 }
-                is LibraryRow.Playlist -> actionRow(row.item.name, "${row.item.trackCount} tracks") {
-                    activePlaylist = row.item.id
-                    showPlaylist(row.item.id)
-                }
-                LibraryRow.NewPlaylist -> actionButton("New playlist") { promptPlaylist() }
-                is LibraryRow.Empty -> emptyRow(row.message)
+                mode = MusicViewMode.SONGS
+                renderLibrary()
             }
-            return FrameLayout(this@MusicActivity).apply {
-                setPadding(0, 0, 0, dp(8))
-                addView(view, FrameLayout.LayoutParams(-1, -2))
+            is LibraryRow.Playlist -> actionRow(row.item.name, "${row.item.trackCount} tracks", recycled) {
+                activePlaylist = row.item.id
+                showPlaylist(row.item.id)
+            }
+            LibraryRow.NewPlaylist -> (recycled as? Button ?: actionButton("New playlist") {}).apply {
+                text = "New playlist"
+                setOnClickListener { promptPlaylist() }
+                layoutParams = AbsListView.LayoutParams(-1, -2)
+            }
+            is LibraryRow.Empty -> emptyRow(row.message, recycled).apply {
                 layoutParams = AbsListView.LayoutParams(-1, -2)
             }
         }
@@ -910,8 +948,15 @@ class MusicActivity : ComponentActivity() {
         addView(TextView(this@MusicActivity).apply { text = title; MapUi.section(this); gravity = Gravity.CENTER_VERTICAL; setPadding(dp(12), 0, 0, 0) }, LinearLayout.LayoutParams(0, -1, 1f))
     }
 
-    private fun cover(item: AudioItem, size: Int): View {
-        val image = ImageView(this).apply { scaleType = ImageView.ScaleType.CENTER_CROP; contentDescription = "Artwork for ${item.title}" }
+    private fun cover(item: AudioItem, size: Int): View =
+        ImageView(this).apply { scaleType = ImageView.ScaleType.CENTER_CROP }.also { bindCover(it, item, size) }
+
+    /** Safe to call on a reused (recycled) ImageView: a request tag guards against a
+     * stale async decode landing on a view that has since been rebound to another track. */
+    private fun bindCover(image: ImageView, item: AudioItem, size: Int) {
+        val token = item.uri
+        image.tag = token
+        image.contentDescription = "Artwork for ${item.title}"
         image.setBackgroundResource(R.drawable.map_focus_surface)
         image.setImageResource(if (size >= dp(100)) R.drawable.ic_map_music_artwork else R.drawable.ic_map_music)
         image.imageTintList = ColorStateList.valueOf(getColor(R.color.map_accent))
@@ -920,7 +965,7 @@ class MusicActivity : ComponentActivity() {
                 val bitmap = loadArtwork(item, size)
                 val delivered = image.post {
                     if (bitmap == null) return@post
-                    if (isFinishing || isDestroyed || !image.isAttachedToWindow) {
+                    if (isFinishing || isDestroyed || !image.isAttachedToWindow || image.tag != token) {
                         bitmap.recycle()
                         return@post
                     }
@@ -931,7 +976,6 @@ class MusicActivity : ComponentActivity() {
                 if (!delivered) bitmap?.recycle()
             }
         }
-        return image
     }
 
     private fun loadArtwork(item: AudioItem, size: Int): android.graphics.Bitmap? {
@@ -957,21 +1001,37 @@ class MusicActivity : ComponentActivity() {
         return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })
     }
 
-    private fun actionRow(title: String, detail: String, click: () -> Unit): View {
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(0, dp(12), 0, dp(12))
-            setOnClickListener { click() }
-            addView(TextView(this@MusicActivity).apply { text = title; MapUi.body(this) })
-            addView(TextView(this@MusicActivity).apply { text = detail; MapUi.metadata(this); setPadding(0, dp(3), 0, 0) })
+    private fun actionRow(title: String, detail: String, recycled: View?, click: () -> Unit): View {
+        val root: LinearLayout
+        val holder: ActionRowHolder
+        if (recycled != null && recycled.tag is ActionRowHolder) {
+            root = recycled as LinearLayout
+            holder = recycled.tag as ActionRowHolder
+        } else {
+            val titleView = TextView(this@MusicActivity).apply { MapUi.body(this) }
+            val detailView = TextView(this@MusicActivity).apply { MapUi.metadata(this); setPadding(0, dp(3), 0, 0) }
+            val content = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(0, dp(12), 0, dp(12))
+                addView(titleView)
+                addView(detailView)
+            }
+            root = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(0, 0, 0, dp(8))
+                addView(content)
+                addView(View(this@MusicActivity).apply {
+                    setBackgroundColor(getColor(R.color.map_divider))
+                }, LinearLayout.LayoutParams(-1, dp(1)))
+                layoutParams = AbsListView.LayoutParams(-1, -2)
+            }
+            holder = ActionRowHolder(titleView, detailView, content)
+            root.tag = holder
         }
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            addView(content)
-            addView(View(this@MusicActivity).apply {
-                setBackgroundColor(getColor(R.color.map_divider))
-            }, LinearLayout.LayoutParams(-1, dp(1)))
-        }
+        holder.title.text = title
+        holder.detail.text = detail
+        holder.content.setOnClickListener { click() }
+        return root
     }
 
     private fun isLargeTextLayout(): Boolean = resources.configuration.screenWidthDp < 360 || resources.configuration.fontScale >= 1.3f
