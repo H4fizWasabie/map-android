@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MAP — Visual directions</title>
+  <style>
+    @font-face { font-family: Archivo; src: url('../../app/src/main/res/font/archivo.ttf') format('truetype'); font-weight: 100 900; }
+    @font-face { font-family: WorkSans; src: url('../../app/src/main/res/font/work_sans.ttf') format('truetype'); font-weight: 100 900; }
+    :root {
+      color-scheme: light;
+      --ink: #16181c;
+      --muted: #717681;
+      --ground: #e9e9e5;
+      --panel: #f7f7f3;
+      --line: rgba(22, 24, 28, .15);
+      --accent: #4169e1;
+      --accent-ink: #fff;
+      --soft: #dddfec;
+      --display: Archivo, Arial, sans-serif;
+      --body: WorkSans, Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { background: #111318; }
+    body { margin: 0; min-width: 320px; color: var(--ink); background: var(--ground); font: 15px/1.45 var(--body); transition: background .35s, color .35s; }
+    button { font: inherit; color: inherit; }
+    button:focus-visible, a:focus-visible { outline: 3px solid #ffb000; outline-offset: 3px; }
+    .concept-bar { min-height: 64px; padding: 14px clamp(18px, 4vw, 56px); display: flex; align-items: center; justify-content: space-between; gap: 20px; background: #111318; color: #f7f7f3; }
+    .concept-title { display: flex; align-items: baseline; gap: 13px; white-space: nowrap; }
+    .concept-title strong { font: 800 16px/1 var(--display); letter-spacing: .1em; }
+    .concept-title span { color: #9197a4; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+    .direction-picker { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+    .direction-picker button { border: 1px solid #3b3f49; background: transparent; color: #afb4be; border-radius: 999px; cursor: pointer; padding: 8px 12px; font-size: 12px; transition: .2s ease; }
+    .direction-picker button:hover, .direction-picker button[aria-current="true"] { color: #111318; background: #f7f7f3; border-color: #f7f7f3; }
+    .stage { min-height: calc(100vh - 64px); padding: clamp(20px, 4vw, 56px); display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: clamp(24px, 4vw, 64px); max-width: 1640px; margin: 0 auto; }
+    .intro { grid-column: 1 / -1; display: flex; align-items: end; justify-content: space-between; gap: 30px; }
+    .intro h1 { max-width: 770px; margin: 0; font: 800 clamp(34px, 5vw, 72px)/.95 var(--display); letter-spacing: -.055em; }
+    .intro p { max-width: 330px; margin: 0; color: var(--intro-ink, var(--muted)); }
+    .preview { min-width: 0; border-radius: 26px; padding: 10px; background: #101217; box-shadow: 0 22px 70px rgba(0,0,0,.2); }
+    .map-app { position: relative; min-height: 720px; overflow: hidden; border-radius: 19px; background: var(--ground); color: var(--ink); transition: background .35s, color .35s; }
+    .app-grid { min-height: 720px; display: grid; grid-template-columns: 100px minmax(0, 1fr) 250px; }
+    .app-rail { padding: 25px 16px; display: flex; flex-direction: column; background: var(--rail, var(--panel)); border-right: 1px solid var(--line); }
+    .mark { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; margin-bottom: 56px; background: var(--mark-bg, var(--ink)); color: var(--mark-ink, var(--panel)); font: 900 14px/1 var(--display); letter-spacing: -.08em; }
+    .rail-nav { display: grid; gap: 8px; }
+    .rail-nav button { min-height: 48px; border: 0; background: transparent; cursor: pointer; color: var(--muted); font: 700 11px/1.1 var(--display); text-align: left; }
+    .rail-nav button.active, .rail-nav button:hover { color: var(--accent); }
+    .rail-nav svg { display: block; width: 20px; height: 20px; margin-bottom: 6px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+    .rail-footer { margin-top: auto; color: var(--muted); font-size: 11px; }
+    .main-pane { min-width: 0; padding: 29px clamp(22px, 4vw, 52px) 44px; }
+    .top-line { display: flex; justify-content: space-between; align-items: center; gap: 20px; color: var(--muted); font: 700 11px/1 var(--display); letter-spacing: .1em; text-transform: uppercase; }
+    .top-line button, .text-action { border: 0; background: transparent; padding: 8px 0; color: var(--accent); cursor: pointer; font-weight: 700; }
+    .page-title { margin: 55px 0 8px; font: 800 62px/.92 var(--display); letter-spacing: -.065em; }
+    .date-line { display: flex; align-items: center; justify-content: space-between; gap: 20px; color: var(--muted); font-size: 13px; }
+    .date-line strong { color: var(--ink); font: 700 13px var(--display); }
+    .rule { height: 1px; margin: 22px 0; background: var(--line); }
+    .focus { position: relative; padding: 25px; display: grid; grid-template-columns: 1fr 110px; gap: 16px; min-height: 185px; background: var(--focus-bg, var(--accent)); color: var(--focus-ink, var(--accent-ink)); overflow: hidden; }
+    .focus:after { content: ''; position: absolute; right: -20px; bottom: -50px; width: 180px; height: 180px; border: 1px solid currentColor; border-radius: 50%; opacity: .3; }
+    .focus-label { font: 700 11px var(--display); letter-spacing: .14em; text-transform: uppercase; opacity: .75; }
+    .focus h2 { max-width: 310px; margin: 22px 0 10px; font: 800 28px/1.02 var(--display); letter-spacing: -.035em; }
+    .focus p { margin: 0; opacity: .78; font-size: 13px; }
+    .focus-number { align-self: center; justify-self: end; font: 900 84px/.8 var(--display); letter-spacing: -.1em; opacity: .92; }
+    .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin: 34px 0 12px; }
+    .section-head h3 { margin: 0; font: 800 15px var(--display); letter-spacing: -.02em; }
+    .section-head span { color: var(--muted); font-size: 12px; }
+    .task-list { border-top: 1px solid var(--line); }
+    .task { min-height: 62px; display: grid; grid-template-columns: 48px minmax(0,1fr) auto; align-items: center; gap: 12px; border-bottom: 1px solid var(--line); }
+    .task-check { position: relative; width: 48px; height: 48px; border: 0; background: transparent; cursor: pointer; }
+    .task-check::before { content: ''; position: absolute; inset: 15px; border: 1.5px solid currentColor; border-radius: 50%; }
+    .task.done .task-check { background: transparent; box-shadow: none; }
+    .task.done .task-check::before { background: var(--accent); border-color: var(--accent); box-shadow: inset 0 0 0 4px var(--ground); }
+    .task.done .task-name { text-decoration: line-through; color: var(--muted); }
+    .task-name { font-weight: 600; }
+    .task-meta { color: var(--muted); font-size: 11px; text-align: right; }
+    .music-strip { display: flex; align-items: center; gap: 10px; margin-top: 18px; padding: 11px 12px; background: var(--soft); color: var(--ink); }
+    .album-art { width: 30px; height: 30px; display: grid; place-items: center; background: var(--accent); color: var(--accent-ink); font: 800 10px var(--display); }
+    .music-strip p { margin: 0; min-width: 0; flex: 1; font-size: 11px; }
+    .music-strip p strong { display: block; font: 700 12px var(--display); }
+    .music-strip button { width: 48px; height: 48px; border: 1px solid var(--ink); background: transparent; border-radius: 50%; cursor: pointer; font-size: 12px; }
+    .context-pane { padding: 29px 22px; background: var(--context-bg, var(--panel)); border-left: 1px solid var(--line); }
+    .context-pane h3 { margin: 0 0 26px; font: 800 13px var(--display); text-transform: uppercase; letter-spacing: .1em; }
+    .context-item { padding: 16px 0; border-top: 1px solid var(--line); }
+    .context-item small { display: block; margin-bottom: 7px; color: var(--muted); font-size: 11px; }
+    .context-item strong { display: block; font: 700 14px/1.2 var(--display); }
+    .context-item p { margin: 6px 0 0; color: var(--muted); font-size: 12px; }
+    .mini-calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 12px; color: var(--muted); font-size: 10px; text-align: center; }
+    .mini-calendar b { color: var(--ink); font-weight: 700; }
+    .mini-calendar .today { display: grid; place-items: center; width: 22px; height: 22px; margin: -5px auto 0; border-radius: 50%; background: var(--accent); color: var(--accent-ink); }
+    .notes { align-self: start; padding-top: 12px; }
+    .notes h2 { margin: 0 0 18px; font: 800 13px var(--display); text-transform: uppercase; letter-spacing: .1em; color: var(--notes-strong, var(--ink)); }
+    .notes p { margin: 0 0 25px; color: var(--notes-ink, var(--muted)); font-size: 13px; }
+    .swatches { display: flex; gap: 6px; margin: 18px 0 28px; }
+    .swatches i { width: 24px; height: 24px; display: block; border-radius: 50%; border: 2px solid rgba(255,255,255,.14); }
+    .notes dl { display: grid; grid-template-columns: 80px 1fr; gap: 9px 10px; margin: 0; color: var(--notes-ink, var(--muted)); font-size: 12px; }
+    .notes dt { color: var(--notes-strong, var(--ink)); font-weight: 700; }
+    .notes dd { margin: 0; }
+    .compare-link { display: inline-flex; margin-top: 25px; color: var(--notes-strong, var(--ink)); font-size: 12px; text-underline-offset: 4px; }
+
+    /* Direction 01: Catalog sleeve / coded pulse. */
+    body[data-design="pulse"] { --ground: #111318; --panel: #181b22; --ink: #f2f0ea; --muted: #a8afbf; --line: rgba(242,240,234,.17); --accent: #b8ff5a; --accent-ink: #111318; --soft: #242932; --rail: #0d0f13; --context-bg: #171a20; --focus-bg: #b8ff5a; --focus-ink: #111318; --mark-bg: #f2f0ea; --mark-ink: #111318; --intro-ink: #c0c5d0; --notes-strong: #f2f0ea; --notes-ink: #c0c5d0; background: #07080b; }
+    body[data-design="pulse"] .preview { background: #07080b; }
+    body[data-design="pulse"] .map-app { border-radius: 3px; }
+    body[data-design="pulse"] .app-grid { grid-template-columns: 84px minmax(0,1fr) 230px; }
+    body[data-design="pulse"] .app-rail { padding: 22px 13px; }
+    body[data-design="pulse"] .mark { border-radius: 0; width: 36px; height: 36px; }
+    body[data-design="pulse"] .page-title { font-size: 76px; letter-spacing: -.09em; }
+    body[data-design="pulse"] .main-pane { padding-top: 23px; }
+    body[data-design="pulse"] .focus { border: 1px solid rgba(17,19,24,.3); }
+    body[data-design="pulse"] .focus:after { border-radius: 0; width: 280px; height: 120px; transform: rotate(-12deg); right: -60px; bottom: -50px; }
+    body[data-design="pulse"] .focus-number { font-size: 102px; }
+    body[data-design="pulse"] .task { min-height: 68px; }
+    body[data-design="pulse"] .task-check { border-radius: 2px; }
+    body[data-design="pulse"] .music-strip { border: 1px solid var(--line); }
+    body[data-design="pulse"] .context-pane { padding-right: 18px; }
+
+    /* Direction 02: Chromatic editorial. */
+    body[data-design="chroma"] { --ground: #f3f0e7; --panel: #fffdf7; --ink: #202e68; --muted: #67718b; --line: rgba(32,46,104,.18); --accent: #f35c48; --accent-ink: #fffdf7; --soft: #d8eb55; --rail: #d8eb55; --context-bg: #fffdf7; --focus-bg: #202e68; --focus-ink: #fffdf7; --mark-bg: #f35c48; --mark-ink: #fffdf7; --intro-ink: #202e68; --notes-strong: #202e68; --notes-ink: #202e68; background: #d8eb55; }
+    body[data-design="chroma"] .preview { background: #202e68; }
+    body[data-design="chroma"] .map-app { border-radius: 30px; }
+    body[data-design="chroma"] .app-grid { grid-template-columns: 108px minmax(0,1fr) 238px; }
+    body[data-design="chroma"] .app-rail { border: 0; }
+    body[data-design="chroma"] .mark { border-radius: 14px; }
+    body[data-design="chroma"] .rail-nav button { color: #202e68; }
+    body[data-design="chroma"] .rail-nav button.active, body[data-design="chroma"] .rail-nav button:hover { color: #f35c48; }
+    body[data-design="chroma"] .page-title { font-size: 70px; color: #202e68; }
+    body[data-design="chroma"] .focus { border-radius: 22px; min-height: 200px; }
+    body[data-design="chroma"] .focus:after { border-width: 2px; opacity: .25; }
+    body[data-design="chroma"] .task { min-height: 72px; }
+    body[data-design="chroma"] .task-check { border-width: 2px; }
+    body[data-design="chroma"] .music-strip { border-radius: 15px; }
+    body[data-design="chroma"] .album-art { border-radius: 9px; }
+
+    /* Direction 03: Tactile atelier. */
+    body[data-design="atelier"] { --ground: #e7e0d3; --panel: #f7f1e5; --ink: #244b48; --muted: #5b6b64; --line: rgba(36,75,72,.2); --accent: #e76f51; --accent-ink: #fff8ed; --soft: #e7c55d; --rail: #244b48; --context-bg: #f7f1e5; --focus-bg: #e76f51; --focus-ink: #163633; --mark-bg: #e7c55d; --mark-ink: #244b48; --intro-ink: #244b48; --notes-strong: #244b48; --notes-ink: #244b48; background: #e7c55d; }
+    body[data-design="atelier"] .preview { background: #244b48; }
+    body[data-design="atelier"] .map-app { border-radius: 10px; }
+    body[data-design="atelier"] .app-grid { grid-template-columns: 116px minmax(0,1fr) 226px; }
+    body[data-design="atelier"] .app-rail { color: #f7f1e5; border: 0; }
+    body[data-design="atelier"] .rail-nav button, body[data-design="atelier"] .rail-footer { color: rgba(247,241,229,.68); }
+    body[data-design="atelier"] .rail-nav button.active, body[data-design="atelier"] .rail-nav button:hover { color: #e7c55d; }
+    body[data-design="atelier"] .mark { border-radius: 50%; }
+    body[data-design="atelier"] .page-title { font-size: 68px; color: #244b48; }
+    body[data-design="atelier"] .focus { border-radius: 10px 40px 10px 10px; min-height: 190px; }
+    body[data-design="atelier"] .focus:after { width: 200px; height: 200px; right: -20px; bottom: -100px; border-width: 2px; }
+    body[data-design="atelier"] .task { min-height: 72px; }
+    body[data-design="atelier"] .task-check { border-radius: 5px; }
+    body[data-design="atelier"] .music-strip { border-radius: 10px 10px 30px 10px; }
+    body[data-design="atelier"] .album-art { border-radius: 50%; }
+
+    @media (max-width: 1040px) {
+      .stage { grid-template-columns: 1fr; }
+      .notes { grid-row: 3; display: grid; grid-template-columns: 1fr 1fr; gap: 0 30px; }
+      .notes h2, .notes p { grid-column: 1 / -1; }
+      .swatches { margin-top: 0; }
+    }
+    @media (max-width: 720px) {
+      .concept-bar { align-items: flex-start; flex-direction: column; }
+      .direction-picker { justify-content: flex-start; }
+      .stage { padding: 18px 12px 36px; gap: 22px; }
+      .intro { display: block; }
+      .intro h1 { font-size: 38px; margin-bottom: 15px; }
+      .intro p { font-size: 13px; }
+      .preview { margin: 0 -2px; padding: 5px; border-radius: 18px; }
+      .map-app, .app-grid { min-height: 760px; }
+      .app-grid { display: block; padding-bottom: 80px; }
+      .app-rail { position: absolute; z-index: 2; inset: auto 0 0; height: 74px; padding: 8px 12px; display: block; border-top: 1px solid var(--line); border-right: 0; }
+      .mark, .rail-footer { display: none; }
+      .rail-nav { height: 100%; display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; }
+      .rail-nav button { min-height: 56px; text-align: center; }
+      .rail-nav svg { margin: 0 auto 4px; width: 18px; height: 18px; }
+      .main-pane { padding: 22px 20px 35px; }
+      .context-pane { display: none; }
+      .page-title, body[data-design="pulse"] .page-title, body[data-design="chroma"] .page-title, body[data-design="atelier"] .page-title { margin-top: 42px; font-size: 56px; }
+      .focus { grid-template-columns: 1fr 74px; padding: 19px; }
+      .focus h2 { font-size: 24px; }
+      .focus-number { font-size: 65px; }
+      .notes { display: block; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *:before, *:after { scroll-behavior: auto !important; transition-duration: .001ms !important; animation-duration: .001ms !important; } }
+  </style>
+</head>
+<body data-design="pulse">
+  <!--
+    THESIS: MAP becomes a private operating instrument with a distinct visual world in each direction; each refuses a generic productivity dashboard.
+    OWN-WORLD: Pulse uses matte black, encoded color, white plots, and catalog numbering; Chroma uses ultramarine, acid lime, and coral editorial blocks; Atelier uses teal, saffron, and vermilion tactile paper.
+    STORY: The user sees the current moment, understands the next useful action, and can move to calendar, tasks, tools, or local music without losing state.
+    FIRST VIEWPORT: A responsive app frame shows navigation, Today, a single focus task, a real task list, a mini-player, and contextual calendar/tools information.
+    FORM: Three URL-addressable directions share MAP facts and interactions so the comparison is about visual identity, not invented product scope. Seed: 1a5284f7, assigned catalog-sleeve direction.
+    FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
+  -->
+  <header class="concept-bar">
+    <div class="concept-title"><strong>MAP</strong><span>three visual directions</span></div>
+    <nav class="direction-picker" aria-label="Choose a visual direction">
+      <button type="button" data-direction="pulse" aria-current="true">01 / Pulse</button>
+      <button type="button" data-direction="chroma" aria-current="false">02 / Chroma</button>
+      <button type="button" data-direction="atelier" aria-current="false">03 / Atelier</button>
+    </nav>
+  </header>
+
+  <main class="stage">
+    <section class="intro">
+      <h1 id="direction-title">MAP, decoded for the day.</h1>
+      <p id="direction-summary">A catalog-sleeve direction for a private tool: matte black, encoded color, and a single pulse that tells you where to put your attention.</p>
+    </section>
+
+    <section class="preview" aria-label="MAP app mockup">
+      <div class="map-app">
+        <div class="app-grid">
+          <aside class="app-rail">
+            <div class="mark" aria-label="MAP">M/</div>
+            <nav class="rail-nav" aria-label="MAP destinations">
+              <button class="active" type="button" data-view="Home" aria-current="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 11 8-7 8 7v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M9 20v-6h6v6"/></svg>Home</button>
+              <button type="button" data-view="Calendar"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="1"/><path d="M8 3v4M16 3v4M4 10h16"/></svg>Calendar</button>
+              <button type="button" data-view="Tasks"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h13M7 12h13M7 19h13"/><path d="m3 5 1 1 2-2M3 12l1 1 2-2M3 19l1 1 2-2"/></svg>Tasks</button>
+              <button type="button" data-view="Tools"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.7 6.3 3-3 3 3-3 3M4 20l9.7-9.7M12 5h-1a2 2 0 0 0-2 2v10a2 2 0 0 1-2 2H4"/></svg>Tools</button>
+            </nav>
+            <div class="rail-footer">LOCAL ONLY<br><span>no account</span></div>
+          </aside>
+
+          <section class="main-pane">
+            <div class="top-line"><span id="view-label">Home / Today · sample data</span><button type="button" id="add-task">+ Add task</button></div>
+            <h2 class="page-title" id="page-title">Today.</h2>
+            <div class="date-line"><strong id="date-label">Monday, 13 January</strong><span id="time-label">09:42 local</span></div>
+            <div class="rule"></div>
+            <section class="focus" aria-labelledby="focus-title">
+              <div><div class="focus-label">Now / next</div><h2 id="focus-title">Send the updated proposal</h2><p>Inbox · no due date · 25 min</p></div>
+              <div class="focus-number">01</div>
+            </section>
+            <div class="music-strip"><div class="album-art">M</div><p><strong>Quiet focus mix</strong>Local music · ready to play</p><button type="button" id="music-toggle" aria-label="Play quiet focus mix" aria-pressed="false">▶</button></div>
+            <div class="section-head"><h3>Today’s sequence</h3><span id="task-count">3 open</span></div>
+            <div class="task-list" id="task-list">
+              <div class="task"><button class="task-check" type="button" aria-label="Complete call with Renadyl" aria-pressed="false"></button><span class="task-name">Call with Renadyl</span><span class="task-meta">10:30</span></div>
+              <div class="task"><button class="task-check" type="button" aria-label="Complete pick up parcel" aria-pressed="false"></button><span class="task-name">Pick up parcel</span><span class="task-meta">14:00</span></div>
+              <div class="task done"><button class="task-check" type="button" aria-label="Reopen daily review" aria-pressed="true"></button><span class="task-name">Daily review</span><span class="task-meta">done</span></div>
+            </div>
+          </section>
+
+          <aside class="context-pane">
+            <h3>At a glance</h3>
+            <div class="context-item"><small>Next on your calendar</small><strong>Call with Renadyl</strong><p>Today · 10:30 — 11:00</p></div>
+            <div class="context-item"><small>Local library</small><strong>12 documents</strong><p>Last opened yesterday</p></div>
+            <div class="context-item"><small>Sample month</small><div class="mini-calendar"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span><i></i><i></i><i></i><i></i><i></i><i></i><i></i><span>6</span><span>7</span><span>8</span><b class="today">13</b><span>14</span><span>15</span><span>16</span></div></div>
+            <div class="context-item"><small>Device status</small><strong>Everything local</strong><p>Offline by default</p></div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <aside class="notes">
+      <h2 id="notes-title">01 / Pulse</h2>
+      <p id="notes-copy">An industrial catalog language for a tool that quietly knows the state of your day. The color strip is reserved for what needs attention.</p>
+      <div class="swatches" aria-label="Direction palette"><i style="background:#111318"></i><i style="background:#f2f0ea"></i><i style="background:#b8ff5a"></i><i style="background:#8b7bff"></i></div>
+      <dl><dt>Material</dt><dd id="note-material">Matte sleeve + plotted pulse</dd><dt>Best for</dt><dd id="note-best">Focus-first Home</dd><dt>Risk</dt><dd id="note-risk">Could feel too coded for first-time users.</dd></dl>
+      <a class="compare-link" href="#" id="copy-link">Copy this direction URL</a>
+    </aside>
+  </main>
+
+  <script>
+    const directions = {
+      pulse: {
+        title: 'MAP, decoded for the day.', summary: 'A catalog-sleeve direction for a private tool: matte black, encoded color, and a single pulse that tells you where to put your attention.', material: 'Matte sleeve + plotted pulse', best: 'Focus-first Home', risk: 'Could feel too coded for first-time users.', notes: 'An industrial catalog language for a tool that quietly knows the state of your day. The color strip is reserved for what needs attention.', colors: ['#111318', '#f2f0ea', '#b8ff5a', '#8b7bff']
+      },
+      chroma: {
+        title: 'A brighter place to land.', summary: 'A confident editorial direction where ultramarine gives MAP its authority, acid lime marks momentum, and coral makes the next action impossible to miss.', material: 'Printed color blocks + soft paper', best: 'Fast daily check-ins', risk: 'Needs a disciplined dark theme to stay calm.', notes: 'A premium, optimistic utility with enough color to feel owned. The strong primary surface gives every state a memorable home.', colors: ['#f3f0e7', '#202e68', '#d8eb55', '#f35c48']
+      },
+      atelier: {
+        title: 'Make room for the real day.', summary: 'A tactile workspace direction that pairs deep teal with saffron and vermilion: warm, capable, and human without becoming a playful planner.', material: 'Paper stock + enamel color', best: 'Tools and mixed routines', risk: 'More expressive surfaces need strict accessibility tuning.', notes: 'MAP feels like a beautiful personal desk: tools are arranged, not advertised. Color gives each state a physical place to live.', colors: ['#e7e0d3', '#244b48', '#e7c55d', '#e76f51']
+      }
+    };
+    const body = document.body;
+    const buttons = [...document.querySelectorAll('[data-direction]')];
+    const $ = id => document.getElementById(id);
+    function currentDesign() { return new URLSearchParams(location.search).get('design') || 'pulse'; }
+    function selectDesign(name, push = true) {
+      if (!directions[name]) name = 'pulse';
+      const d = directions[name];
+      body.dataset.design = name;
+      if (push) history.pushState({}, '', `${location.pathname}?design=${name}`);
+      buttons.forEach(button => button.setAttribute('aria-current', String(button.dataset.direction === name)));
+      $('direction-title').textContent = d.title;
+      $('direction-summary').textContent = d.summary;
+      $('notes-title').textContent = `${name === 'pulse' ? '01' : name === 'chroma' ? '02' : '03'} / ${name[0].toUpperCase()}${name.slice(1)}`;
+      $('notes-copy').textContent = d.notes;
+      $('note-material').textContent = d.material;
+      $('note-best').textContent = d.best;
+      $('note-risk').textContent = d.risk;
+      document.querySelector('.swatches').innerHTML = d.colors.map(color => `<i style="background:${color}"></i>`).join('');
+    }
+    buttons.forEach(button => button.addEventListener('click', () => selectDesign(button.dataset.direction)));
+    window.addEventListener('popstate', () => selectDesign(currentDesign(), false));
+    selectDesign(currentDesign(), false);
+
+    const viewContent = { Home: ['Home / Today · sample data', 'Today.', 'Send the updated proposal'], Calendar: ['Calendar / Today · sample data', 'Calendar.', 'Call with Renadyl'], Tasks: ['Tasks / Open', 'Tasks.', 'Send the updated proposal'], Tools: ['Tools / Local', 'Tools.', 'Open a recent document'] };
+    document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => {
+      document.querySelectorAll('[data-view]').forEach(item => item.classList.toggle('active', item === button));
+      document.querySelectorAll('[data-view]').forEach(item => item.setAttribute('aria-current', String(item === button)));
+      const [label, title, focus] = viewContent[button.dataset.view];
+      $('view-label').textContent = label;
+      $('page-title').textContent = title;
+      $('focus-title').textContent = focus;
+    }));
+    document.querySelectorAll('.task-check').forEach(button => button.addEventListener('click', () => {
+      const task = button.closest('.task'); task.classList.toggle('done');
+      const done = document.querySelectorAll('.task.done').length;
+      $('task-count').textContent = `${3 - done} open`;
+      const isDone = task.classList.contains('done');
+      button.setAttribute('aria-pressed', String(isDone));
+      button.setAttribute('aria-label', `${isDone ? 'Reopen' : 'Complete'} ${task.querySelector('.task-name').textContent}`);
+    }));
+    $('add-task').addEventListener('click', event => { event.currentTarget.textContent = event.currentTarget.textContent === '+ Add task' ? 'Task ready' : '+ Add task'; });
+    $('music-toggle').addEventListener('click', event => { const playing = event.currentTarget.textContent === '▶'; event.currentTarget.textContent = playing ? 'Ⅱ' : '▶'; event.currentTarget.setAttribute('aria-pressed', String(playing)); event.currentTarget.setAttribute('aria-label', playing ? 'Pause quiet focus mix' : 'Play quiet focus mix'); });
+    $('copy-link').addEventListener('click', async event => { event.preventDefault(); await navigator.clipboard?.writeText(location.href); event.currentTarget.textContent = 'URL copied'; setTimeout(() => event.currentTarget.textContent = 'Copy this direction URL', 1500); });
+  </script>
+</body>
+</html>

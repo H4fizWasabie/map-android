@@ -338,8 +338,12 @@ class MainActivity : Activity() {
         addSectionRule(parent, "Focus")
         parent.addView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(0, dp(4), 0, dp(8))
-            setBackgroundResource(R.drawable.map_signal_row)
+            setPadding(dp(16), dp(12), dp(16), dp(12))
+            setBackgroundResource(R.drawable.map_focus_surface)
+            layoutParams = LinearLayout.LayoutParams(-1, -2).apply {
+                topMargin = dp(4)
+                bottomMargin = dp(8)
+            }
             actionTask?.let { task ->
                 contentDescription = "Open focus task ${task.title}"
                 isFocusable = true

@@ -4,6 +4,12 @@
 
 ### Added
 
+- Started the selected Atelier visual direction in the native shared MAP system: warm paper, deep teal, saffron focus, vermilion actions, and tactile 10dp surfaces (issue #193).
+
+- Styled Home Focus as a tactile saffron surface to carry Atelier’s primary attention state.
+
+- Added a disposable browser mockup board with three MAP visual redesign directions for review (issue #192).
+
 - Let Android offer MAP for opening PDF files and hide stale Music mini-player state after playback stops.
 
 - Added MAP's coordinate mark to the Home primary action and a reduced-motion-safe settle animation.
