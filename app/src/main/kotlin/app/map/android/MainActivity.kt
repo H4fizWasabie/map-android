@@ -157,13 +157,40 @@ class MainActivity : Activity() {
             add(Calendar.DAY_OF_YEAR, 1)
         }.timeInMillis
 
-        render("Today", "Home") { body ->
-            body.addView(TextView(this).apply {
-                text = java.text.SimpleDateFormat("EEEE, d MMMM", Locale.getDefault()).format(Date())
-                MapUi.label(this)
-                setTextColor(getColor(R.color.map_accent))
-                setPadding(0, 0, 0, dp(4))
-            })
+        render(
+            "Today",
+            "Home",
+            header = { body ->
+                body.addView(TextView(this).apply {
+                    text = "MAP"
+                    MapUi.label(this)
+                    setTextColor(getColor(R.color.map_accent))
+                    contentDescription = "MAP home"
+                })
+                body.addView(LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.BOTTOM
+                    setPadding(0, dp(4), 0, dp(12))
+                    addView(TextView(this@MainActivity).apply {
+                        text = "Today"
+                        MapUi.display(this)
+                    }, LinearLayout.LayoutParams(0, -2, 1f))
+                    addView(TextView(this@MainActivity).apply {
+                        text = SimpleDateFormat("EEE, d MMM", Locale.getDefault()).format(Date())
+                        MapUi.label(this)
+                        setTextColor(getColor(R.color.map_muted))
+                        setPadding(0, 0, 0, dp(6))
+                    })
+                })
+                addHairline(body, dp(16))
+                body.addView(TextView(this).apply {
+                    text = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+                    MapUi.numeral(this, size = 44f)
+                    contentDescription = "Current time"
+                    setPadding(0, dp(12), 0, dp(4))
+                })
+            },
+        ) { body ->
             body.addView(TextView(this).apply {
                 text = "A clear view of what needs your attention."
                 MapUi.body(this)
@@ -217,24 +244,40 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun render(title: String, selected: String = title, fill: (LinearLayout) -> Unit) {
+    private fun defaultHeader(title: String): (LinearLayout) -> Unit = { body ->
+        body.addView(TextView(this).apply {
+            text = "MAP"
+            MapUi.label(this)
+            setTextColor(getColor(R.color.map_accent))
+            contentDescription = "MAP home"
+        })
+        body.addView(TextView(this).apply {
+            text = title
+            MapUi.display(this)
+            setPadding(0, dp(4), 0, dp(4))
+        })
+        addHairline(body, dp(16))
+    }
+
+    private fun addHairline(parent: LinearLayout, bottomMargin: Int = 0) {
+        parent.addView(View(this).apply {
+            setBackgroundColor(getColor(R.color.map_divider))
+        }, LinearLayout.LayoutParams(-1, dp(1)).apply { this.bottomMargin = bottomMargin })
+    }
+
+    private fun render(
+        title: String,
+        selected: String = title,
+        header: (LinearLayout) -> Unit = defaultHeader(title),
+        fill: (LinearLayout) -> Unit,
+    ) {
         musicPlayButton = null
         content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(24), dp(24), dp(24), dp(24))
             setBackgroundColor(getColor(R.color.map_background))
         }
-        content.addView(TextView(this).apply {
-            text = "MAP"
-            MapUi.label(this)
-            setTextColor(getColor(R.color.map_accent))
-            contentDescription = "MAP home"
-        })
-        content.addView(TextView(this).apply {
-            text = title
-            MapUi.display(this)
-            setPadding(0, dp(8), 0, dp(16))
-        })
+        header(content)
         fill(content)
         val root = LinearLayout(this).apply {
             setBackgroundColor(getColor(R.color.map_background))
@@ -264,8 +307,29 @@ class MainActivity : Activity() {
     }
 
     private fun addTaskSection(parent: LinearLayout, title: String, tasks: List<Task>) {
-        addHeading(parent, title)
+        addSectionRule(parent, title, tasks.size)
         if (tasks.isEmpty()) addEmpty(parent, "Nothing here.") else tasks.forEach { addTaskRow(parent, it) }
+    }
+
+    private fun addSectionRule(parent: LinearLayout, title: String, count: Int? = null) {
+        parent.addView(View(this).apply {
+            setBackgroundColor(getColor(R.color.map_divider))
+        }, LinearLayout.LayoutParams(-1, dp(1)).apply { topMargin = dp(16) })
+        parent.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(10), 0, dp(8))
+            addView(TextView(this@MainActivity).apply {
+                text = title
+                MapUi.section(this)
+            }, LinearLayout.LayoutParams(0, -2, 1f))
+            if (count != null) {
+                addView(TextView(this@MainActivity).apply {
+                    text = count.toString()
+                    MapUi.numeral(this, size = 15f, color = R.color.map_muted)
+                })
+            }
+        })
     }
 
     private fun addFocusArea(parent: LinearLayout, tasks: List<Task>, startOfToday: Long, startOfTomorrow: Long) {
@@ -281,11 +345,11 @@ class MainActivity : Activity() {
             .filter { it.id != focus?.id && it.dueAt != null && it.dueAt!! >= now }
             .minByOrNull { it.dueAt!! }
         val actionTask = focus ?: next
-        addHeading(parent, "Focus")
+        addSectionRule(parent, "Focus")
         parent.addView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(14), dp(16), dp(14))
-            setBackgroundResource(if (actionTask == null) R.drawable.map_focus_surface else R.drawable.map_focus_action)
+            setPadding(0, dp(4), 0, dp(8))
+            setBackgroundResource(R.drawable.map_signal_row)
             actionTask?.let { task ->
                 contentDescription = "Open focus task ${task.title}"
                 isFocusable = true
@@ -543,7 +607,7 @@ class MainActivity : Activity() {
     }
 
     private fun addActivity(parent: LinearLayout, completed: List<Task>) {
-        addHeading(parent, "Recent activity")
+        addSectionRule(parent, "Recent activity")
         if (completed.isEmpty()) addEmpty(parent, "Your recent activity will appear here.")
         completed.forEach { task ->
             parent.addView(TextView(this).apply {
@@ -564,7 +628,7 @@ class MainActivity : Activity() {
         val playing = MusicService.isRunning && music.playing()
         music.close()
         if (item == null) return
-        addHeading(parent, "Music")
+        addSectionRule(parent, "Music")
         LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = android.view.Gravity.CENTER_VERTICAL
@@ -603,18 +667,6 @@ class MainActivity : Activity() {
             musicPlayButton = playButton
             addView(playButton)
         }.also { parent.addView(it) }
-    }
-
-    private fun addHeading(parent: LinearLayout, title: String) {
-        parent.addView(View(this).apply {
-            setBackgroundColor(getColor(R.color.map_divider))
-            layoutParams = LinearLayout.LayoutParams(-1, dp(1)).apply { topMargin = dp(16) }
-        })
-        parent.addView(TextView(this).apply {
-            text = title
-            MapUi.section(this)
-            setPadding(0, dp(12), 0, dp(8))
-        })
     }
 
     private fun addEmpty(parent: LinearLayout, message: String) {

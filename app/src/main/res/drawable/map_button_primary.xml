@@ -2,20 +2,20 @@
     <item android:state_pressed="true">
         <shape>
             <solid android:color="@color/map_accent_pressed" />
-            <corners android:radius="14dp" />
+            <corners android:radius="2dp" />
         </shape>
     </item>
     <item android:state_focused="true">
         <shape>
             <solid android:color="@color/map_accent" />
             <stroke android:width="2dp" android:color="@color/map_accent_pressed" />
-            <corners android:radius="14dp" />
+            <corners android:radius="2dp" />
         </shape>
     </item>
     <item>
         <shape>
             <solid android:color="@color/map_accent" />
-            <corners android:radius="14dp" />
+            <corners android:radius="2dp" />
         </shape>
     </item>
 </selector>

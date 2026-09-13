@@ -92,12 +92,20 @@ class CalendarActivity : Activity() {
             setBackgroundColor(getColor(R.color.map_background))
         }
         val scroll = ScrollView(this).also { contentScroll = it }
-        val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(24), 0, dp(24), dp(24)) }
+        val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(24), dp(24), dp(24), dp(24)) }
+        body.addView(TextView(this).apply {
+            text = "MAP"
+            MapUi.label(this)
+            setTextColor(getColor(R.color.map_accent))
+        })
         body.addView(TextView(this).apply {
             text = if (weekMode) "This week" else "Today"
             MapUi.display(this)
-            setPadding(0, dp(8), 0, dp(4))
+            setPadding(0, dp(4), 0, dp(4))
         })
+        body.addView(View(this).apply {
+            setBackgroundColor(getColor(R.color.map_divider))
+        }, LinearLayout.LayoutParams(-1, dp(1)).apply { bottomMargin = dp(16) })
         body.addView(TextView(this).apply {
             text = if (weekMode) "A quiet view of the week ahead." else formatDate(selectedDay)
             MapUi.body(this)
@@ -126,7 +134,6 @@ class CalendarActivity : Activity() {
         scroll.addView(body)
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            addView(header())
             addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
             addMusicMiniPlayer(this)
         }
@@ -136,18 +143,6 @@ class CalendarActivity : Activity() {
         val scrollY = restoredScrollY
         restoredScrollY = 0
         contentScroll?.post { contentScroll?.scrollTo(0, scrollY) }
-    }
-
-    private fun header(): View = LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
-        gravity = Gravity.CENTER_VERTICAL
-        setPadding(dp(16), dp(24), dp(16), dp(4))
-            addView(TextView(this@CalendarActivity).apply {
-                text = "Calendar"
-                MapUi.section(this)
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(0, 0, 0, 0)
-            }, LinearLayout.LayoutParams(0, -1, 1f))
     }
 
     private fun navigate(label: String) {
@@ -369,11 +364,16 @@ class CalendarActivity : Activity() {
         setOnClickListener { click() }
     }
 
-    private fun addHeading(parent: LinearLayout, text: String) = parent.addView(TextView(this).apply {
-        this.text = text
-        MapUi.section(this)
-        setPadding(0, dp(16), 0, dp(8))
-    })
+    private fun addHeading(parent: LinearLayout, text: String) {
+        parent.addView(View(this).apply {
+            setBackgroundColor(getColor(R.color.map_divider))
+        }, LinearLayout.LayoutParams(-1, dp(1)).apply { topMargin = dp(16) })
+        parent.addView(TextView(this).apply {
+            this.text = text
+            MapUi.section(this)
+            setPadding(0, dp(10), 0, dp(8))
+        })
+    }
 
     private fun addEmpty(parent: LinearLayout, text: String) = parent.addView(TextView(this).apply {
         this.text = text
