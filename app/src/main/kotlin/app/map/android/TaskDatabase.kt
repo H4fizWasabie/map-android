@@ -140,16 +140,7 @@ class TaskDatabase(context: Context) : SQLiteOpenHelper(context, "map.db", null,
         return tasks
     }
 
-    fun nextDueAt(task: Task, completedAt: Long): Long? {
-        val base = Calendar.getInstance().apply { timeInMillis = task.dueAt ?: completedAt }
-        when (task.recurrence) {
-            "Daily" -> base.add(Calendar.DAY_OF_YEAR, 1)
-            "Weekly" -> base.add(Calendar.WEEK_OF_YEAR, 1)
-            "Monthly" -> base.add(Calendar.MONTH, 1)
-            else -> return null
-        }
-        return base.timeInMillis
-    }
+    fun nextDueAt(task: Task, completedAt: Long): Long? = TaskRecurrence.nextDueAt(task, completedAt)
 
     private fun Cursor.toTask() = Task(
         id = getLong(getColumnIndexOrThrow("id")),
