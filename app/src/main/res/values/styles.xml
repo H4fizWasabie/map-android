@@ -46,5 +46,19 @@
         <item name="android:navigationBarColor">@color/map_background</item>
         <item name="android:statusBarColor">@color/map_background</item>
         <item name="android:windowLightStatusBar">true</item>
+        <item name="android:alertDialogTheme">@style/Theme.MAP.Dialog</item>
+        <item name="android:datePickerDialogTheme">@style/Theme.MAP.Dialog</item>
+        <item name="android:timePickerDialogTheme">@style/Theme.MAP.Dialog</item>
+    </style>
+
+    <style name="Theme.MAP.Dialog" parent="android:style/Theme.Material.Light.Dialog.Alert">
+        <item name="android:fontFamily">@font/work_sans</item>
+        <item name="android:textColorPrimary">@color/map_text</item>
+        <item name="android:textColorSecondary">@color/map_muted</item>
+        <item name="android:colorControlNormal">@color/map_muted</item>
+        <item name="android:colorControlActivated">@color/map_accent</item>
+        <item name="android:colorAccent">@color/map_accent</item>
+        <item name="android:background">@color/map_card</item>
+        <item name="android:windowBackground">@color/map_card</item>
     </style>
 </resources>

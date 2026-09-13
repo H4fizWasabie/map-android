@@ -8,7 +8,6 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.res.ColorStateList
 import android.graphics.BitmapFactory
-import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -372,37 +371,46 @@ class MusicActivity : ComponentActivity() {
             LibraryRow.Group(group, "${items.size} ${if (items.size == 1) "track" else "tracks"}", kind)
         }
 
-    private fun trackRow(item: AudioItem, tracks: List<AudioItem>): View = LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
-        gravity = Gravity.CENTER_VERTICAL
-        setPadding(dp(12), dp(10), dp(8), dp(10))
-        background = rounded(getColor(R.color.map_card), dp(14))
-        contentDescription = "Play ${item.title} by ${item.artist}"
-        setOnClickListener { playTracks(tracks, item) }
-        addView(cover(item, dp(56)).apply {
-            contentDescription = null
-            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-        }, LinearLayout.LayoutParams(dp(56), dp(56)).apply { rightMargin = dp(12) })
-        val text = LinearLayout(this@MusicActivity).apply { orientation = LinearLayout.VERTICAL }
-        text.addView(TextView(this@MusicActivity).apply {
-            this.text = item.title
-            MapUi.body(this)
-        })
-        text.addView(TextView(this@MusicActivity).apply {
-            this.text = listOf(item.artist, item.album, formatDuration(item.durationMs)).joinToString(" · ")
-            MapUi.metadata(this)
-            setPadding(0, dp(3), 0, 0)
-        })
-        if (!item.available) text.addView(TextView(this@MusicActivity).apply {
-            this.text = "Unavailable — refresh the folder or remove it"
-            MapUi.label(this)
-            setTextColor(getColor(R.color.map_accent))
-        })
-        addView(text, LinearLayout.LayoutParams(0, -2, 1f))
-        addView(actionButton("More") { showTrackMenu(item, tracks) }.apply {
-            contentDescription = "More actions for ${item.title}"
-        })
-    }.apply { layoutParams = AbsListView.LayoutParams(-1, -2) }
+    private fun trackRow(item: AudioItem, tracks: List<AudioItem>): View {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(10), 0, dp(10))
+            contentDescription = "Play ${item.title} by ${item.artist}"
+            setOnClickListener { playTracks(tracks, item) }
+            addView(cover(item, dp(56)).apply {
+                contentDescription = null
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            }, LinearLayout.LayoutParams(dp(56), dp(56)).apply { rightMargin = dp(12) })
+            val text = LinearLayout(this@MusicActivity).apply { orientation = LinearLayout.VERTICAL }
+            text.addView(TextView(this@MusicActivity).apply {
+                this.text = item.title
+                MapUi.body(this)
+            })
+            text.addView(TextView(this@MusicActivity).apply {
+                this.text = listOf(item.artist, item.album, formatDuration(item.durationMs)).joinToString(" · ")
+                MapUi.metadata(this)
+                setPadding(0, dp(3), 0, 0)
+            })
+            if (!item.available) text.addView(TextView(this@MusicActivity).apply {
+                this.text = "Unavailable — refresh the folder or remove it"
+                MapUi.label(this)
+                setTextColor(getColor(R.color.map_accent))
+            })
+            addView(text, LinearLayout.LayoutParams(0, -2, 1f))
+            addView(actionButton("More") { showTrackMenu(item, tracks) }.apply {
+                contentDescription = "More actions for ${item.title}"
+            })
+        }
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(row)
+            addView(View(this@MusicActivity).apply {
+                setBackgroundColor(getColor(R.color.map_divider))
+            }, LinearLayout.LayoutParams(-1, dp(1)))
+            layoutParams = AbsListView.LayoutParams(-1, -2)
+        }
+    }
 
     private fun emptyRow(message: String): View = TextView(this).apply {
         text = message
@@ -495,8 +503,7 @@ class MusicActivity : ComponentActivity() {
             val row = LinearLayout(this).apply {
                 orientation = if (largeText) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(12), dp(8), dp(8), dp(8))
-                background = rounded(getColor(R.color.map_card), dp(14))
+                setPadding(0, dp(8), 0, dp(8))
                 if (largeText) {
                     addView(title, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(4) })
                     addView(HorizontalScrollView(this@MusicActivity).apply {
@@ -511,7 +518,10 @@ class MusicActivity : ComponentActivity() {
                     actions.forEach { addView(it) }
                 }
             }
-            parent.addView(row, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
+            parent.addView(row, LinearLayout.LayoutParams(-1, -2))
+            parent.addView(View(this).apply {
+                setBackgroundColor(getColor(R.color.map_divider))
+            }, LinearLayout.LayoutParams(-1, dp(1)))
         }
     }
 
@@ -947,13 +957,21 @@ class MusicActivity : ComponentActivity() {
         return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })
     }
 
-    private fun actionRow(title: String, detail: String, click: () -> Unit): View = LinearLayout(this).apply {
-        orientation = LinearLayout.VERTICAL
-        setPadding(dp(14), dp(12), dp(14), dp(12))
-        background = rounded(getColor(R.color.map_card), dp(14))
-        setOnClickListener { click() }
-        addView(TextView(this@MusicActivity).apply { text = title; MapUi.body(this) })
-        addView(TextView(this@MusicActivity).apply { text = detail; MapUi.metadata(this); setPadding(0, dp(3), 0, 0) })
+    private fun actionRow(title: String, detail: String, click: () -> Unit): View {
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, dp(12), 0, dp(12))
+            setOnClickListener { click() }
+            addView(TextView(this@MusicActivity).apply { text = title; MapUi.body(this) })
+            addView(TextView(this@MusicActivity).apply { text = detail; MapUi.metadata(this); setPadding(0, dp(3), 0, 0) })
+        }
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(content)
+            addView(View(this@MusicActivity).apply {
+                setBackgroundColor(getColor(R.color.map_divider))
+            }, LinearLayout.LayoutParams(-1, dp(1)))
+        }
     }
 
     private fun isLargeTextLayout(): Boolean = resources.configuration.screenWidthDp < 360 || resources.configuration.fontScale >= 1.3f
@@ -995,7 +1013,6 @@ class MusicActivity : ComponentActivity() {
     private fun activeFilterSummary(): String = listOf(filters.format, filters.artist, filters.album, filters.genre, filters.folder, filters.duration, filters.availability).filterNot { it.startsWith("All") || it == "Any length" }.joinToString(" · ")
     private fun formatDuration(ms: Long): String = if (ms <= 0) "–" else "%d:%02d".format(ms / 60_000, (ms / 1_000) % 60)
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).roundToInt()
-    private fun rounded(color: Int, radius: Int) = GradientDrawable().apply { setColor(color); cornerRadius = radius.toFloat() }
 
     private fun startMusicAction(action: String, uri: String? = null, extras: Map<String, Any> = emptyMap()): Boolean {
         val intent = Intent(this, MusicService::class.java).setAction(action)
