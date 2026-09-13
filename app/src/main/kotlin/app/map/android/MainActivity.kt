@@ -209,7 +209,7 @@ class MainActivity : Activity() {
                 homePrimaryActionSettled = true
             }
             addUndoBar(body)
-            addFocusArea(body, openTasks, startOfToday, startOfTomorrow)
+            addFocusArea(body, openTasks)
             val inbox = openTasks.filter { it.dueAt == null }
             val overdue = openTasks.filter { it.dueAt != null && it.dueAt!! < startOfToday }
             val today = openTasks.filter { it.dueAt != null && it.dueAt!! in startOfToday until startOfTomorrow }
@@ -332,19 +332,9 @@ class MainActivity : Activity() {
         })
     }
 
-    private fun addFocusArea(parent: LinearLayout, tasks: List<Task>, startOfToday: Long, startOfTomorrow: Long) {
-        val now = System.currentTimeMillis()
-        val today = tasks.filter { it.dueAt != null && it.dueAt!! in startOfToday until startOfTomorrow }
-        val current = today.filter { task ->
-            task.allDay || (task.dueAt!! <= now && task.dueAt!! + HOUR >= now)
-        }.minByOrNull { it.dueAt ?: Long.MAX_VALUE }
-        val pinned = preferences.getLong(PINNED_FOCUS_ID, -1L).takeIf { it != -1L }?.let { id -> tasks.firstOrNull { it.id == id } }
-        if (pinned == null && preferences.contains(PINNED_FOCUS_ID)) preferences.edit().remove(PINNED_FOCUS_ID).apply()
-        val focus = pinned ?: current
-        val next = tasks.asSequence()
-            .filter { it.id != focus?.id && it.dueAt != null && it.dueAt!! >= now }
-            .minByOrNull { it.dueAt!! }
-        val actionTask = focus ?: next
+    private fun addFocusArea(parent: LinearLayout, tasks: List<Task>) {
+        val selection = FocusPicker.select(tasks, preferences)
+        val actionTask = selection.focus ?: selection.next
         addSectionRule(parent, "Focus")
         parent.addView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -355,16 +345,15 @@ class MainActivity : Activity() {
                 isFocusable = true
                 setOnClickListener { showTaskDetails(task) }
             }
-            addView(focusLine("Now", focus?.let(::focusLabel) ?: "Nothing in progress"))
-            addView(focusLine("Next", next?.let(::focusLabel) ?: "Nothing queued"))
-            focus?.let { task ->
+            addView(focusLine("Now", selection.focus?.let(::focusLabel) ?: "Nothing in progress"))
+            addView(focusLine("Next", selection.next?.let(::focusLabel) ?: "Nothing queued"))
+            selection.focus?.let { task ->
                 addView(Button(this@MainActivity).apply {
-                    text = if (pinned == null) "Pin focus" else "Unpin focus"
+                    text = if (!selection.pinned) "Pin focus" else "Unpin focus"
                     isAllCaps = false
                     contentDescription = text
                     setOnClickListener {
-                        if (pinned == null) preferences.edit().putLong(PINNED_FOCUS_ID, task.id).apply()
-                        else preferences.edit().remove(PINNED_FOCUS_ID).apply()
+                        FocusPicker.setPinned(preferences, if (!selection.pinned) task.id else null)
                         showHome()
                     }
                 })
@@ -863,9 +852,6 @@ class MainActivity : Activity() {
         const val EXTRA_OPEN_COMPOSER = "open_composer"
         const val EXTRA_OPEN_TASKS = "open_tasks"
         const val EXTRA_OPEN_TASK_ID = "open_task_id"
-        private const val HOUR = 60 * 60 * 1000L
-        private const val DAY = 24 * 60 * 60 * 1000L
-        private const val PINNED_FOCUS_ID = "pinned_focus_id"
         private const val NOTIFICATION_REQUEST = 40
         private const val STATE_SELECTED_VIEW = "selected_view"
         private const val STATE_PENDING_TASK_ID = "pending_task_id"

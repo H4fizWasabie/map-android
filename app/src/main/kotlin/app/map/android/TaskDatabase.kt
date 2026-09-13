@@ -8,6 +8,7 @@ import android.database.sqlite.SQLiteOpenHelper
 import java.util.Calendar
 
 class TaskDatabase(context: Context) : SQLiteOpenHelper(context, "map.db", null, 3) {
+    private val appContext = context.applicationContext
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
             """
@@ -34,7 +35,7 @@ class TaskDatabase(context: Context) : SQLiteOpenHelper(context, "map.db", null,
 
     fun addTask(title: String, notes: String, dueAt: Long?, recurrence: String, tags: String, allDay: Boolean = true): Long {
         require(title.isNotBlank()) { "Task title cannot be blank" }
-        return writableDatabase.insertOrThrow("tasks", null, ContentValues().apply {
+        val id = writableDatabase.insertOrThrow("tasks", null, ContentValues().apply {
             put("title", title)
             put("notes", notes)
             dueAt?.let { put("due_at", it) }
@@ -43,6 +44,8 @@ class TaskDatabase(context: Context) : SQLiteOpenHelper(context, "map.db", null,
             put("all_day", if (allDay) 1 else 0)
             put("created_at", System.currentTimeMillis())
         })
+        FocusWidgetProvider.refresh(appContext)
+        return id
     }
 
     fun openTasks(): List<Task> = queryTasks("completed = 0")
@@ -51,7 +54,7 @@ class TaskDatabase(context: Context) : SQLiteOpenHelper(context, "map.db", null,
 
     fun updateTask(task: Task, title: String, notes: String, tags: String, dueAt: Long?, recurrence: String, allDay: Boolean): Boolean {
         require(title.isNotBlank()) { "Task title cannot be blank" }
-        return writableDatabase.update(
+        val updated = writableDatabase.update(
             "tasks",
             ContentValues().apply {
                 put("title", title)
@@ -64,12 +67,14 @@ class TaskDatabase(context: Context) : SQLiteOpenHelper(context, "map.db", null,
             "id = ? AND completed = 0",
             arrayOf(task.id.toString())
         ) == 1
+        if (updated) FocusWidgetProvider.refresh(appContext)
+        return updated
     }
 
     fun complete(task: Task): Long? {
         val completedAt = System.currentTimeMillis()
         writableDatabase.beginTransaction()
-        return try {
+        val nextId = try {
             val updated = writableDatabase.update(
                 "tasks",
                 ContentValues().apply {
@@ -88,11 +93,13 @@ class TaskDatabase(context: Context) : SQLiteOpenHelper(context, "map.db", null,
         } finally {
             writableDatabase.endTransaction()
         }
+        FocusWidgetProvider.refresh(appContext)
+        return nextId
     }
 
     fun undoComplete(task: Task, nextId: Long?): Boolean {
         writableDatabase.beginTransaction()
-        return try {
+        val restored = try {
             val restored = writableDatabase.update(
                 "tasks",
                 ContentValues().apply {
@@ -110,6 +117,8 @@ class TaskDatabase(context: Context) : SQLiteOpenHelper(context, "map.db", null,
         } finally {
             writableDatabase.endTransaction()
         }
+        if (restored) FocusWidgetProvider.refresh(appContext)
+        return restored
     }
 
     fun snooze(task: Task): Long? {
@@ -120,6 +129,7 @@ class TaskDatabase(context: Context) : SQLiteOpenHelper(context, "map.db", null,
             "id = ? AND completed = 0",
             arrayOf(task.id.toString())
         )
+        if (updated == 1) FocusWidgetProvider.refresh(appContext)
         return if (updated == 1) dueAt else null
     }
 
