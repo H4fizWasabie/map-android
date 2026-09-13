@@ -39,7 +39,6 @@ import androidx.activity.OnBackPressedCallback
 import androidx.core.content.ContextCompat
 import java.util.ArrayDeque
 import java.util.concurrent.Executors
-import kotlin.math.roundToInt
 
 private enum class MusicViewMode(val label: String) {
     SONGS("Songs"), ALBUMS("Albums"), ARTISTS("Artists"), GENRES("Genres"), FOLDERS("Folders"),
@@ -1072,7 +1071,7 @@ class MusicActivity : ComponentActivity() {
 
     private fun activeFilterSummary(): String = listOf(filters.format, filters.artist, filters.album, filters.genre, filters.folder, filters.duration, filters.availability).filterNot { it.startsWith("All") || it == "Any length" }.joinToString(" · ")
     private fun formatDuration(ms: Long): String = if (ms <= 0) "–" else "%d:%02d".format(ms / 60_000, (ms / 1_000) % 60)
-    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).roundToInt()
+    private fun dp(value: Int): Int = MapUi.dp(this, value)
 
     private fun startMusicAction(action: String, uri: String? = null, extras: Map<String, Any> = emptyMap()): Boolean {
         val intent = Intent(this, MusicService::class.java).setAction(action)

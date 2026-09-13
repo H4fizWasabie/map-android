@@ -420,12 +420,7 @@ class MainActivity : Activity() {
     }
 
     private fun completeTask(task: Task) {
-        ReminderScheduler.cancel(this, task.id)
-        val completedAt = System.currentTimeMillis()
-        val nextDueAt = database.nextDueAt(task, completedAt)
-        val nextId = database.complete(task)
-        undoState = UndoState(task, nextId)
-        if (nextId != null && nextDueAt != null) ReminderScheduler.schedule(this, nextId, task.title, nextDueAt)
+        undoState = TaskActions.complete(this, database, task)
         if (selectedView == "Tasks") showTasks() else showHome()
     }
 
@@ -578,33 +573,8 @@ class MainActivity : Activity() {
         if (resources.configuration.fontScale >= 1.3f) fitLargeDialog(dialog)
     }
 
-    private fun addUndoBar(parent: LinearLayout) {
-        val state = undoState ?: return
-        parent.addView(LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = android.view.Gravity.CENTER_VERTICAL
-            setPadding(dp(14), dp(8), dp(8), dp(8))
-            setBackgroundResource(R.drawable.map_surface)
-            addView(TextView(this@MainActivity).apply {
-                text = "Completed ${state.task.title}"
-                MapUi.label(this)
-            }, LinearLayout.LayoutParams(0, -2, 1f))
-            addView(Button(this@MainActivity).apply {
-                text = "Undo"
-                isAllCaps = false
-                setOnClickListener {
-                    ReminderScheduler.cancel(this@MainActivity, state.nextId ?: state.task.id)
-                    if (database.undoComplete(state.task, state.nextId)) {
-                        state.task.dueAt?.takeIf { it > System.currentTimeMillis() }?.let {
-                            ReminderScheduler.schedule(this@MainActivity, state.task.id, state.task.title, it)
-                        }
-                    }
-                    undoState = null
-                    showHome()
-                }
-            })
-        }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
-    }
+    private fun addUndoBar(parent: LinearLayout) =
+        MapUi.addUndoBar(this, parent, database, undoState) { undoState = null; showHome() }
 
     private fun addActivity(parent: LinearLayout, completed: List<Task>) {
         addSectionRule(parent, "Recent activity")
@@ -873,7 +843,7 @@ class MainActivity : Activity() {
         composerDetailsVisible = false
     }
 
-    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+    private fun dp(value: Int): Int = MapUi.dp(this, value)
 
     private fun fitLargeDialog(dialog: Dialog) {
         dialog.window?.let { window ->
@@ -885,11 +855,7 @@ class MainActivity : Activity() {
             }
         }
     }
-    private fun requestNotificationsIfNeeded() {
-        if (android.os.Build.VERSION.SDK_INT >= 33 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), NOTIFICATION_REQUEST)
-        }
-    }
+    private fun requestNotificationsIfNeeded() = MapUi.requestNotificationsIfNeeded(this, NOTIFICATION_REQUEST)
     private fun formatDate(value: Long) = java.text.SimpleDateFormat("EEE, d MMM", java.util.Locale.getDefault()).format(java.util.Date(value))
     private fun formatDateTime(value: Long) = java.text.SimpleDateFormat("EEE, d MMM · HH:mm", java.util.Locale.getDefault()).format(java.util.Date(value))
 
@@ -913,6 +879,4 @@ class MainActivity : Activity() {
         private const val STATE_COMPOSER_ALL_DAY = "composer_all_day"
         private const val STATE_COMPOSER_DETAILS_VISIBLE = "composer_details_visible"
     }
-
-    private data class UndoState(val task: Task, val nextId: Long?)
 }

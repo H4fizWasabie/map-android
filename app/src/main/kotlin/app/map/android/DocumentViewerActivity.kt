@@ -560,7 +560,7 @@ class DocumentViewerActivity : Activity() {
         setOnClickListener { click() }
     }
 
-    private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
+    private fun dp(value: Int) = MapUi.dp(this, value)
 
     private inner class PdfPageView(
         val index: Int,

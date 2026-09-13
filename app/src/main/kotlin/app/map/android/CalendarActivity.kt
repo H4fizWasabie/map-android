@@ -271,42 +271,12 @@ class CalendarActivity : Activity() {
     }
 
     private fun completeTask(task: Task) {
-        ReminderScheduler.cancel(this, task.id)
-        val completedAt = System.currentTimeMillis()
-        val nextDueAt = database.nextDueAt(task, completedAt)
-        val nextId = database.complete(task)
-        undoState = UndoState(task, nextId)
-        if (nextId != null && nextDueAt != null) ReminderScheduler.schedule(this, nextId, task.title, nextDueAt)
+        undoState = TaskActions.complete(this, database, task)
         render()
     }
 
-    private fun addUndoBar(parent: LinearLayout) {
-        val state = undoState ?: return
-        parent.addView(LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(14), dp(8), dp(8), dp(8))
-            setBackgroundResource(R.drawable.map_surface)
-            addView(TextView(this@CalendarActivity).apply {
-                text = "Completed ${state.task.title}"
-                MapUi.label(this)
-            }, LinearLayout.LayoutParams(0, -2, 1f))
-            addView(Button(this@CalendarActivity).apply {
-                text = "Undo"
-                isAllCaps = false
-                setOnClickListener {
-                    ReminderScheduler.cancel(this@CalendarActivity, state.nextId ?: state.task.id)
-                    if (database.undoComplete(state.task, state.nextId)) {
-                        state.task.dueAt?.takeIf { it > System.currentTimeMillis() }?.let {
-                            ReminderScheduler.schedule(this@CalendarActivity, state.task.id, state.task.title, it)
-                        }
-                    }
-                    undoState = null
-                    render()
-                }
-            })
-        }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
-    }
+    private fun addUndoBar(parent: LinearLayout) =
+        MapUi.addUndoBar(this, parent, database, undoState) { undoState = null; render() }
 
     private fun addMusicMiniPlayer(parent: LinearLayout) {
         val music = MusicDatabase(this)
@@ -349,11 +319,7 @@ class CalendarActivity : Activity() {
         }, LinearLayout.LayoutParams(-1, -2))
     }
 
-    private fun requestNotificationsIfNeeded() {
-        if (android.os.Build.VERSION.SDK_INT >= 33 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), NOTIFICATION_REQUEST)
-        }
-    }
+    private fun requestNotificationsIfNeeded() = MapUi.requestNotificationsIfNeeded(this, NOTIFICATION_REQUEST)
 
     private fun actionButton(label: String, click: () -> Unit): Button = Button(this).apply {
         text = label
@@ -382,7 +348,7 @@ class CalendarActivity : Activity() {
         setPadding(0, 0, 0, dp(8))
     })
 
-    private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
+    private fun dp(value: Int) = MapUi.dp(this, value)
 
     private fun hourOfDay(value: Long): Int = Calendar.getInstance().apply { timeInMillis = value }.get(Calendar.HOUR_OF_DAY)
 
@@ -403,6 +369,4 @@ class CalendarActivity : Activity() {
         }
         private fun formatDate(value: Long) = SimpleDateFormat("EEE, d MMM", Locale.getDefault()).format(Date(value))
     }
-
-    private data class UndoState(val task: Task, val nextId: Long?)
 }

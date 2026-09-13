@@ -14,11 +14,12 @@ import android.widget.TextView
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import kotlin.math.roundToInt
 
 object MapUi {
     private fun expandedNavigation(context: Context): Boolean = context.resources.configuration.screenWidthDp >= 600
 
-    fun dp(context: Context, value: Int): Int = (value * context.resources.displayMetrics.density).toInt()
+    fun dp(context: Context, value: Int): Int = (value * context.resources.displayMetrics.density).roundToInt()
 
     private fun signage(context: Context): Typeface = ResourcesCompat.getFont(context, R.font.archivo) ?: Typeface.DEFAULT
 
@@ -53,6 +54,37 @@ object MapUi {
 
     fun markPrimaryAction(button: Button) {
         // Signal design carries identity through type and hairline rules, not iconography.
+    }
+
+    /** Shared by Home and Calendar: shows the last completed task with an Undo action. */
+    fun addUndoBar(activity: Activity, parent: LinearLayout, database: TaskDatabase, state: UndoState?, onChanged: () -> Unit) {
+        if (state == null) return
+        parent.addView(LinearLayout(activity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(activity, 14), dp(activity, 8), dp(activity, 8), dp(activity, 8))
+            setBackgroundResource(R.drawable.map_surface)
+            addView(TextView(activity).apply {
+                text = "Completed ${state.task.title}"
+                label(this)
+            }, LinearLayout.LayoutParams(0, -2, 1f))
+            addView(Button(activity).apply {
+                text = "Undo"
+                isAllCaps = false
+                setOnClickListener {
+                    TaskActions.undo(activity, database, state)
+                    onChanged()
+                }
+            })
+        }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(activity, 12) })
+    }
+
+    fun requestNotificationsIfNeeded(activity: Activity, requestCode: Int) {
+        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+            activity.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            activity.requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), requestCode)
+        }
     }
 
     fun settlePrimaryAction(view: View) {

@@ -11,3 +11,6 @@ data class Task(
     val completedAt: Long?,
     val allDay: Boolean = true
 )
+
+/** The task just completed and the id of the recurrence it produced, if any, so completion can be undone. */
+data class UndoState(val task: Task, val nextId: Long?)

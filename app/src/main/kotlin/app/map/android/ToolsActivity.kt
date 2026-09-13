@@ -232,7 +232,7 @@ class ToolsActivity : Activity() {
         setOnClickListener { click() }
     }
 
-    private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
+    private fun dp(value: Int) = MapUi.dp(this, value)
 
     companion object {
         private const val DOCUMENT_REQUEST = 31
