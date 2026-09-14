@@ -56,7 +56,6 @@ class MusicService : Service() {
     private var sleepEndsAt = 0L
     private var focusRequest: AudioFocusRequest? = null
     private var tickCount = 0
-    private var allowExternalResume = false
 
     private val focusListener = AudioManager.OnAudioFocusChangeListener { change ->
         when (change) {
@@ -92,9 +91,7 @@ class MusicService : Service() {
         createChannel()
         session = MediaSession(this, "MAP Music").apply {
             setCallback(object : MediaSession.Callback() {
-                override fun onPlay() {
-                    if (allowExternalResume) resume()
-                }
+                override fun onPlay() = resume()
                 override fun onPause() = pause()
                 override fun onStop() = stopPlayback()
                 override fun onSkipToNext() = advance(1)
@@ -119,17 +116,10 @@ class MusicService : Service() {
             startForeground(NOTIFICATION_ID, notification())
             when (intent?.action) {
                 ACTION_PLAY -> intent.getStringExtra(EXTRA_URI)?.let {
-                    allowExternalResume = true
                     play(it, intent.getBooleanExtra(EXTRA_RESTORE_POSITION, false))
                 }
-                ACTION_RESUME -> {
-                    allowExternalResume = true
-                    resume()
-                }
-                ACTION_TOGGLE -> if (player?.isPlaying == true) pause() else {
-                    allowExternalResume = true
-                    resume()
-                }
+                ACTION_RESUME -> resume()
+                ACTION_TOGGLE -> if (player?.isPlaying == true) pause() else resume()
                 ACTION_PAUSE -> pause()
                 ACTION_NEXT -> advance(1)
                 ACTION_PREVIOUS -> previous()
@@ -257,7 +247,6 @@ class MusicService : Service() {
     }
 
     private fun pause() {
-        allowExternalResume = false
         runCatching { player?.pause() }
         savePosition()
         updateState()
@@ -316,7 +305,6 @@ class MusicService : Service() {
     }
 
     private fun stopPlayback() {
-        allowExternalResume = false
         savePosition()
         player?.release()
         player = null
