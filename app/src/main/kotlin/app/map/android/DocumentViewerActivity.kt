@@ -77,7 +77,7 @@ class DocumentViewerActivity : Activity() {
         mime = intent.type.orEmpty().ifBlank { intent.getStringExtra(EXTRA_MIME).orEmpty() }.ifBlank {
             contentResolver.getType(uri).orEmpty().ifBlank { "application/pdf" }
         }
-        pdfZoom = savedInstanceState?.getFloat(STATE_PDF_ZOOM, 1f)?.coerceIn(0.75f, 2.5f) ?: 1f
+        pdfZoom = savedInstanceState?.getFloat(STATE_PDF_ZOOM, 1f)?.coerceIn(PDF_ZOOM_MIN, PDF_ZOOM_MAX) ?: 1f
         imageZoom = savedInstanceState?.getFloat(STATE_IMAGE_ZOOM, 1f)?.coerceIn(1f, 3f) ?: 1f
         restoredPdfScrollY = savedInstanceState?.getInt(STATE_PDF_SCROLL_Y, 0) ?: 0
         database.markOpened(uri.toString())
@@ -182,7 +182,7 @@ class DocumentViewerActivity : Activity() {
             }
         }
         pdfPagesContainer = pages
-        val vertical = ScrollView(this).apply {
+        val vertical = PdfZoomScrollView(this).apply {
             pdfScroll = this
             isFillViewport = true
             setOnScrollChangeListener { _, _, _, _, _ -> renderVisiblePages() }
@@ -259,7 +259,7 @@ class DocumentViewerActivity : Activity() {
     }
 
     private fun setPdfZoom(value: Float) {
-        pdfZoom = value.coerceIn(0.75f, 2.5f)
+        pdfZoom = value.coerceIn(PDF_ZOOM_MIN, PDF_ZOOM_MAX)
         pdfRenderGeneration++
         pdfPagesContainer?.layoutParams = pdfPagesContainer?.layoutParams?.apply {
             width = (pdfBaseWidth * pdfZoom).roundToInt()
@@ -382,12 +382,14 @@ class DocumentViewerActivity : Activity() {
         }
         ocrButton = button("Read text") { runOcr() }
         val searchButton = button("Search") { toggleSearch() }
+        val shareButton = button("Share") { shareDocument() }
         addView(LinearLayout(this@DocumentViewerActivity).apply {
             orientation = if (resources.configuration.screenWidthDp < 360) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
             if (resources.configuration.screenWidthDp < 360) {
                 addView(zoomControls)
                 addView(ocrButton, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
                 addView(searchButton, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+                addView(shareButton, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
             } else {
                 addView(HorizontalScrollView(this@DocumentViewerActivity).apply {
                     isHorizontalScrollBarEnabled = false
@@ -396,6 +398,7 @@ class DocumentViewerActivity : Activity() {
                         addView(zoomControls)
                         addView(ocrButton)
                         addView(searchButton)
+                        addView(shareButton)
                     })
                 }, LinearLayout.LayoutParams(-1, -2))
             }
@@ -553,6 +556,20 @@ class DocumentViewerActivity : Activity() {
         }
     }
 
+    private fun shareDocument() {
+        try {
+            startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+                type = mime
+                putExtra(Intent.EXTRA_STREAM, uri)
+                putExtra(Intent.EXTRA_TITLE, name)
+                clipData = android.content.ClipData.newUri(contentResolver, name, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }, "Share $name"))
+        } catch (_: Exception) {
+            Toast.makeText(this, "This file could not be shared", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     private fun button(label: String, click: () -> Unit) = Button(this).apply {
         text = label
         isAllCaps = false
@@ -603,6 +620,21 @@ class DocumentViewerActivity : Activity() {
             bitmap = null
             renderedWidth = 0
             invalidate()
+        }
+    }
+
+    private inner class PdfZoomScrollView(context: android.content.Context) : ScrollView(context) {
+        private val detector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            override fun onScale(detector: ScaleGestureDetector): Boolean {
+                setPdfZoom(pdfZoom * detector.scaleFactor)
+                return true
+            }
+        })
+
+        override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean {
+            detector.onTouchEvent(ev)
+            if (detector.isInProgress) return true
+            return super.dispatchTouchEvent(ev)
         }
     }
 
@@ -660,5 +692,7 @@ class DocumentViewerActivity : Activity() {
         private const val STATE_PDF_ZOOM = "pdf_zoom"
         private const val STATE_IMAGE_ZOOM = "image_zoom"
         private const val STATE_PDF_SCROLL_Y = "pdf_scroll_y"
+        private const val PDF_ZOOM_MIN = 0.75f
+        private const val PDF_ZOOM_MAX = 5f
     }
 }
