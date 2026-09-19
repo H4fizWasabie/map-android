@@ -67,6 +67,9 @@
 
 ### Changed
 
+- Keep the PDF scroll hierarchy receiving touch events while pinch zoom observes them (issue #196).
+- Bound PDF raster rendering in physical pixels so 450% zoom cannot crash Canvas (issue #196).
+
 - Made Home mini-player pause and resume commands explicit instead of state-agnostic toggles.
 
 - Aligned Android build tooling with compileSdk 36 using AGP 8.13.2 and Gradle 8.13, including AndroidX predictive-back handling.
