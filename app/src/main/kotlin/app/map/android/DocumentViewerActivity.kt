@@ -34,6 +34,7 @@ import com.google.mlkit.vision.text.TextRecognizer
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import java.util.concurrent.Executors
 import kotlin.math.roundToInt
+import kotlin.math.sqrt
 
 class DocumentViewerActivity : Activity() {
     private lateinit var database: DocumentDatabase
@@ -224,7 +225,7 @@ class DocumentViewerActivity : Activity() {
         val scroll = pdfScroll ?: return
         val top = scroll.scrollY - scroll.height
         val bottom = scroll.scrollY + scroll.height * 2
-        val width = (pdfBaseWidth * pdfZoom).roundToInt().coerceAtMost(dp(2400))
+        val width = (pdfBaseWidth * pdfZoom).roundToInt().coerceAtMost(PDF_RENDER_MAX_WIDTH)
         val generation = pdfRenderGeneration
         pdfPages.forEach { page ->
             if (page.bottom >= top && page.top <= bottom) {
@@ -251,7 +252,15 @@ class DocumentViewerActivity : Activity() {
         val renderer = pdfRenderer ?: error("PDF renderer is unavailable")
         renderer.openPage(index).use { source ->
             val scale = width.toFloat() / source.width
-            val bitmap = Bitmap.createBitmap(width, (source.height * scale).roundToInt(), Bitmap.Config.ARGB_8888)
+            var bitmapWidth = width
+            var bitmapHeight = (source.height * scale).roundToInt()
+            val pixels = bitmapWidth.toLong() * bitmapHeight
+            if (pixels > PDF_RENDER_MAX_PIXELS) {
+                val factor = sqrt(PDF_RENDER_MAX_PIXELS.toDouble() / pixels)
+                bitmapWidth = (bitmapWidth * factor).roundToInt()
+                bitmapHeight = (bitmapHeight * factor).roundToInt()
+            }
+            val bitmap = Bitmap.createBitmap(bitmapWidth, bitmapHeight, Bitmap.Config.ARGB_8888)
             bitmap.eraseColor(Color.WHITE)
             source.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
             bitmap
@@ -633,7 +642,6 @@ class DocumentViewerActivity : Activity() {
 
         override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean {
             detector.onTouchEvent(ev)
-            if (detector.isInProgress) return true
             return super.dispatchTouchEvent(ev)
         }
     }
@@ -694,5 +702,7 @@ class DocumentViewerActivity : Activity() {
         private const val STATE_PDF_SCROLL_Y = "pdf_scroll_y"
         private const val PDF_ZOOM_MIN = 0.75f
         private const val PDF_ZOOM_MAX = 5f
+        private const val PDF_RENDER_MAX_WIDTH = 2400
+        private const val PDF_RENDER_MAX_PIXELS = 12_000_000L
     }
 }
