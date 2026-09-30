@@ -9,6 +9,7 @@
 
 ### Fixed
 
+- Expanded PDF page layout bounds with the zoom level so rendered document content visibly magnifies beyond 125% (issue #200).
 - Made Calendar's selected date visibly distinct and kept all seven date targets within the normal phone-width strip (issue #199).
 - Announced unavailable document status in Tools to accessibility services (issue #171).
 - Kept unavailable documents openable from Tools so their viewer recovery action stays reachable.

@@ -277,7 +277,11 @@ class DocumentViewerActivity : AppCompatActivity() {
         pdfPagesContainer?.layoutParams = pdfPagesContainer?.layoutParams?.apply {
             width = (pdfBaseWidth * pdfZoom).roundToInt()
         }
-        pdfPages.forEach { it.zoom = pdfZoom; it.clearBitmap() }
+        pdfPages.forEach { page ->
+            page.zoom = pdfZoom
+            page.layoutParams = page.layoutParams.apply { width = (pdfBaseWidth * pdfZoom).roundToInt() }
+            page.clearBitmap()
+        }
         pdfPagesContainer?.requestLayout()
         pdfScroll?.post { renderVisiblePages() }
         status.text = "Zoom ${(pdfZoom * 100).roundToInt()}%"

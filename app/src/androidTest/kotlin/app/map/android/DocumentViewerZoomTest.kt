@@ -51,6 +51,7 @@ class DocumentViewerZoomTest {
     fun zoomButtonRendersPdfAt450Percent() {
         openPdfViewer()
         SystemClock.sleep(1_000)
+        val initialRedPixels = countRedPixels()
 
         repeat(14) { device.findObject(By.desc("Zoom in")).click() }
 
@@ -60,26 +61,15 @@ class DocumentViewerZoomTest {
         )
 
         var redPixels = 0
-        val screenshotFile = File(context.cacheDir, "pdf-zoom.png")
         val renderDeadline = SystemClock.elapsedRealtime() + TIMEOUT
-        while (redPixels <= 100 && SystemClock.elapsedRealtime() < renderDeadline) {
-            assertTrue("Could not capture the PDF viewer", device.takeScreenshot(screenshotFile))
-            val screenshot = requireNotNull(BitmapFactory.decodeFile(screenshotFile.path))
-            try {
-                for (x in 0 until screenshot.width step 8) {
-                    for (y in 0 until screenshot.height step 8) {
-                        val pixel = screenshot.getPixel(x, y)
-                        if (((pixel shr 16) and 0xff) > 180 && ((pixel shr 8) and 0xff) < 100 && (pixel and 0xff) < 100) {
-                            redPixels++
-                        }
-                    }
-                }
-            } finally {
-                screenshot.recycle()
-            }
-            if (redPixels <= 100) SystemClock.sleep(100)
+        while (redPixels <= initialRedPixels * 4 && SystemClock.elapsedRealtime() < renderDeadline) {
+            redPixels = countRedPixels()
+            if (redPixels <= initialRedPixels * 4) SystemClock.sleep(100)
         }
-        assertTrue("Zoom button changed the label but no rendered PDF page is visible", redPixels > 100)
+        assertTrue(
+            "Zoom label reached 450%, but visible PDF content did not grow (red mark pixels $initialRedPixels → $redPixels)",
+            redPixels > initialRedPixels * 4
+        )
     }
 
     @Test
@@ -214,6 +204,26 @@ class DocumentViewerZoomTest {
         assertTrue("MAP did not open the PDF viewer", device.wait(Until.hasObject(By.text(pdfFile.name)), TIMEOUT))
     }
 
+    private fun countRedPixels(): Int {
+        val screenshotFile = File(context.cacheDir, "pdf-zoom.png")
+        assertTrue("Could not capture the PDF viewer", device.takeScreenshot(screenshotFile))
+        val screenshot = requireNotNull(BitmapFactory.decodeFile(screenshotFile.path))
+        return try {
+            var redPixels = 0
+            for (x in 0 until screenshot.width step 4) {
+                for (y in 0 until screenshot.height step 4) {
+                    val pixel = screenshot.getPixel(x, y)
+                    if (((pixel shr 16) and 0xff) > 180 && ((pixel shr 8) and 0xff) < 100 && (pixel and 0xff) < 100) {
+                        redPixels++
+                    }
+                }
+            }
+            redPixels
+        } finally {
+            screenshot.recycle()
+        }
+    }
+
     private fun launchDocumentViewer() {
         context.startActivity(Intent(context, DocumentViewerActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
@@ -239,13 +249,17 @@ class DocumentViewerZoomTest {
         }
     }
 
-    private fun minimalPdf(): ByteArray = ("%PDF-1.4\n" +
+    private fun minimalPdf(): ByteArray {
+        val content = "1 0 0 rg 20 260 20 20 re f\n"
+        return ("%PDF-1.4\n" +
         "1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n" +
         "2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n" +
         "3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 300 300]/Resources<</ProcSet[/PDF]>>/Contents 4 0 R>>endobj\n" +
-        "4 0 obj<</Length 31>>stream\n1 0 0 rg 0 0 300 300 re f\nendstream\nendobj\n" +
+        "4 0 obj<</Length ${content.length}>>stream\n$content" +
+        "endstream\nendobj\n" +
         "xref\n0 5\n0000000000 65535 f \n" +
         "trailer<</Size 5/Root 1 0 R>>\nstartxref\n0\n%%EOF").toByteArray()
+    }
 
     private companion object {
         const val TIMEOUT = 10_000L
