@@ -4,11 +4,14 @@
 
 ### Changed
 
+- Applied the approved lavender workspace direction across Home, grouped Tasks, Calendar, Tools/Documents, Scan, document viewing, and shared Music controls, with paired light/dark palettes and native floating task actions (issue #203).
+
 - Reworked Home around a high-contrast local-time instrument deck, gave Tasks a live local-work summary, added a selected-date readout to Calendar, and rebuilt Tools as icon-led Documents, Scan, and Music workbench modules (issue #199).
 - Adapted short landscape windows to a labeled bottom navigation bar and a compact Home layout with the clock, empty-state focus, and Add task all visible (issue #199).
 
 ### Fixed
 
+- Made native task date/time OK labels and document-search hints readable in both themes, and reapplied status-bar insets when PDF content rebuilds (issue #203).
 - Expanded PDF page layout bounds with the zoom level so rendered document content visibly magnifies beyond 125% (issue #200).
 - Made Calendar's selected date visibly distinct and kept all seven date targets within the normal phone-width strip (issue #199).
 - Announced unavailable document status in Tools to accessibility services (issue #171).

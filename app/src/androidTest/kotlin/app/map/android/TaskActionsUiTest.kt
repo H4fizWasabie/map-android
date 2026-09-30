@@ -128,6 +128,7 @@ class TaskActionsUiTest {
             val tasksTab = device.wait(Until.findObject(By.desc("Tasks navigation")), TIMEOUT)
                 ?: error("Tasks destination was not reachable at large text")
             tasksTab.click()
+            assertTrue("Tasks did not finish opening", device.wait(Until.hasObject(By.textContains(" open · ")), TIMEOUT))
             clickText(title)
             assertTrue("Task details did not open at large text", device.wait(Until.hasObject(By.text("Task details")), TIMEOUT))
 

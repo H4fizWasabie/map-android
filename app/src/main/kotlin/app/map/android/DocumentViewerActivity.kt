@@ -355,7 +355,12 @@ class DocumentViewerActivity : AppCompatActivity() {
         orientation = LinearLayout.VERTICAL
         setBackgroundColor(getColor(R.color.map_background))
         MapUi.applySystemBarInsets(this)
-        MapUi.addBrandMark(this@DocumentViewerActivity, this)
+        addView(MapUi.brandMark(this@DocumentViewerActivity), LinearLayout.LayoutParams(-1, -2).apply {
+            marginStart = dp(16)
+            marginEnd = dp(16)
+            topMargin = dp(12)
+            bottomMargin = dp(8)
+        })
         addView(LinearLayout(this@DocumentViewerActivity).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -402,8 +407,9 @@ class DocumentViewerActivity : AppCompatActivity() {
         val searchButton = button("Search") { toggleSearch() }
         val shareButton = button("Share") { shareDocument() }
         addView(LinearLayout(this@DocumentViewerActivity).apply {
-            orientation = if (resources.configuration.screenWidthDp < 360) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
-            if (resources.configuration.screenWidthDp < 360) {
+            setPadding(dp(16), dp(4), dp(16), dp(8))
+            orientation = if (resources.configuration.screenWidthDp < 360 || resources.configuration.fontScale >= 1.3f) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
+            if (resources.configuration.screenWidthDp < 360 || resources.configuration.fontScale >= 1.3f) {
                 addView(zoomControls)
                 addView(ocrButton, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
                 addView(searchButton, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
