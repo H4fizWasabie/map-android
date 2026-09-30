@@ -16,6 +16,9 @@ transition regression gate:
 ./gradlew connectedDebugAndroidTest
 ```
 
+Run this gate on a disposable AVD. The connected test runner uninstalls
+`app.map.android` afterward, which clears its private databases and preferences.
+
 The debug APK is `app/build/outputs/apk/debug/app-debug.apk`.
 
 ## Release

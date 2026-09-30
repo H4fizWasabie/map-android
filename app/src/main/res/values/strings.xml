@@ -1,3 +1,7 @@
 <resources>
     <string name="focus_widget_description">Shows the task MAP thinks needs your attention next.</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_calendar">Calendar</string>
+    <string name="nav_tasks">Tasks</string>
+    <string name="nav_tools">Tools</string>
 </resources>

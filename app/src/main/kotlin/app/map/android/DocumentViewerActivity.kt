@@ -18,7 +18,6 @@ import android.view.Gravity
 import android.view.ScaleGestureDetector
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.EditText
 import android.widget.HorizontalScrollView
 import android.widget.ImageButton
@@ -28,6 +27,8 @@ import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import com.google.android.gms.tasks.Tasks
+import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.button.MaterialButton
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.TextRecognizer
@@ -36,7 +37,7 @@ import java.util.concurrent.Executors
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
-class DocumentViewerActivity : Activity() {
+class DocumentViewerActivity : AppCompatActivity() {
     private lateinit var database: DocumentDatabase
     private lateinit var uri: Uri
     private var mime = "application/pdf"
@@ -59,7 +60,7 @@ class DocumentViewerActivity : Activity() {
     private val pdfRenderLock = Any()
     private val pdfExecutor = Executors.newSingleThreadExecutor()
     private val ocrExecutor = Executors.newSingleThreadExecutor()
-    private lateinit var ocrButton: Button
+    private lateinit var ocrButton: MaterialButton
     private lateinit var searchPanel: LinearLayout
     private lateinit var searchInput: EditText
     private lateinit var status: TextView
@@ -239,6 +240,9 @@ class DocumentViewerActivity : Activity() {
                                 page.setBitmap(bitmap, width)
                             } else {
                                 bitmap?.recycle()
+                                if (generation != pdfRenderGeneration && !isFinishing && !isDestroyed && page in pdfPages) {
+                                    renderVisiblePages()
+                                }
                             }
                         }
                         if (!delivered) bitmap?.recycle()
@@ -347,10 +351,11 @@ class DocumentViewerActivity : Activity() {
         orientation = LinearLayout.VERTICAL
         setBackgroundColor(getColor(R.color.map_background))
         MapUi.applySystemBarInsets(this)
+        MapUi.addBrandMark(this@DocumentViewerActivity, this)
         addView(LinearLayout(this@DocumentViewerActivity).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(16), dp(24), dp(16), dp(4))
+            setPadding(dp(16), dp(6), dp(16), dp(4))
             addView(ImageButton(this@DocumentViewerActivity).apply {
                 setImageResource(R.drawable.ic_map_back)
                 imageTintList = ColorStateList.valueOf(getColor(R.color.map_text))
@@ -370,19 +375,19 @@ class DocumentViewerActivity : Activity() {
         })
         val zoomControls = LinearLayout(this@DocumentViewerActivity).apply {
             orientation = LinearLayout.HORIZONTAL
-            addView(Button(this@DocumentViewerActivity).apply {
+            addView(MapUi.button(this@DocumentViewerActivity).apply {
                 text = "-"
                 isAllCaps = false
                 contentDescription = "Zoom out"
                 setOnClickListener { if (isPdf) setPdfZoom(pdfZoom - 0.25f) else setImageZoom((imageView?.zoom ?: imageZoom) - 0.25f) }
             })
-            addView(Button(this@DocumentViewerActivity).apply {
+            addView(MapUi.button(this@DocumentViewerActivity).apply {
                 text = "100%"
                 isAllCaps = false
                 contentDescription = "Reset zoom"
                 setOnClickListener { if (isPdf) setPdfZoom(1f) else setImageZoom(1f) }
             })
-            addView(Button(this@DocumentViewerActivity).apply {
+            addView(MapUi.button(this@DocumentViewerActivity).apply {
                 text = "+"
                 isAllCaps = false
                 contentDescription = "Zoom in"
@@ -530,9 +535,10 @@ class DocumentViewerActivity : Activity() {
     private fun showUnavailable(message: String) {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(24), dp(24), dp(24), dp(24))
+            setPadding(dp(24), dp(6), dp(24), dp(24))
             setBackgroundColor(getColor(R.color.map_background))
         }
+        MapUi.addBrandMark(this, root)
         root.addView(button("Back") { finish() })
         root.addView(TextView(this).apply {
             text = "Document unavailable"
@@ -545,7 +551,7 @@ class DocumentViewerActivity : Activity() {
             setTextColor(getColor(R.color.map_muted))
             setPadding(0, 0, 0, dp(16))
         })
-        root.addView(Button(this, null, 0, R.style.MapPrimaryButton).apply {
+        root.addView(MapUi.primaryButton(this).apply {
             text = "Open with another app"
             isAllCaps = false
             setOnClickListener { openExternally() }
@@ -579,7 +585,7 @@ class DocumentViewerActivity : Activity() {
         }
     }
 
-    private fun button(label: String, click: () -> Unit) = Button(this).apply {
+    private fun button(label: String, click: () -> Unit) = MapUi.button(this).apply {
         text = label
         isAllCaps = false
         minHeight = dp(48)
@@ -599,6 +605,10 @@ class DocumentViewerActivity : Activity() {
         var renderingWidth = 0
         private var bitmap: Bitmap? = null
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+        init {
+            contentDescription = "PDF page ${index + 1}"
+        }
 
         override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
             val width = (pdfBaseWidth * zoom).roundToInt()

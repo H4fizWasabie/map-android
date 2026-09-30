@@ -71,6 +71,12 @@ class TaskDatabase(context: Context) : SQLiteOpenHelper(context, "map.db", null,
         return updated
     }
 
+    fun deleteTask(task: Task): Boolean = writableDatabase.delete(
+        "tasks",
+        "id = ? AND completed = 0",
+        arrayOf(task.id.toString()),
+    ) == 1
+
     fun complete(task: Task): Long? {
         val completedAt = System.currentTimeMillis()
         writableDatabase.beginTransaction()

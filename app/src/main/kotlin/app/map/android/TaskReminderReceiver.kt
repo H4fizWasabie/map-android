@@ -15,6 +15,9 @@ class TaskReminderReceiver : BroadcastReceiver() {
             restoreReminders(context)
             return
         }
+        if (Build.VERSION.SDK_INT >= 33 &&
+            context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) return
         val taskId = intent.getLongExtra(ReminderScheduler.EXTRA_TASK_ID, -1L)
         val channelId = "map_tasks"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

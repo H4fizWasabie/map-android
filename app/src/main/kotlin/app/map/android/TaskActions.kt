@@ -2,7 +2,7 @@ package app.map.android
 
 import android.content.Context
 
-/** Task completion and undo logic shared by Home and Calendar, which each render their own task rows. */
+/** Task actions shared by Home and Calendar, which each render their own task rows. */
 object TaskActions {
     fun complete(context: Context, database: TaskDatabase, task: Task): UndoState {
         ReminderScheduler.cancel(context, task.id)
@@ -20,5 +20,13 @@ object TaskActions {
                 ReminderScheduler.schedule(context, state.task.id, state.task.title, it)
             }
         }
+    }
+
+    fun delete(context: Context, database: TaskDatabase, task: Task): Boolean {
+        if (!database.deleteTask(task)) return false
+        ReminderScheduler.cancel(context, task.id)
+        FocusPicker.unpinIfCurrent(context.getSharedPreferences("map-focus", Context.MODE_PRIVATE), task.id)
+        FocusWidgetProvider.refresh(context)
+        return true
     }
 }

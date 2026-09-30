@@ -6,12 +6,13 @@ import java.util.Calendar
 object TaskRecurrence {
     fun nextDueAt(task: Task, completedAt: Long): Long? {
         val base = Calendar.getInstance().apply { timeInMillis = task.dueAt ?: completedAt }
-        when (task.recurrence) {
-            "Daily" -> base.add(Calendar.DAY_OF_YEAR, 1)
-            "Weekly" -> base.add(Calendar.WEEK_OF_YEAR, 1)
-            "Monthly" -> base.add(Calendar.MONTH, 1)
+        val field = when (task.recurrence) {
+            "Daily" -> Calendar.DAY_OF_YEAR
+            "Weekly" -> Calendar.WEEK_OF_YEAR
+            "Monthly" -> Calendar.MONTH
             else -> return null
         }
+        do base.add(field, 1) while (base.timeInMillis <= completedAt)
         return base.timeInMillis
     }
 }

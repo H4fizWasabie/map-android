@@ -1,19 +1,17 @@
 package app.map.android
 
-import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
 import android.view.Gravity
 import android.view.View
-import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
-import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 
-class ToolsActivity : Activity() {
+class ToolsActivity : AppCompatActivity() {
     private lateinit var documents: DocumentDatabase
     private var contentScroll: ScrollView? = null
     private var restoredScrollY = 0
@@ -59,10 +57,13 @@ class ToolsActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(24), dp(24), dp(24), dp(24))
         }
+        MapUi.addBrandMark(this, body)
         body.addView(TextView(this).apply {
-            text = "MAP"
+            text = "ON THIS DEVICE"
             MapUi.label(this)
             setTextColor(getColor(R.color.map_accent))
+            letterSpacing = 0.12f
+            setPadding(0, dp(18), 0, 0)
         })
         body.addView(TextView(this).apply {
             text = "Tools"
@@ -73,10 +74,16 @@ class ToolsActivity : Activity() {
             setBackgroundColor(getColor(R.color.map_divider))
         }, LinearLayout.LayoutParams(-1, dp(1)).apply { bottomMargin = dp(16) })
         body.addView(TextView(this).apply {
-            text = "Simple, local tools for the things you return to every day."
+            text = "Files, scanning, and music stay in your local workspace."
             MapUi.body(this)
             setTextColor(getColor(R.color.map_muted))
-            setPadding(0, 0, 0, dp(4))
+            setPadding(0, 0, 0, dp(8))
+        })
+        body.addView(TextView(this).apply {
+            text = "YOUR WORKBENCH"
+            MapUi.caption(this)
+            letterSpacing = 0.14f
+            setPadding(0, dp(16), 0, dp(8))
         })
         addDocuments(body)
         addScan(body)
@@ -120,12 +127,8 @@ class ToolsActivity : Activity() {
                 minHeight = dp(48)
                 gravity = Gravity.CENTER_VERTICAL
                 setPadding(0, dp(6), 0, dp(6))
-                contentDescription = "Document: ${item.name}"
-                setOnClickListener {
-                    if (!item.available) {
-                        Toast.makeText(this@ToolsActivity, "This file is no longer available", Toast.LENGTH_SHORT).show()
-                    } else openDocument(item)
-                }
+                contentDescription = if (item.available) "Document: ${item.name}" else "Unavailable document: ${item.name}"
+                setOnClickListener { openDocument(item) }
             })
         }
     }
@@ -150,20 +153,21 @@ class ToolsActivity : Activity() {
     }
 
     private fun addToolRow(parent: LinearLayout, title: String, subtitle: String, action: String, click: () -> Unit) {
-        parent.addView(View(this).apply {
-            setBackgroundColor(getColor(R.color.map_divider))
-            layoutParams = LinearLayout.LayoutParams(-1, dp(1)).apply { topMargin = dp(16) }
-        })
+        val iconResource = when (title) {
+            "Documents" -> R.drawable.ic_map_documents
+            "Scan" -> R.drawable.ic_map_scan
+            else -> R.drawable.ic_map_music
+        }
         val copy = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             addView(TextView(this@ToolsActivity).apply {
                 text = title
-                MapUi.section(this)
+                MapUi.headline(this)
             })
             addView(TextView(this@ToolsActivity).apply {
                 text = subtitle
                 MapUi.metadata(this)
-                setPadding(0, dp(3), 0, 0)
+                setPadding(0, dp(4), 0, 0)
             })
         }
         val actionView = button(action, click)
@@ -171,18 +175,34 @@ class ToolsActivity : Activity() {
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(12), 0, dp(12))
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+            setBackgroundResource(R.drawable.map_tool_surface)
             if (stacked) {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.START
-                addView(copy, LinearLayout.LayoutParams(-1, -2))
-                addView(actionView, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+                addView(LinearLayout(this@ToolsActivity).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    addView(toolIcon(iconResource), LinearLayout.LayoutParams(dp(44), dp(44)))
+                    addView(copy, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(12) })
+                }, LinearLayout.LayoutParams(-1, -2))
+                addView(actionView, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
             } else {
-                addView(copy, LinearLayout.LayoutParams(0, -2, 1f))
-                addView(actionView, LinearLayout.LayoutParams(-2, -2).apply { leftMargin = dp(8) })
+                addView(toolIcon(iconResource), LinearLayout.LayoutParams(dp(44), dp(44)))
+                addView(copy, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(12) })
+                addView(actionView, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(8) })
             }
         }
-        parent.addView(row, LinearLayout.LayoutParams(-1, -2))
+        parent.addView(row, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
+    }
+
+    private fun toolIcon(resource: Int) = android.widget.ImageView(this).apply {
+        setImageResource(resource)
+        imageTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.map_accent))
+        background = getDrawable(R.drawable.map_tool_icon)
+        setPadding(dp(10), dp(10), dp(10), dp(10))
+        contentDescription = null
+        importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
     }
 
     private fun openDocument() {
@@ -224,7 +244,7 @@ class ToolsActivity : Activity() {
         if (cursor.moveToFirst() && !cursor.isNull(0)) cursor.getString(0) else null
     } ?: uri.lastPathSegment.orEmpty().ifBlank { "Document" }
 
-    private fun button(label: String, click: () -> Unit) = Button(this).apply {
+    private fun button(label: String, click: () -> Unit) = MapUi.button(this).apply {
         text = label
         isAllCaps = false
         minHeight = dp(48)

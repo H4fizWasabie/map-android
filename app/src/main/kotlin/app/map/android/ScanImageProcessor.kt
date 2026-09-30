@@ -11,17 +11,19 @@ object ScanImageProcessor {
         val working = if (scale < 1f) {
             Bitmap.createScaledBitmap(bitmap, (bitmap.width * scale).toInt(), (bitmap.height * scale).toInt(), true)
         } else bitmap
-        val bounds = detectBounds(working)
-        val result = bounds?.let {
-            val left = (it.left / scale).toInt().coerceIn(0, bitmap.width - 1)
-            val top = (it.top / scale).toInt().coerceIn(0, bitmap.height - 1)
-            val right = (it.right / scale).toInt().coerceIn(left + 1, bitmap.width)
-            val bottom = (it.bottom / scale).toInt().coerceIn(top + 1, bitmap.height)
-            if (left == 0 && top == 0 && right == bitmap.width && bottom == bitmap.height) bitmap
-            else Bitmap.createBitmap(bitmap, left, top, right - left, bottom - top)
-        } ?: bitmap
-        if (working !== bitmap) working.recycle()
-        return result
+        try {
+            val bounds = detectBounds(working)
+            return bounds?.let {
+                val left = (it.left / scale).toInt().coerceIn(0, bitmap.width - 1)
+                val top = (it.top / scale).toInt().coerceIn(0, bitmap.height - 1)
+                val right = (it.right / scale).toInt().coerceIn(left + 1, bitmap.width)
+                val bottom = (it.bottom / scale).toInt().coerceIn(top + 1, bitmap.height)
+                if (left == 0 && top == 0 && right == bitmap.width && bottom == bitmap.height) bitmap
+                else Bitmap.createBitmap(bitmap, left, top, right - left, bottom - top)
+            } ?: bitmap
+        } finally {
+            if (working !== bitmap) working.recycle()
+        }
     }
 
     private fun detectBounds(bitmap: Bitmap): CropBounds? {

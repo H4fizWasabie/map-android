@@ -40,6 +40,15 @@ class TaskRecurrenceTest {
     }
 
     @Test
+    fun `late completion skips missed daily occurrences`() {
+        val due = calendarAt(2026, Calendar.MARCH, 10)
+        val completed = calendarAt(2026, Calendar.MARCH, 13, hour = 15, minute = 30)
+        val expected = calendarAt(2026, Calendar.MARCH, 14)
+        val next = TaskRecurrence.nextDueAt(taskAt("Daily", due.timeInMillis), completed.timeInMillis)
+        assertEquals(expected.timeInMillis, next)
+    }
+
+    @Test
     fun `weekly recurrence advances seven days from the due date`() {
         val due = calendarAt(2026, Calendar.MARCH, 10)
         val expected = calendarAt(2026, Calendar.MARCH, 17)
