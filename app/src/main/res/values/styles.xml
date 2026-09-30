@@ -1,47 +1,40 @@
 <resources>
-    <style name="MapButton" parent="@android:style/Widget.Material.Button">
-        <item name="android:textAllCaps">false</item>
-        <item name="android:textSize">14sp</item>
-        <item name="android:fontFamily">@font/archivo</item>
-        <item name="android:gravity">center</item>
-        <item name="android:minHeight">48dp</item>
-        <item name="android:minWidth">48dp</item>
-        <item name="android:paddingStart">16dp</item>
-        <item name="android:paddingEnd">16dp</item>
-        <item name="android:background">@drawable/map_button_surface</item>
-        <item name="android:backgroundTint">@null</item>
-        <item name="android:textColor">@color/map_text</item>
-        <item name="android:stateListAnimator">@null</item>
-        <item name="android:insetLeft">0dp</item>
-        <item name="android:insetRight">0dp</item>
-        <item name="android:insetTop">0dp</item>
-        <item name="android:insetBottom">0dp</item>
-    </style>
-
-    <style name="MapPrimaryButton" parent="MapButton">
-        <item name="android:background">@drawable/map_button_primary</item>
-        <item name="android:textColor">@color/map_on_accent</item>
-    </style>
-
-    <style name="MapNavigationButton" parent="MapButton">
-        <item name="android:background">@drawable/map_nav_button</item>
-        <item name="android:textSize">13sp</item>
-        <item name="android:minHeight">68dp</item>
-        <item name="android:paddingStart">4dp</item>
-        <item name="android:paddingEnd">4dp</item>
-        <item name="android:paddingTop">8dp</item>
-        <item name="android:paddingBottom">6dp</item>
-    </style>
-
-    <style name="Theme.MAP" parent="android:style/Theme.Material.Light.NoActionBar">
+    <style name="Theme.MAP" parent="Theme.Material3Expressive.Light.NoActionBar">
         <item name="android:fontFamily">@font/work_sans</item>
         <item name="android:textColorPrimary">@color/map_text</item>
         <item name="android:textColorSecondary">@color/map_muted</item>
         <item name="android:colorControlNormal">@color/map_muted</item>
         <item name="android:colorControlActivated">@color/map_accent</item>
-        <item name="android:buttonStyle">@style/MapButton</item>
-        <item name="android:colorButtonNormal">@color/map_card</item>
-        <item name="android:colorAccent">@color/map_accent</item>
+        <item name="colorPrimary">@color/map_accent</item>
+        <item name="colorOnPrimary">@color/map_on_accent</item>
+        <item name="colorPrimaryContainer">@color/map_focus</item>
+        <item name="colorOnPrimaryContainer">@color/map_text</item>
+        <item name="colorSecondary">@color/map_muted</item>
+        <item name="colorOnSecondary">@color/map_background</item>
+        <item name="colorSecondaryContainer">@color/map_selection</item>
+        <item name="colorOnSecondaryContainer">@color/map_accent_pressed</item>
+        <item name="colorTertiary">@color/map_status</item>
+        <item name="colorOnTertiary">@color/map_background</item>
+        <item name="colorTertiaryContainer">@color/map_focus</item>
+        <item name="colorOnTertiaryContainer">@color/map_text</item>
+        <item name="android:colorBackground">@color/map_background</item>
+        <item name="colorOnBackground">@color/map_text</item>
+        <item name="colorSurface">@color/map_background</item>
+        <item name="colorOnSurface">@color/map_text</item>
+        <item name="colorSurfaceVariant">@color/map_card</item>
+        <item name="colorOnSurfaceVariant">@color/map_muted</item>
+        <item name="colorSurfaceContainer">@color/map_nav_background</item>
+        <item name="colorSurfaceContainerLow">@color/map_card</item>
+        <item name="colorSurfaceContainerHigh">@color/map_focus</item>
+        <item name="colorSurfaceContainerHighest">@color/map_nav_background</item>
+        <item name="colorOutline">@color/map_divider</item>
+        <item name="colorOutlineVariant">@color/map_divider</item>
+        <item name="colorError">@color/map_error</item>
+        <item name="colorOnError">@color/map_on_error</item>
+        <item name="colorErrorContainer">@color/map_error_container</item>
+        <item name="colorOnErrorContainer">@color/map_on_error_container</item>
+        <item name="bottomNavigationStyle">@style/Widget.MAP.NavigationBar</item>
+        <item name="navigationRailStyle">@style/Widget.MAP.NavigationRail</item>
         <item name="android:windowBackground">@color/map_background</item>
         <item name="android:navigationBarColor">@color/map_background</item>
         <item name="android:statusBarColor">@color/map_background</item>
@@ -49,6 +42,29 @@
         <item name="android:alertDialogTheme">@style/Theme.MAP.Dialog</item>
         <item name="android:datePickerDialogTheme">@style/Theme.MAP.Dialog</item>
         <item name="android:timePickerDialogTheme">@style/Theme.MAP.Dialog</item>
+    </style>
+
+    <style name="TextAppearance.MAP.Navigation.Active" parent="TextAppearance.Material3.LabelMedium">
+        <item name="android:fontFamily">@font/archivo</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="TextAppearance.MAP.Navigation.Inactive" parent="TextAppearance.Material3.LabelMedium">
+        <item name="android:fontFamily">@font/work_sans</item>
+        <item name="android:textSize">12sp</item>
+    </style>
+
+    <style name="Widget.MAP.NavigationBar" parent="Widget.Material3Expressive.BottomNavigationView">
+        <item name="itemTextAppearanceActive">@style/TextAppearance.MAP.Navigation.Active</item>
+        <item name="itemTextAppearanceInactive">@style/TextAppearance.MAP.Navigation.Inactive</item>
+    </style>
+
+    <style name="Widget.MAP.NavigationRail" parent="Widget.Material3Expressive.NavigationRailView">
+        <item name="itemTextAppearanceActive">@style/TextAppearance.MAP.Navigation.Active</item>
+        <item name="itemTextAppearanceInactive">@style/TextAppearance.MAP.Navigation.Inactive</item>
+        <item name="horizontalItemTextAppearanceActive">@style/TextAppearance.MAP.Navigation.Active</item>
+        <item name="horizontalItemTextAppearanceInactive">@style/TextAppearance.MAP.Navigation.Inactive</item>
     </style>
 
     <style name="Theme.MAP.Dialog" parent="android:style/Theme.Material.Light.Dialog.Alert">

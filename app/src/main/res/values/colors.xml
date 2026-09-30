@@ -1,12 +1,23 @@
 <resources>
-    <color name="map_background">#E7E0D3</color>
-    <color name="map_text">#163633</color>
-    <color name="map_muted">#4F625B</color>
-    <color name="map_accent">#B94732</color>
-    <color name="map_accent_pressed">#8F3526</color>
-    <color name="map_on_accent">#FFF8ED</color>
-    <color name="map_divider">#C9C2B5</color>
-    <color name="map_card">#F7F1E5</color>
-    <color name="map_focus">#E7C55D</color>
-    <color name="map_nav_background">#F1E7D6</color>
+    <color name="map_background">#F1F5F8</color>
+    <color name="map_text">#102B4C</color>
+    <color name="map_muted">#50657B</color>
+    <color name="map_accent">#C44C2D</color>
+    <color name="map_accent_pressed">#A23C26</color>
+    <color name="map_selection">#F8E2DB</color>
+    <color name="map_on_accent">#FFFFFF</color>
+    <color name="map_error">#BA1A1A</color>
+    <color name="map_on_error">#FFFFFF</color>
+    <color name="map_error_container">#FFDAD6</color>
+    <color name="map_on_error_container">#410002</color>
+    <color name="map_divider">#CAD5DE</color>
+    <color name="map_card">#F8FAFC</color>
+    <color name="map_focus">#E1EAF1</color>
+    <color name="map_nav_background">#E7EEF4</color>
+    <color name="map_status">#567700</color>
+    <color name="map_disabled">#E1E8ED</color>
+    <color name="map_instrument">#153C62</color>
+    <color name="map_instrument_ink">#F8FAFC</color>
+    <color name="map_instrument_muted">#C3D4E4</color>
+    <color name="map_tool_icon">#F8E2DB</color>
 </resources>

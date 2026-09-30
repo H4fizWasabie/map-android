@@ -6,19 +6,11 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.IntentSender
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
-import android.graphics.Rect
-import android.graphics.pdf.PdfDocument
 import android.net.Uri
 import android.os.Bundle
 import android.content.res.ColorStateList
 import android.view.Gravity
 import android.view.View
-import android.widget.Button
 import android.widget.CheckBox
 import android.widget.ImageButton
 import android.widget.LinearLayout
@@ -27,6 +19,8 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import androidx.core.content.ContextCompat
+import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.button.MaterialButton
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanner
 import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
@@ -38,7 +32,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.Executors
 
-class ScanActivity : Activity() {
+class ScanActivity : AppCompatActivity() {
     private lateinit var database: ScanDatabase
     private lateinit var scanner: GmsDocumentScanner
     private var sessionId = 0L
@@ -46,11 +40,11 @@ class ScanActivity : Activity() {
     private val selectedPageIds = mutableSetOf<Long>()
     private var selectionInitialized = false
     private val exportExecutor = Executors.newSingleThreadExecutor()
-    private var exportButton: Button? = null
+    private var exportButton: MaterialButton? = null
     private var exporting = false
     private var importing = false
     private var initialResumePending = true
-    private var musicPlayButton: Button? = null
+    private var musicPlayButton: MaterialButton? = null
 
     private val musicStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -144,9 +138,10 @@ class ScanActivity : Activity() {
     private fun render() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(24), dp(24), dp(24), dp(24))
+            setPadding(dp(24), dp(6), dp(24), dp(24))
             setBackgroundColor(getColor(R.color.map_background))
         }
+        MapUi.addBrandMark(this, root)
         root.addView(LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -176,7 +171,7 @@ class ScanActivity : Activity() {
             setTextColor(getColor(R.color.map_muted))
             setPadding(0, 0, 0, dp(16))
         })
-        root.addView(Button(this, null, 0, R.style.MapPrimaryButton).apply {
+        root.addView(MapUi.primaryButton(this).apply {
             text = if (importing) "Importing pages…" else "Scan documents"
             isAllCaps = false
             isEnabled = !importing && !exporting
@@ -184,11 +179,11 @@ class ScanActivity : Activity() {
         })
         val storedPages = database.pages(sessionId)
         if (!selectionInitialized) {
-            selectedPageIds += storedPages.map { it.id }
+            selectedPageIds += storedPages.filter { File(it.path).isFile }.map { it.id }
             selectionInitialized = true
         }
-        selectedPageIds.retainAll(storedPages.map { it.id }.toSet())
-        val exportButton = Button(this, null, 0, R.style.MapPrimaryButton).apply {
+        selectedPageIds.retainAll(storedPages.filter { File(it.path).isFile }.map { it.id }.toSet())
+        val exportButton = MapUi.primaryButton(this).apply {
             text = when {
                 importing -> "Importing pages…"
                 exporting -> "Exporting PDF…"
@@ -217,16 +212,17 @@ class ScanActivity : Activity() {
         })
         storedPages.forEachIndexed { index, page ->
             pages.addView(CheckBox(this).apply {
-                val status = if (File(page.path).exists()) "" else " (Unavailable)"
+                val available = File(page.path).isFile
+                val status = if (available) "" else " (Unavailable)"
                 text = "Page ${index + 1}: ${File(page.path).name}$status"
                 setTextColor(if (status.isEmpty()) getColor(R.color.map_text) else getColor(R.color.map_muted))
                 isChecked = page.id in selectedPageIds
-                isEnabled = !exporting && !importing
+                isEnabled = available && !exporting && !importing
                 contentDescription = "Include page ${index + 1}"
                 setOnCheckedChangeListener { _, checked ->
                     if (checked) selectedPageIds.add(page.id) else selectedPageIds.remove(page.id)
                     exportButton.text = "Export PDF (${selectedPageIds.size})"
-                    exportButton.isEnabled = selectedPageIds.isNotEmpty()
+                    exportButton.isEnabled = selectedPageIds.isNotEmpty() && !exporting && !importing
                 }
             })
         }
@@ -263,12 +259,11 @@ class ScanActivity : Activity() {
                 text = "${item.title}\n${item.artist}"
                 MapUi.body(this)
             }, LinearLayout.LayoutParams(0, -2, 1f))
-            val playButton = Button(this@ScanActivity).apply {
+            val playButton = MapUi.button(this@ScanActivity).apply {
                 text = if (playing) "Pause" else "Play"
                 isAllCaps = false
                 contentDescription = text
                 setOnClickListener {
-                    requestNotificationsIfNeeded()
                     val intent = Intent(this@ScanActivity, MusicService::class.java).setAction(MusicService.ACTION_TOGGLE)
                     if (!startMapMusicService(this@ScanActivity, intent)) {
                         Toast.makeText(this@ScanActivity, "MAP could not start Music. Try Play again.", Toast.LENGTH_LONG).show()
@@ -281,6 +276,13 @@ class ScanActivity : Activity() {
     }
 
     private fun startScanner() {
+        val activeSessionId = database.activeSession()
+        if (activeSessionId != sessionId) {
+            sessionId = activeSessionId
+            selectedPageIds.clear()
+            selectionInitialized = true
+            render()
+        }
         scanner.getStartScanIntent(this)
             .addOnSuccessListener { intentSender ->
                 try {
@@ -322,41 +324,49 @@ class ScanActivity : Activity() {
                     text = "Export PDF (${selectedPageIds.size})"
                     isEnabled = selectedPageIds.isNotEmpty()
                 }
-                result.onSuccess { file -> sharePdf(file) }
-                    .onFailure { Toast.makeText(this, "Could not export the PDF", Toast.LENGTH_LONG).show() }
+                result.onSuccess { file ->
+                    val recordFailure = runCatching { rememberPdf(file) }.exceptionOrNull()
+                    val hasUnavailablePages = database.pages(sessionId).any { !File(it.path).isFile }
+                    val sessionFailure = if (recordFailure == null) {
+                        if (hasUnavailablePages) null else runCatching { database.markExported(sessionId) }.exceptionOrNull()
+                    } else null
+                    if (recordFailure != null) {
+                        Toast.makeText(this, "PDF created, but MAP could not add it to Documents.", Toast.LENGTH_LONG).show()
+                    } else if (hasUnavailablePages) {
+                        Toast.makeText(this, "PDF saved. An unavailable page keeps this scan open.", Toast.LENGTH_LONG).show()
+                    } else if (sessionFailure != null) {
+                        Toast.makeText(this, "PDF is in Documents, but this scan could not be closed.", Toast.LENGTH_LONG).show()
+                    }
+                    val shareFailure = runCatching { sharePdf(file) }.exceptionOrNull()
+                    if (shareFailure != null) {
+                        val message = if (recordFailure == null) "PDF is in Documents, but sharing could not open." else "PDF was created, but sharing could not open."
+                        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                    }
+                }.onFailure { failure ->
+                    if (failure.message == ScanPdfExporter.UNREADABLE_PAGE) render()
+                    val message = if (failure.message == ScanPdfExporter.UNREADABLE_PAGE) {
+                        "A selected page is unavailable. Uncheck it and export again."
+                    } else {
+                        "Could not export the PDF. Check the selected pages and available storage."
+                    }
+                    Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                }
             }
         }
     }
 
     private fun exportPdfFile(selectedIds: Set<Long>): File {
-        val document = PdfDocument()
-        var exportedPages = 0
-        try {
-            val selectedPages = database.pages(sessionId).filter { it.id in selectedIds }
-            if (selectedPages.isEmpty()) error("No pages selected")
-            selectedPages.forEach { page ->
-                val bitmap = decodePage(page.path) ?: return@forEach
-                val cleaned = ScanImageProcessor.clean(bitmap)
-                val pageInfo = PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, exportedPages + 1).create()
-                val pdfPage = document.startPage(pageInfo)
-                drawBitmap(pdfPage.canvas, cleaned)
-                document.finishPage(pdfPage)
-                if (cleaned !== bitmap) cleaned.recycle()
-                bitmap.recycle()
-                exportedPages++
-            }
-            if (exportedPages == 0) error("No readable pages")
-            val output = File(filesDir, "scans/MAP-${timestamp()}.pdf")
-            output.parentFile?.mkdirs()
-            FileOutputStream(output).use { document.writeTo(it) }
-            return output
-        } finally {
-            document.close()
-        }
+        val selectedPaths = database.pages(sessionId).filter { it.id in selectedIds }.map { it.path }
+        val directory = File(filesDir, "scans")
+        val baseName = "MAP-${timestamp()}"
+        var output = File(directory, "$baseName.pdf")
+        var suffix = 2
+        while (output.exists()) output = File(directory, "$baseName-$suffix.pdf").also { suffix++ }
+        return ScanPdfExporter.export(selectedPaths, output)
     }
 
     private fun sharePdf(output: File) {
-        val shareUri = FileProvider.getUriForFile(this, "$packageName.fileprovider", output)
+        val shareUri = outputUri(output)
         startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
                 type = "application/pdf"
                 putExtra(Intent.EXTRA_STREAM, shareUri)
@@ -364,42 +374,22 @@ class ScanActivity : Activity() {
             }, "Share PDF"))
     }
 
-    private fun decodePage(path: String): Bitmap? {
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeFile(path, bounds)
-        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
-        var sample = 1
-        while (bounds.outWidth / sample > 2400 || bounds.outHeight / sample > 2400) sample *= 2
-        return BitmapFactory.decodeFile(path, BitmapFactory.Options().apply { inSampleSize = sample })
+    private fun rememberPdf(output: File) {
+        val documents = DocumentDatabase(this)
+        try {
+            documents.upsert(outputUri(output).toString(), output.name, "application/pdf")
+        } finally {
+            documents.close()
+        }
     }
 
-    private fun drawBitmap(canvas: Canvas, bitmap: Bitmap) {
-        canvas.drawColor(Color.WHITE)
-        val margin = 48
-        val availableWidth = PAGE_WIDTH - margin * 2
-        val availableHeight = PAGE_HEIGHT - margin * 2
-        val scale = minOf(availableWidth.toFloat() / bitmap.width, availableHeight.toFloat() / bitmap.height)
-        val width = (bitmap.width * scale).toInt()
-        val height = (bitmap.height * scale).toInt()
-        val left = (PAGE_WIDTH - width) / 2
-        val top = (PAGE_HEIGHT - height) / 2
-        canvas.drawBitmap(bitmap, null, Rect(left, top, left + width, top + height), Paint(Paint.ANTI_ALIAS_FLAG))
-    }
+    private fun outputUri(output: File) = FileProvider.getUriForFile(this, "$packageName.fileprovider", output)
 
     private fun timestamp() = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
     private fun dp(value: Int) = MapUi.dp(this, value)
 
-    private fun requestNotificationsIfNeeded() {
-        if (android.os.Build.VERSION.SDK_INT >= 33 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), NOTIFICATION_REQUEST)
-        }
-    }
-
     companion object {
         private const val SCANNER_REQUEST = 12
-        private const val NOTIFICATION_REQUEST = 13
         private const val STATE_SELECTED_PAGE_IDS = "selected_page_ids"
-        private const val PAGE_WIDTH = 595
-        private const val PAGE_HEIGHT = 842
     }
 }

@@ -26,6 +26,12 @@ class ScanDatabase(context: Context) : SQLiteOpenHelper(context, "map-scans.db",
         })
     }
 
+    fun markExported(sessionId: Long) {
+        writableDatabase.update("sessions", ContentValues().apply {
+            put("exported", 1)
+        }, "id = ?", arrayOf(sessionId.toString()))
+    }
+
     fun addPage(sessionId: Long, path: String): Long {
         val position = readableDatabase.rawQuery(
             "SELECT COUNT(*) FROM pages WHERE session_id = ?", arrayOf(sessionId.toString())

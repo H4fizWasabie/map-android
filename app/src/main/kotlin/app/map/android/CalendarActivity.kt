@@ -1,6 +1,5 @@
 package app.map.android
 
-import android.app.Activity
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -8,7 +7,6 @@ import android.content.IntentFilter
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
-import android.widget.Button
 import android.widget.CheckBox
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
@@ -16,20 +14,28 @@ import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.button.MaterialButton
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatterBuilder
+import java.time.format.TextStyle
+import java.time.temporal.ChronoField
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-class CalendarActivity : Activity() {
+class CalendarActivity : AppCompatActivity() {
     private lateinit var database: TaskDatabase
     private var selectedDay = dayStart(System.currentTimeMillis())
     private var weekMode = false
     private var contentScroll: ScrollView? = null
     private var restoredScrollY = 0
     private var initialResumePending = true
-    private var musicPlayButton: Button? = null
+    private var musicPlayButton: MaterialButton? = null
     private var undoState: UndoState? = null
+    private var taskComposer: TaskComposer? = null
 
     private val musicStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -48,12 +54,14 @@ class CalendarActivity : Activity() {
         weekMode = savedInstanceState?.getBoolean(STATE_WEEK_MODE, false) ?: false
         restoredScrollY = savedInstanceState?.getInt(STATE_SCROLL_Y, 0) ?: 0
         render()
+        TaskComposerState.from(savedInstanceState)?.let(::showTaskComposer)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putLong(STATE_SELECTED_DAY, selectedDay)
         outState.putBoolean(STATE_WEEK_MODE, weekMode)
         outState.putInt(STATE_SCROLL_Y, contentScroll?.scrollY ?: 0)
+        taskComposer?.savedState()?.let { outState.putBundle(TaskComposerState.BUNDLE_KEY, it) }
         super.onSaveInstanceState(outState)
     }
 
@@ -88,49 +96,49 @@ class CalendarActivity : Activity() {
     }
 
     private fun render() {
+        val weekStart = monday(selectedDay)
         val root = LinearLayout(this).apply {
             setBackgroundColor(getColor(R.color.map_background))
         }
         val scroll = ScrollView(this).also { contentScroll = it }
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(24), dp(24), dp(24), dp(24)) }
+        MapUi.addBrandMark(this, body)
         body.addView(TextView(this).apply {
-            text = "MAP"
-            MapUi.label(this)
-            setTextColor(getColor(R.color.map_accent))
-        })
-        body.addView(TextView(this).apply {
-            text = if (weekMode) "This week" else "Today"
+            text = if (weekMode) "Week of ${formatWeekStart(weekStart)}" else "Today"
             MapUi.display(this)
             setPadding(0, dp(4), 0, dp(4))
         })
         body.addView(View(this).apply {
             setBackgroundColor(getColor(R.color.map_divider))
         }, LinearLayout.LayoutParams(-1, dp(1)).apply { bottomMargin = dp(16) })
-        body.addView(TextView(this).apply {
-            text = if (weekMode) "A quiet view of the week ahead." else formatDate(selectedDay)
-            MapUi.body(this)
-            setTextColor(getColor(R.color.map_muted))
-            setPadding(0, 0, 0, dp(12))
-        })
+        body.addView(dateReadout())
         body.addView(dateStrip())
-        LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            addView(actionButton("Today") { selectedDay = dayStart(System.currentTimeMillis()); weekMode = false; render() })
-            addView(actionButton(if (weekMode) "Today agenda" else "Week") { weekMode = !weekMode; render() })
-            val addTaskButton = Button(this@CalendarActivity, null, 0, R.style.MapPrimaryButton).apply {
-                text = "Add task"
-                isAllCaps = false
-                minHeight = dp(48)
-                minWidth = dp(48)
-                setOnClickListener {
-                    startActivity(Intent(this@CalendarActivity, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP).putExtra(MainActivity.EXTRA_OPEN_COMPOSER, true))
-                }
+        val todayButton = actionButton("Today") { selectedDay = dayStart(System.currentTimeMillis()); weekMode = false; render() }
+        val weekButton = actionButton(if (weekMode) "Agenda" else "Week") { weekMode = !weekMode; render() }
+        val addTaskButton = MapUi.primaryButton(this).apply {
+            text = "Add task"
+            isAllCaps = false
+            minHeight = dp(48)
+            minWidth = dp(48)
+            setOnClickListener { showTaskComposer() }
+        }
+        val stackActions = resources.configuration.screenWidthDp < 360 || resources.configuration.fontScale >= 1.3f
+        if (stackActions) {
+            listOf(todayButton, weekButton, addTaskButton).forEach { button ->
+                body.addView(button, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
             }
-            MapUi.markPrimaryAction(addTaskButton)
-            addView(addTaskButton)
-        }.also { body.addView(it) }
+        } else {
+            LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                listOf(todayButton, weekButton, addTaskButton).forEachIndexed { index, button ->
+                    addView(button, LinearLayout.LayoutParams(0, -2, 1f).apply {
+                        if (index > 0) marginStart = dp(8)
+                    })
+                }
+            }.also { body.addView(it) }
+        }
         addUndoBar(body)
-        if (weekMode) addWeek(body) else addDay(body)
+        if (weekMode) addWeek(body, weekStart) else addDay(body)
         scroll.addView(body)
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -153,18 +161,72 @@ class CalendarActivity : Activity() {
         }
     }
 
+    private fun dateReadout(): View = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        setPadding(dp(14), dp(10), dp(14), dp(10))
+        setBackgroundResource(R.drawable.map_focus_surface)
+        importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        addView(TextView(this@CalendarActivity).apply {
+            text = Calendar.getInstance().apply { timeInMillis = selectedDay }.get(Calendar.DAY_OF_MONTH).toString()
+            MapUi.numeral(this, size = 30f, color = R.color.map_accent)
+            gravity = Gravity.CENTER
+        }, LinearLayout.LayoutParams(dp(48), -2))
+        addView(LinearLayout(this@CalendarActivity).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(12), 0, 0, 0)
+            addView(TextView(this@CalendarActivity).apply {
+                text = if (weekMode) "SELECTED WEEK" else "DAY AGENDA"
+                MapUi.caption(this)
+                letterSpacing = 0.1f
+            })
+            addView(TextView(this@CalendarActivity).apply {
+                text = formatDate(selectedDay)
+                MapUi.section(this)
+                setPadding(0, dp(2), 0, 0)
+            })
+        }, LinearLayout.LayoutParams(0, -2, 1f))
+    }
+
     private fun dateStrip(): View = HorizontalScrollView(this).apply {
         isHorizontalScrollBarEnabled = false
         addView(LinearLayout(this@CalendarActivity).apply {
             orientation = LinearLayout.HORIZONTAL
+            val railWidth = when {
+                resources.configuration.screenWidthDp < 600 -> 0
+                resources.configuration.fontScale >= 1.3f -> 184
+                else -> 80
+            }
+            val targetWidth = dp(((resources.configuration.screenWidthDp - railWidth - 48) / 7).coerceAtLeast(48))
+            val dayPattern = DateTimeFormatterBuilder()
+                .appendText(
+                    ChronoField.DAY_OF_WEEK,
+                    if (resources.configuration.fontScale >= 1.3f) TextStyle.NARROW else TextStyle.SHORT,
+                )
+                .appendLiteral('\n')
+                .appendValue(ChronoField.DAY_OF_MONTH)
+                .toFormatter(Locale.getDefault())
+            val zone = ZoneId.systemDefault()
             val start = addDays(selectedDay, -3)
             (0..6).forEach { offset ->
                 val day = addDays(start, offset)
-                addView(actionButton(SimpleDateFormat("EEE\nd", Locale.getDefault()).format(Date(day))) {
+                val label = dayPattern.format(Instant.ofEpochMilli(day).atZone(zone).toLocalDate())
+                val selected = day == selectedDay
+                addView(actionButton(label) {
                     selectedDay = day
                     weekMode = false
                     render()
-                }.apply { isEnabled = day != selectedDay })
+                }.apply {
+                    contentDescription = SimpleDateFormat("EEEE, d MMMM", Locale.getDefault()).format(Date(day))
+                    setPadding(0, paddingTop, 0, paddingBottom)
+                    isSelected = selected
+                    if (selected) {
+                        backgroundTintList = ContextCompat.getColorStateList(this@CalendarActivity, R.color.map_selection)
+                        strokeColor = ContextCompat.getColorStateList(this@CalendarActivity, R.color.map_accent)
+                        strokeWidth = dp(2)
+                        setTextColor(getColor(R.color.map_accent_pressed))
+                    }
+                }, LinearLayout.LayoutParams(targetWidth, -2))
             }
         })
     }
@@ -214,10 +276,8 @@ class CalendarActivity : Activity() {
         parent.addView(row)
     }
 
-    private fun addWeek(parent: LinearLayout) {
-        val start = monday(selectedDay)
+    private fun addWeek(parent: LinearLayout, start: Long) {
         val tasks = database.openTasks()
-        addHeading(parent, "Week of ${formatDate(start)}")
         (0..6).forEach { offset ->
             val day = addDays(start, offset)
             val dayTasks = tasks.filter { it.dueAt?.let(::dayStart) == day }.sortedWith(compareByDescending<Task> { it.allDay }.thenBy { it.dueAt })
@@ -226,7 +286,7 @@ class CalendarActivity : Activity() {
                 MapUi.section(this)
                 setPadding(0, dp(12), 0, dp(6))
             })
-            if (dayTasks.isEmpty()) addEmpty(parent, "Open") else dayTasks.forEach { addTaskRow(parent, it) }
+            if (dayTasks.isEmpty()) addEmpty(parent, "Nothing scheduled") else dayTasks.forEach { addTaskRow(parent, it) }
         }
     }
 
@@ -275,6 +335,25 @@ class CalendarActivity : Activity() {
         render()
     }
 
+    private fun showTaskComposer(state: TaskComposerState? = null) {
+        val initialState = state ?: TaskComposerState(
+            dueAt = Calendar.getInstance().apply {
+                timeInMillis = selectedDay
+                set(Calendar.HOUR_OF_DAY, 12)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis,
+        )
+        taskComposer = TaskComposer(
+            activity = this,
+            database = database,
+            notificationRequest = NOTIFICATION_REQUEST,
+            onSaved = ::render,
+            onDismiss = { taskComposer = null },
+        ).also { it.show(initialState) }
+    }
+
     private fun addUndoBar(parent: LinearLayout) =
         MapUi.addUndoBar(this, parent, database, undoState) { undoState = null; render() }
 
@@ -302,12 +381,11 @@ class CalendarActivity : Activity() {
                 ellipsize = android.text.TextUtils.TruncateAt.END
                 setPadding(0, 0, dp(8), 0)
             }, LinearLayout.LayoutParams(0, -2, 1f))
-            val playButton = Button(this@CalendarActivity).apply {
+            val playButton = MapUi.button(this@CalendarActivity).apply {
                 text = if (playing) "Pause" else "Play"
                 isAllCaps = false
                 contentDescription = text
                 setOnClickListener {
-                    requestNotificationsIfNeeded()
                     val intent = Intent(this@CalendarActivity, MusicService::class.java).setAction(MusicService.ACTION_TOGGLE)
                     if (!startMapMusicService(this@CalendarActivity, intent)) {
                         Toast.makeText(this@CalendarActivity, "MAP could not start Music. Try Play again.", Toast.LENGTH_LONG).show()
@@ -319,9 +397,18 @@ class CalendarActivity : Activity() {
         }, LinearLayout.LayoutParams(-1, -2))
     }
 
-    private fun requestNotificationsIfNeeded() = MapUi.requestNotificationsIfNeeded(this, NOTIFICATION_REQUEST)
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        MapUi.handleNotificationPermissionResult(
+            this,
+            requestCode,
+            NOTIFICATION_REQUEST,
+            grantResults,
+            "Task reminders won't appear until MAP notifications are enabled. You can turn them on in Settings.",
+        )
+    }
 
-    private fun actionButton(label: String, click: () -> Unit): Button = Button(this).apply {
+    private fun actionButton(label: String, click: () -> Unit): MaterialButton = MapUi.button(this).apply {
         text = label
         isAllCaps = false
         minHeight = dp(48)
@@ -367,6 +454,7 @@ class CalendarActivity : Activity() {
             calendar.add(Calendar.DAY_OF_YEAR, -daysSinceMonday)
             return dayStart(calendar.timeInMillis)
         }
+        private fun formatWeekStart(value: Long) = SimpleDateFormat("d MMM", Locale.getDefault()).format(Date(value))
         private fun formatDate(value: Long) = SimpleDateFormat("EEE, d MMM", Locale.getDefault()).format(Date(value))
     }
 }

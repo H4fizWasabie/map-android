@@ -1,6 +1,5 @@
 package app.map.android
 
-import android.app.Activity
 import android.app.DatePickerDialog
 import android.app.Dialog
 import android.app.TimePickerDialog
@@ -10,24 +9,30 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
+import android.text.Spannable
+import android.text.SpannableString
+import android.text.style.ImageSpan
 import android.view.Gravity
 import android.view.View
 import android.widget.ArrayAdapter
-import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.TextView
+import android.widget.TextClock
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-class MainActivity : Activity() {
+class MainActivity : AppCompatActivity() {
     private lateinit var database: TaskDatabase
     private lateinit var content: LinearLayout
     private var undoState: UndoState? = null
@@ -35,15 +40,8 @@ class MainActivity : Activity() {
     private var pendingTaskId: Long? = null
     private var contentScroll: ScrollView? = null
     private var restoredScrollY = 0
-    private var musicPlayButton: Button? = null
-    private var composerDialog: Dialog? = null
-    private var composerTitle: EditText? = null
-    private var composerNotes: EditText? = null
-    private var composerTags: EditText? = null
-    private var composerRecurrence: Spinner? = null
-    private var composerDueAt: Long? = null
-    private var composerAllDay = true
-    private var composerDetailsVisible = false
+    private var musicPlayButton: MaterialButton? = null
+    private var taskComposer: TaskComposer? = null
     private var initialResumePending = true
     private var homePrimaryActionSettled = false
     private val preferences by lazy { getSharedPreferences("map-focus", MODE_PRIVATE) }
@@ -70,17 +68,7 @@ class MainActivity : Activity() {
         } else {
             applyNavigationIntent(intent)
         }
-        if (savedInstanceState?.getBoolean(STATE_COMPOSER_OPEN, false) == true) {
-            showAddTaskDialog(
-                initialTitle = savedInstanceState.getString(STATE_COMPOSER_TITLE).orEmpty(),
-                initialNotes = savedInstanceState.getString(STATE_COMPOSER_NOTES).orEmpty(),
-                initialTags = savedInstanceState.getString(STATE_COMPOSER_TAGS).orEmpty(),
-                initialDueAt = savedInstanceState.getLong(STATE_COMPOSER_DUE_AT, Long.MIN_VALUE).takeIf { it != Long.MIN_VALUE },
-                initialRecurrence = savedInstanceState.getString(STATE_COMPOSER_RECURRENCE) ?: "Does not repeat",
-                initialAllDay = savedInstanceState.getBoolean(STATE_COMPOSER_ALL_DAY, true),
-                initialDetailsVisible = savedInstanceState.getBoolean(STATE_COMPOSER_DETAILS_VISIBLE, false),
-            )
-        }
+        TaskComposerState.from(savedInstanceState)?.let(::showAddTaskDialog)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -98,16 +86,7 @@ class MainActivity : Activity() {
         outState.putString(STATE_SELECTED_VIEW, selectedView)
         pendingTaskId?.let { outState.putLong(STATE_PENDING_TASK_ID, it) }
         outState.putInt(STATE_SCROLL_Y, contentScroll?.scrollY ?: 0)
-        if (composerDialog?.isShowing == true) {
-            outState.putBoolean(STATE_COMPOSER_OPEN, true)
-            outState.putString(STATE_COMPOSER_TITLE, composerTitle?.text?.toString().orEmpty())
-            outState.putString(STATE_COMPOSER_NOTES, composerNotes?.text?.toString().orEmpty())
-            outState.putString(STATE_COMPOSER_TAGS, composerTags?.text?.toString().orEmpty())
-            composerDueAt?.let { outState.putLong(STATE_COMPOSER_DUE_AT, it) }
-            outState.putString(STATE_COMPOSER_RECURRENCE, composerRecurrence?.selectedItem?.toString() ?: "Does not repeat")
-            outState.putBoolean(STATE_COMPOSER_ALL_DAY, composerAllDay)
-            outState.putBoolean(STATE_COMPOSER_DETAILS_VISIBLE, composerDetailsVisible)
-        }
+        taskComposer?.savedState()?.let { outState.putBundle(TaskComposerState.BUNDLE_KEY, it) }
         super.onSaveInstanceState(outState)
     }
 
@@ -140,7 +119,6 @@ class MainActivity : Activity() {
         selectedView = if (intent.getBooleanExtra(EXTRA_OPEN_TASKS, false)) "Tasks" else "Home"
         pendingTaskId = intent.getLongExtra(EXTRA_OPEN_TASK_ID, -1L).takeIf { it != -1L }
         if (selectedView == "Tasks") showTasks() else showHome()
-        if (intent.getBooleanExtra(EXTRA_OPEN_COMPOSER, false)) showAddTaskDialog()
     }
 
     private fun showHome() {
@@ -161,53 +139,70 @@ class MainActivity : Activity() {
             "Today",
             "Home",
             header = { body ->
-                body.addView(TextView(this).apply {
-                    text = "MAP"
-                    MapUi.label(this)
-                    setTextColor(getColor(R.color.map_accent))
-                    contentDescription = "MAP home"
-                })
                 body.addView(LinearLayout(this).apply {
                     orientation = LinearLayout.HORIZONTAL
-                    gravity = Gravity.BOTTOM
-                    setPadding(0, dp(4), 0, dp(12))
-                    addView(TextView(this@MainActivity).apply {
-                        text = "Today"
-                        MapUi.display(this)
-                    }, LinearLayout.LayoutParams(0, -2, 1f))
+                    gravity = Gravity.CENTER_VERTICAL
+                    addView(MapUi.brandMark(this@MainActivity), LinearLayout.LayoutParams(0, -2, 1f))
                     addView(TextView(this@MainActivity).apply {
                         text = SimpleDateFormat("EEE, d MMM", Locale.getDefault()).format(Date())
                         MapUi.label(this)
                         setTextColor(getColor(R.color.map_muted))
-                        setPadding(0, 0, 0, dp(6))
                     })
                 })
-                addHairline(body, dp(16))
-                body.addView(TextView(this).apply {
-                    text = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
-                    MapUi.numeral(this, size = 44f)
-                    contentDescription = "Current time"
-                    setPadding(0, dp(12), 0, dp(4))
+                addHairline(body, dp(8))
+                val landscape = resources.configuration.screenHeightDp < 500
+                val compact = resources.configuration.screenWidthDp < 368 || resources.configuration.fontScale >= 1.25f
+                val instrument = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    setPadding(dp(if (landscape) 12 else 18), dp(if (landscape) 2 else 16), dp(if (landscape) 12 else 18), dp(if (landscape) 2 else 16))
+                    setBackgroundResource(R.drawable.map_instrument_surface)
+                }
+                if (!landscape) instrument.addView(TextView(this).apply {
+                    text = "LOCAL TIME"
+                    MapUi.label(this)
+                    setTextColor(getColor(R.color.map_instrument_muted))
+                    letterSpacing = 0.12f
                 })
+                val readoutRow = LinearLayout(this).apply {
+                    val stackedClock = compact && !landscape
+                    orientation = if (stackedClock) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
+                    gravity = if (stackedClock) Gravity.CENTER_HORIZONTAL else Gravity.CENTER_VERTICAL
+                    setPadding(0, dp(if (landscape) 0 else 8), 0, 0)
+                }
+                val dialSize = dp(when {
+                    resources.configuration.fontScale >= 1.25f && !landscape -> 136
+                    landscape -> 88
+                    compact -> 104
+                    else -> 120
+                })
+                readoutRow.addView(FieldClockDialView(this), LinearLayout.LayoutParams(dialSize, dialSize))
+                val timeReadout = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    val stackedClock = compact && !landscape
+                    gravity = if (stackedClock) Gravity.CENTER else Gravity.CENTER_VERTICAL
+                    setPadding(if (stackedClock) 0 else dp(if (landscape) 12 else 18), if (stackedClock) dp(10) else 0, 0, 0)
+                }
+                timeReadout.addView(TextClock(this).apply {
+                    format24Hour = android.text.format.DateFormat.getBestDateTimePattern(Locale.getDefault(), "Hm")
+                    format12Hour = android.text.format.DateFormat.getBestDateTimePattern(Locale.getDefault(), "hm")
+                    MapUi.numeral(this, size = 34f, color = R.color.map_instrument_ink)
+                    maxLines = 1
+                })
+                timeReadout.addView(TextView(this).apply {
+                    text = "Today"
+                    MapUi.body(this)
+                    setTextColor(getColor(R.color.map_instrument_muted))
+                    setPadding(0, dp(2), 0, 0)
+                })
+                readoutRow.addView(timeReadout, if (compact && !landscape) {
+                    LinearLayout.LayoutParams(-2, -2)
+                } else {
+                    LinearLayout.LayoutParams(0, -2, 1f)
+                })
+                instrument.addView(readoutRow)
+                body.addView(instrument)
             },
         ) { body ->
-            body.addView(TextView(this).apply {
-                text = "A clear view of what needs your attention."
-                MapUi.body(this)
-                setTextColor(getColor(R.color.map_muted))
-                setPadding(0, 0, 0, dp(16))
-            })
-            val addTaskButton = Button(this, null, 0, R.style.MapPrimaryButton).apply {
-                text = "Add a task"
-                isAllCaps = false
-                setOnClickListener { showAddTaskDialog() }
-            }
-            MapUi.markPrimaryAction(addTaskButton)
-            body.addView(addTaskButton)
-            if (!homePrimaryActionSettled) {
-                MapUi.settlePrimaryAction(addTaskButton)
-                homePrimaryActionSettled = true
-            }
             addUndoBar(body)
             addFocusArea(body, openTasks)
             val inbox = openTasks.filter { it.dueAt == null }
@@ -218,39 +213,80 @@ class MainActivity : Activity() {
             if (overdue.isNotEmpty()) addTaskSection(body, "Overdue", overdue)
             if (today.isNotEmpty()) addTaskSection(body, "Today", today)
             if (upcoming.isNotEmpty()) addTaskSection(body, "Upcoming", upcoming)
-            if (inbox.isEmpty() && overdue.isEmpty() && today.isEmpty() && upcoming.isEmpty()) {
-                addEmpty(body, "Nothing is scheduled. Add a task when something needs a place.")
+            val addTaskButton = createAddTaskButton().apply {
+                layoutParams = LinearLayout.LayoutParams(-1, dp(if (resources.configuration.screenHeightDp < 500) 48 else 56)).apply {
+                    topMargin = dp(if (resources.configuration.screenHeightDp < 500) 0 else 18)
+                }
+            }
+            body.addView(addTaskButton)
+            if (!homePrimaryActionSettled) {
+                MapUi.settlePrimaryAction(addTaskButton)
+                homePrimaryActionSettled = true
             }
             addMusicMiniPlayer(body)
             val completed = database.recentCompleted()
             if (completed.isNotEmpty()) addActivity(body, completed.take(3))
+            if (resources.configuration.screenHeightDp >= 500) addHomePrivacyStatus(body)
         }
     }
 
     private fun showTasks() {
         selectedView = "Tasks"
         render("Tasks") { body ->
-            val addTaskButton = Button(this, null, 0, R.style.MapPrimaryButton).apply {
-                text = "Add a task"
-                isAllCaps = false
-                setOnClickListener { showAddTaskDialog() }
-            }
-            MapUi.markPrimaryAction(addTaskButton)
-            body.addView(addTaskButton)
-            addUndoBar(body)
             val tasks = database.openTasks()
+            val today = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+            val tomorrow = Calendar.getInstance().apply { timeInMillis = today; add(Calendar.DAY_OF_YEAR, 1) }.timeInMillis
+            addTaskOverview(body, tasks, today, tomorrow)
+            val addTaskButton = createAddTaskButton()
+            body.addView(addTaskButton, LinearLayout.LayoutParams(-1, dp(56)).apply { topMargin = dp(14) })
+            addUndoBar(body)
             if (tasks.isEmpty()) addEmpty(body, "No tasks yet.") else tasks.forEach { addTaskRow(body, it) }
-            addActivity(body, database.recentCompleted())
+            database.recentCompleted().takeIf { it.isNotEmpty() }?.let { addActivity(body, it) }
         }
     }
 
-    private fun defaultHeader(title: String): (LinearLayout) -> Unit = { body ->
-        body.addView(TextView(this).apply {
-            text = "MAP"
-            MapUi.label(this)
-            setTextColor(getColor(R.color.map_accent))
-            contentDescription = "MAP home"
+    private fun addTaskOverview(parent: LinearLayout, tasks: List<Task>, today: Long, tomorrow: Long) {
+        val overdue = tasks.count { it.dueAt != null && it.dueAt < today }
+        val dueToday = tasks.count { it.dueAt != null && it.dueAt in today until tomorrow }
+        parent.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+            setBackgroundResource(R.drawable.map_focus_surface)
+            addView(TextView(this@MainActivity).apply {
+                text = "OPEN WORK"
+                MapUi.label(this)
+                setTextColor(getColor(R.color.map_muted))
+                letterSpacing = 0.1f
+            })
+            addView(LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.HORIZONTAL
+                setPadding(0, dp(10), 0, 0)
+                listOf("OPEN" to tasks.size, "TODAY" to dueToday, "OVERDUE" to overdue).forEachIndexed { index, metric ->
+                    addView(LinearLayout(this@MainActivity).apply {
+                        orientation = LinearLayout.VERTICAL
+                        contentDescription = "${metric.second} ${metric.first.lowercase()} tasks"
+                        addView(TextView(this@MainActivity).apply {
+                            text = metric.second.toString()
+                            MapUi.numeral(this, size = 24f)
+                        })
+                        addView(TextView(this@MainActivity).apply {
+                            text = metric.first
+                            MapUi.caption(this)
+                            letterSpacing = 0.08f
+                        })
+                    }, LinearLayout.LayoutParams(0, -2, 1f))
+                    if (index < 2) addView(View(this@MainActivity).apply {
+                        setBackgroundColor(getColor(R.color.map_divider))
+                    }, LinearLayout.LayoutParams(dp(1), dp(38)).apply { marginEnd = dp(12) })
+                }
+            })
         })
+    }
+
+    private fun defaultHeader(title: String): (LinearLayout) -> Unit = { body ->
+        MapUi.addBrandMark(this, body)
         body.addView(TextView(this).apply {
             text = title
             MapUi.display(this)
@@ -272,9 +308,10 @@ class MainActivity : Activity() {
         fill: (LinearLayout) -> Unit,
     ) {
         musicPlayButton = null
-        content = LinearLayout(this).apply {
+                content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(24), dp(24), dp(24), dp(24))
+            val shortHeight = resources.configuration.screenHeightDp < 500
+            setPadding(dp(24), dp(if (shortHeight) 0 else 24), dp(24), dp(if (shortHeight) 0 else 24))
             setBackgroundColor(getColor(R.color.map_background))
         }
         header(content)
@@ -285,6 +322,7 @@ class MainActivity : Activity() {
         MapUi.addPrimaryNavigation(
             root,
             ScrollView(this).apply {
+                isFillViewport = selected == "Home" && resources.configuration.screenHeightDp >= 500
                 contentScroll = this
                 addView(content)
             },
@@ -295,6 +333,31 @@ class MainActivity : Activity() {
         val scrollY = restoredScrollY
         restoredScrollY = 0
         contentScroll?.post { contentScroll?.scrollTo(0, scrollY) }
+    }
+
+    private fun addHomePrivacyStatus(parent: LinearLayout) {
+        parent.addView(View(this), LinearLayout.LayoutParams(-1, 0, 1f))
+        parent.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(14), 0, dp(2))
+            addView(View(this@MainActivity).apply {
+                setBackgroundResource(R.drawable.map_status_dot)
+            }, LinearLayout.LayoutParams(dp(8), dp(8)).apply { marginEnd = dp(10) })
+            addView(LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(TextView(this@MainActivity).apply {
+                    text = "PRIVATE BY DESIGN"
+                    MapUi.label(this)
+                    letterSpacing = 0.08f
+                })
+                addView(TextView(this@MainActivity).apply {
+                    text = "Your tasks and files stay on this device."
+                    MapUi.caption(this)
+                    setPadding(0, dp(2), 0, 0)
+                })
+            }, LinearLayout.LayoutParams(0, -2, 1f))
+        }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
     }
 
     private fun navigate(label: String) {
@@ -312,13 +375,14 @@ class MainActivity : Activity() {
     }
 
     private fun addSectionRule(parent: LinearLayout, title: String, count: Int? = null) {
-        parent.addView(View(this).apply {
+        val shortHeight = resources.configuration.screenHeightDp < 500
+        if (!shortHeight) parent.addView(View(this).apply {
             setBackgroundColor(getColor(R.color.map_divider))
         }, LinearLayout.LayoutParams(-1, dp(1)).apply { topMargin = dp(16) })
         parent.addView(LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(10), 0, dp(8))
+            setPadding(0, dp(if (shortHeight) 2 else 10), 0, dp(if (shortHeight) 2 else 8))
             addView(TextView(this@MainActivity).apply {
                 text = title
                 MapUi.section(this)
@@ -332,46 +396,118 @@ class MainActivity : Activity() {
         })
     }
 
+    private fun createAddTaskButton() = MapUi.primaryButton(this).apply {
+        val addLabel = SpannableString("  Add task")
+        val addIcon = requireNotNull(getDrawable(R.drawable.ic_map_add)).mutate().apply {
+            setTint(getColor(R.color.map_on_accent))
+            setBounds(0, 0, dp(20), dp(20))
+        }
+        addLabel.setSpan(ImageSpan(addIcon, ImageSpan.ALIGN_BOTTOM), 0, 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        text = addLabel
+        MapUi.label(this)
+        setTextColor(getColor(R.color.map_on_accent))
+        isAllCaps = false
+        minimumHeight = dp(56)
+        contentDescription = "Add task"
+        setOnClickListener { showAddTaskDialog() }
+    }
+
     private fun addFocusArea(parent: LinearLayout, tasks: List<Task>) {
         val selection = FocusPicker.select(tasks, preferences)
         val actionTask = selection.focus ?: selection.next
-        addSectionRule(parent, "Focus")
+        val compact = resources.configuration.screenWidthDp < 368 || resources.configuration.fontScale >= 1.25f
+        val shortHeight = resources.configuration.screenHeightDp < 500
+        addSectionRule(parent, "Now & next")
         parent.addView(LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(12), dp(16), dp(12))
+            orientation = if (shortHeight && actionTask == null) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL
+            gravity = if (shortHeight && actionTask == null) Gravity.CENTER_VERTICAL else Gravity.NO_GRAVITY
+            setPadding(dp(16), dp(if (shortHeight) 4 else 14), dp(16), dp(if (shortHeight) 4 else 14))
             setBackgroundResource(R.drawable.map_focus_surface)
             layoutParams = LinearLayout.LayoutParams(-1, -2).apply {
                 topMargin = dp(4)
-                bottomMargin = dp(8)
+                bottomMargin = dp(if (shortHeight) 4 else 8)
             }
             actionTask?.let { task ->
                 contentDescription = "Open focus task ${task.title}"
                 isFocusable = true
                 setOnClickListener { showTaskDetails(task) }
             }
-            addView(focusLine("Now", selection.focus?.let(::focusLabel) ?: "Nothing in progress"))
-            addView(focusLine("Next", selection.next?.let(::focusLabel) ?: "Nothing queued"))
+            if (actionTask == null) {
+                addView(LinearLayout(this@MainActivity).apply {
+                    orientation = if (shortHeight) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL
+                    gravity = if (shortHeight) Gravity.CENTER_VERTICAL else Gravity.NO_GRAVITY
+                    if (!shortHeight) addView(TextView(this@MainActivity).apply {
+                        text = "DAY STATUS"
+                        MapUi.caption(this)
+                        letterSpacing = 0.1f
+                    })
+                    addView(TextView(this@MainActivity).apply {
+                        text = if (tasks.isEmpty()) "Your day is open." else "No focus task selected."
+                        MapUi.headline(this)
+                        setPadding(if (shortHeight) dp(12) else 0, if (shortHeight) 0 else dp(3), 0, 0)
+                    }, if (shortHeight) LinearLayout.LayoutParams(0, -2, 1f) else LinearLayout.LayoutParams(-2, -2))
+                })
+            } else addView(LinearLayout(this@MainActivity).apply {
+                orientation = if (compact) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
+                val now = focusBlock("Now", selection.focus, "Nothing in progress")
+                val next = focusBlock("Next", selection.next, "Nothing queued")
+                val divider = View(this@MainActivity).apply {
+                    setBackgroundColor(getColor(R.color.map_divider))
+                }
+                if (compact) {
+                    addView(now)
+                    addView(divider, LinearLayout.LayoutParams(-1, dp(1)).apply {
+                        topMargin = dp(8)
+                        bottomMargin = dp(8)
+                    })
+                    addView(next)
+                } else {
+                    addView(now, LinearLayout.LayoutParams(0, -2, 1f))
+                    addView(divider, LinearLayout.LayoutParams(dp(1), -1).apply {
+                        marginStart = dp(12)
+                        marginEnd = dp(12)
+                    })
+                    addView(next, LinearLayout.LayoutParams(0, -2, 1f))
+                }
+            })
             selection.focus?.let { task ->
-                addView(Button(this@MainActivity).apply {
+                addView(MapUi.button(this@MainActivity).apply {
                     text = if (!selection.pinned) "Pin focus" else "Unpin focus"
                     isAllCaps = false
-                    contentDescription = text
+                    contentDescription = "$text task ${task.title}"
                     setOnClickListener {
                         FocusPicker.setPinned(preferences, if (!selection.pinned) task.id else null)
                         showHome()
                     }
-                })
+                }, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(6) })
             }
         })
     }
 
-    private fun focusLine(label: String, value: String) = TextView(this).apply {
-        text = "$label  $value"
-        MapUi.body(this)
-        setPadding(0, dp(2), 0, dp(6))
+    private fun focusBlock(label: String, task: Task?, empty: String) = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        addView(TextView(this@MainActivity).apply {
+            text = label
+            MapUi.label(this)
+            setTextColor(getColor(R.color.map_muted))
+        })
+        addView(TextView(this@MainActivity).apply {
+            text = task?.title ?: empty
+            MapUi.body(this)
+            setPadding(0, dp(3), 0, 0)
+            task?.let {
+                maxLines = 2
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                contentDescription = "$label, ${it.title}${it.dueAt?.let { due -> ", ${formatDateTime(due)}" }.orEmpty()}"
+            }
+        })
+        task?.dueAt?.takeIf { !task.allDay }?.let { due ->
+            addView(TextView(this@MainActivity).apply {
+                text = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(due))
+                MapUi.metadata(this)
+            })
+        }
     }
-
-    private fun focusLabel(task: Task): String = if (task.allDay) task.title else "${task.title} · ${formatDateTime(task.dueAt!!)}"
 
     private fun addTaskRow(parent: LinearLayout, task: Task) {
         val row = LinearLayout(this).apply {
@@ -442,7 +578,7 @@ class MainActivity : Activity() {
         fields.addView(tags)
         var dueAt = task.dueAt
         var allDay = task.allDay
-        val dueButton = Button(this).apply {
+        val dueButton = MapUi.button(this).apply {
             text = dueAt?.let(::formatDate) ?: "No due date"
             isAllCaps = false
             setOnClickListener {
@@ -459,7 +595,7 @@ class MainActivity : Activity() {
                 }, today.get(Calendar.YEAR), today.get(Calendar.MONTH), today.get(Calendar.DAY_OF_MONTH)).show()
             }
         }
-        val timeButton = Button(this).apply {
+        val timeButton = MapUi.button(this).apply {
             text = if (dueAt == null || allDay) "All day" else SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(dueAt!!))
             isAllCaps = false
             setOnClickListener {
@@ -502,11 +638,19 @@ class MainActivity : Activity() {
             requestWindowFeature(android.view.Window.FEATURE_NO_TITLE)
             setCanceledOnTouchOutside(true)
         }
-        val actions = LinearLayout(this).apply {
-            gravity = Gravity.END
-            if (task.dueAt != null) addView(Button(this@MainActivity).apply {
+        val stackTaskActions = resources.configuration.screenWidthDp < 360 || resources.configuration.fontScale >= 1.3f
+        val taskActionParams = {
+            LinearLayout.LayoutParams(if (stackTaskActions) -1 else -2, -2).apply {
+                if (stackTaskActions) topMargin = dp(4)
+            }
+        }
+        val actionButtons = LinearLayout(this).apply {
+            orientation = if (stackTaskActions) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
+            gravity = if (stackTaskActions) Gravity.CENTER_HORIZONTAL else Gravity.END
+            if (task.dueAt != null) addView(MapUi.button(this@MainActivity).apply {
                 text = "Snooze"
                 isAllCaps = false
+                minHeight = dp(48)
                 setOnClickListener {
                     ReminderScheduler.cancel(this@MainActivity, task.id)
                     database.snooze(task)?.let {
@@ -516,15 +660,17 @@ class MainActivity : Activity() {
                     dialog.dismiss()
                     if (selectedView == "Tasks") showTasks() else showHome()
                 }
-            })
-            addView(Button(this@MainActivity).apply {
+            }, taskActionParams())
+            addView(MapUi.button(this@MainActivity).apply {
                 text = "Mark complete"
                 isAllCaps = false
+                minHeight = dp(48)
                 setOnClickListener { dialog.dismiss(); completeTask(task) }
-            })
-            addView(Button(this@MainActivity, null, 0, R.style.MapPrimaryButton).apply {
+            }, taskActionParams())
+            addView(MapUi.primaryButton(this@MainActivity).apply {
                 text = "Save"
                 isAllCaps = false
+                minHeight = dp(48)
                 setOnClickListener {
                     val newTitle = title.text.toString().trim()
                     if (newTitle.isEmpty()) {
@@ -541,7 +687,33 @@ class MainActivity : Activity() {
                     dialog.dismiss()
                     if (selectedView == "Tasks") showTasks() else showHome()
                 }
-            })
+            }, taskActionParams())
+        }
+        val actions = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(24), 0, dp(24), dp(12))
+            addView(MapUi.button(this@MainActivity).apply {
+                text = "Delete task"
+                contentDescription = "Delete task"
+                isAllCaps = false
+                setTextColor(getColor(R.color.map_accent))
+                setOnClickListener {
+                    MaterialAlertDialogBuilder(this@MainActivity)
+                        .setTitle("Delete task?")
+                        .setMessage("Delete “${task.title}”? This will also cancel its reminder.")
+                        .setNegativeButton("Keep task", null)
+                        .setPositiveButton("Delete") { _, _ ->
+                            if (TaskActions.delete(this@MainActivity, database, task)) {
+                                dialog.dismiss()
+                                if (selectedView == "Tasks") showTasks() else showHome()
+                            } else {
+                                Toast.makeText(this@MainActivity, "Task is no longer available", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                        .show()
+                }
+            }, LinearLayout.LayoutParams(-1, -2))
+            addView(actionButtons, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
         }
         val sheet = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -571,7 +743,6 @@ class MainActivity : Activity() {
 
     private fun addActivity(parent: LinearLayout, completed: List<Task>) {
         addSectionRule(parent, "Recent activity")
-        if (completed.isEmpty()) addEmpty(parent, "Your recent activity will appear here.")
         completed.forEach { task ->
             parent.addView(TextView(this).apply {
                 text = "Completed: ${task.title}"
@@ -614,12 +785,11 @@ class MainActivity : Activity() {
                     ellipsize = android.text.TextUtils.TruncateAt.END
                 })
             }, LinearLayout.LayoutParams(0, -2, 1f))
-            val playButton = Button(this@MainActivity).apply {
+            val playButton = MapUi.button(this@MainActivity).apply {
                 text = if (playing) "Pause" else "Play"
                 isAllCaps = false
                 contentDescription = text
                 setOnClickListener {
-                    requestNotificationsIfNeeded()
                     val action = if (text == "Pause") MusicService.ACTION_PAUSE else MusicService.ACTION_RESUME
                     val intent = Intent(this@MainActivity, MusicService::class.java).setAction(action)
                     if (!startMapMusicService(this@MainActivity, intent)) {
@@ -641,199 +811,14 @@ class MainActivity : Activity() {
         })
     }
 
-    private fun showAddTaskDialog(
-        initialTitle: String = "",
-        initialNotes: String = "",
-        initialTags: String = "",
-        initialDueAt: Long? = null,
-        initialRecurrence: String = "Does not repeat",
-        initialAllDay: Boolean = true,
-        initialDetailsVisible: Boolean = false,
-    ) {
-        val fields = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(24), 0, dp(24), 0)
-        }
-        val title = EditText(this).apply {
-            hint = "Task title"
-            setText(initialTitle)
-            contentDescription = "Task title"
-        }
-        val notes = EditText(this).apply {
-            hint = "Notes (optional)"
-            setText(initialNotes)
-            contentDescription = "Task notes"
-        }
-        val tags = EditText(this).apply {
-            hint = "Tags (optional)"
-            setText(initialTags)
-            contentDescription = "Task tags"
-        }
-        val recurrenceValues = listOf("Does not repeat", "Daily", "Weekly", "Monthly")
-        val recurrence = Spinner(this).apply {
-            adapter = ArrayAdapter(
-                this@MainActivity,
-                android.R.layout.simple_spinner_dropdown_item,
-                recurrenceValues
-            )
-            setSelection(recurrenceValues.indexOf(initialRecurrence).coerceAtLeast(0))
-            contentDescription = "Task recurrence"
-        }
-        var dueAt: Long? = initialDueAt
-        var allDay = initialAllDay
-        composerDueAt = dueAt
-        composerAllDay = allDay
-        composerDetailsVisible = initialDetailsVisible
-        val dueButton = Button(this).apply {
-            text = dueAt?.let(::formatDate) ?: "No due date"
-            isAllCaps = false
-            setOnClickListener {
-                val today = Calendar.getInstance()
-                DatePickerDialog(this@MainActivity, { _, year, month, day ->
-                    dueAt = Calendar.getInstance().apply {
-                        set(year, month, day, 12, 0, 0)
-                        set(Calendar.MILLISECOND, 0)
-                    }.timeInMillis
-                    composerDueAt = dueAt
-                    allDay = true
-                    composerAllDay = true
-                    text = formatDate(dueAt!!)
-                }, today.get(Calendar.YEAR), today.get(Calendar.MONTH), today.get(Calendar.DAY_OF_MONTH)).show()
-            }
-        }
-        val timeButton = Button(this).apply {
-            text = if (dueAt == null || allDay) "All day" else SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(dueAt!!))
-            isAllCaps = false
-            setOnClickListener {
-                val selected = dueAt ?: run {
-                    Toast.makeText(this@MainActivity, "Choose a date first", Toast.LENGTH_SHORT).show()
-                    return@setOnClickListener
-                }
-                if (allDay) {
-                    val current = Calendar.getInstance().apply { timeInMillis = selected }
-                    TimePickerDialog(this@MainActivity, { _, hour, minute ->
-                        dueAt = Calendar.getInstance().apply {
-                            timeInMillis = selected
-                            set(Calendar.HOUR_OF_DAY, hour)
-                            set(Calendar.MINUTE, minute)
-                        }.timeInMillis
-                        composerDueAt = dueAt
-                        allDay = false
-                        composerAllDay = false
-                        text = "%02d:%02d".format(hour, minute)
-                    }, current.get(Calendar.HOUR_OF_DAY), current.get(Calendar.MINUTE), true).show()
-                } else {
-                    allDay = true
-                    composerAllDay = true
-                    text = "All day"
-                    dueAt = Calendar.getInstance().apply { timeInMillis = selected; set(Calendar.HOUR_OF_DAY, 12); set(Calendar.MINUTE, 0) }.timeInMillis
-                    composerDueAt = dueAt
-                }
-            }
-        }
-        val details = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            visibility = if (initialDetailsVisible) View.VISIBLE else View.GONE
-            addView(notes)
-            addView(tags)
-            addView(dueButton)
-            addView(timeButton)
-            addView(recurrence)
-        }
-        val dialog = Dialog(this).apply {
-            requestWindowFeature(android.view.Window.FEATURE_NO_TITLE)
-            setCanceledOnTouchOutside(true)
-        }
-        val detailsButton = Button(this).apply {
-            text = "Add details"
-            isAllCaps = false
-            visibility = if (initialDetailsVisible) View.GONE else View.VISIBLE
-            setOnClickListener {
-                visibility = View.GONE
-                details.visibility = View.VISIBLE
-                composerDetailsVisible = true
-                if (resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE && resources.configuration.fontScale >= 1.5f) fitLargeDialog(dialog)
-            }
-        }
-        fields.addView(title)
-        fields.addView(detailsButton)
-        fields.addView(details)
-
-        val sheet = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(getColor(R.color.map_card))
-            addView(TextView(this@MainActivity).apply {
-                text = "New task"
-                MapUi.headline(this)
-                setPadding(dp(24), dp(20), dp(24), dp(4))
-            })
-            addView(ScrollView(this@MainActivity).apply {
-                addView(fields)
-            }, LinearLayout.LayoutParams(-1, 0, 1f))
-            addView(LinearLayout(this@MainActivity).apply {
-                gravity = Gravity.END
-                addView(Button(this@MainActivity).apply {
-                    text = "Cancel"
-                    isAllCaps = false
-                    setOnClickListener { dialog.dismiss() }
-                })
-                addView(Button(this@MainActivity, null, 0, R.style.MapPrimaryButton).apply {
-                    text = "Save"
-                    isAllCaps = false
-                    setOnClickListener {
-                        val taskTitle = title.text.toString().trim()
-                        if (taskTitle.isEmpty()) {
-                            title.error = "Enter a task title"
-                            return@setOnClickListener
-                        }
-                        val taskId = database.addTask(
-                            taskTitle,
-                            notes.text.toString().trim(),
-                            dueAt,
-                            recurrence.selectedItem.toString(),
-                            tags.text.toString().trim(),
-                            allDay
-                        )
-                        dueAt?.let {
-                            requestNotificationsIfNeeded()
-                            ReminderScheduler.schedule(this@MainActivity, taskId, taskTitle, it)
-                        }
-                        dialog.dismiss()
-                        showHome()
-                    }
-                })
-            }, LinearLayout.LayoutParams(-1, -2))
-        }
-        composerDialog = dialog
-        composerTitle = title
-        composerNotes = notes
-        composerTags = tags
-        composerRecurrence = recurrence
-        dialog.setOnDismissListener { clearComposerState() }
-        dialog.setContentView(sheet)
-        dialog.show()
-        dialog.window?.apply {
-            setBackgroundDrawable(ColorDrawable(getColor(R.color.map_card)))
-            setLayout(-1, -2)
-            attributes = attributes.apply { gravity = Gravity.BOTTOM }
-            setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
-        }
-        title.post {
-            title.requestFocus()
-            (getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager)
-                .showSoftInput(title, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
-        }
-    }
-
-    private fun clearComposerState() {
-        composerDialog = null
-        composerTitle = null
-        composerNotes = null
-        composerTags = null
-        composerRecurrence = null
-        composerDueAt = null
-        composerAllDay = true
-        composerDetailsVisible = false
+    private fun showAddTaskDialog(state: TaskComposerState = TaskComposerState()) {
+        taskComposer = TaskComposer(
+            activity = this,
+            database = database,
+            notificationRequest = NOTIFICATION_REQUEST,
+            onSaved = ::showHome,
+            onDismiss = { taskComposer = null },
+        ).also { it.show(state) }
     }
 
     private fun dp(value: Int): Int = MapUi.dp(this, value)
@@ -848,25 +833,27 @@ class MainActivity : Activity() {
             }
         }
     }
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        MapUi.handleNotificationPermissionResult(
+            this,
+            requestCode,
+            NOTIFICATION_REQUEST,
+            grantResults,
+            "Task reminders won't appear until MAP notifications are enabled. You can turn them on in Settings.",
+        )
+    }
+
     private fun requestNotificationsIfNeeded() = MapUi.requestNotificationsIfNeeded(this, NOTIFICATION_REQUEST)
     private fun formatDate(value: Long) = java.text.SimpleDateFormat("EEE, d MMM", java.util.Locale.getDefault()).format(java.util.Date(value))
     private fun formatDateTime(value: Long) = java.text.SimpleDateFormat("EEE, d MMM · HH:mm", java.util.Locale.getDefault()).format(java.util.Date(value))
 
     companion object {
-        const val EXTRA_OPEN_COMPOSER = "open_composer"
         const val EXTRA_OPEN_TASKS = "open_tasks"
         const val EXTRA_OPEN_TASK_ID = "open_task_id"
         private const val NOTIFICATION_REQUEST = 40
         private const val STATE_SELECTED_VIEW = "selected_view"
         private const val STATE_PENDING_TASK_ID = "pending_task_id"
         private const val STATE_SCROLL_Y = "scroll_y"
-        private const val STATE_COMPOSER_OPEN = "composer_open"
-        private const val STATE_COMPOSER_TITLE = "composer_title"
-        private const val STATE_COMPOSER_NOTES = "composer_notes"
-        private const val STATE_COMPOSER_TAGS = "composer_tags"
-        private const val STATE_COMPOSER_DUE_AT = "composer_due_at"
-        private const val STATE_COMPOSER_RECURRENCE = "composer_recurrence"
-        private const val STATE_COMPOSER_ALL_DAY = "composer_all_day"
-        private const val STATE_COMPOSER_DETAILS_VISIBLE = "composer_details_visible"
     }
 }

@@ -10,8 +10,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.media.AudioAttributes
-import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.MediaMetadata
 import android.media.audiofx.BassBoost
@@ -43,7 +41,6 @@ internal fun startMapMusicService(context: Context, intent: Intent): Boolean = r
 class MusicService : Service() {
     private lateinit var database: MusicDatabase
     private lateinit var session: MediaSession
-    private lateinit var audioManager: AudioManager
     private val handler = Handler(Looper.getMainLooper())
     private var player: ExoPlayer? = null
     private var equalizer: Equalizer? = null
@@ -54,16 +51,7 @@ class MusicService : Service() {
     private var effectsSessionId = C.AUDIO_SESSION_ID_UNSET
     private var sleepMode = SLEEP_OFF
     private var sleepEndsAt = 0L
-    private var focusRequest: AudioFocusRequest? = null
     private var tickCount = 0
-
-    private val focusListener = AudioManager.OnAudioFocusChangeListener { change ->
-        when (change) {
-            AudioManager.AUDIOFOCUS_LOSS, AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> pause()
-            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> player?.setVolume(0.25f)
-            AudioManager.AUDIOFOCUS_GAIN -> player?.setVolume(1f)
-        }
-    }
 
     private val noisyReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) = pause()
@@ -87,7 +75,6 @@ class MusicService : Service() {
         super.onCreate()
         isRunning = true
         database = MusicDatabase(this)
-        audioManager = getSystemService(AudioManager::class.java)
         createChannel()
         session = MediaSession(this, "MAP Music").apply {
             setCallback(object : MediaSession.Callback() {
@@ -160,7 +147,6 @@ class MusicService : Service() {
         runCatching { unregisterReceiver(noisyReceiver) }
         releaseEffects()
         player?.release()
-        abandonAudioFocus()
         session.release()
         database.close()
         super.onDestroy()
@@ -180,7 +166,6 @@ class MusicService : Service() {
             advance(1)
             return
         }
-        if (!requestAudioFocus()) return
         currentUri = uri
         database.setCurrent(uri)
         pendingSeek = if (restorePosition) database.position() else 0
@@ -190,10 +175,10 @@ class MusicService : Service() {
             ExoPlayer.Builder(this)
                 .setAudioAttributes(
                     Media3AudioAttributes.Builder()
-                        .setUsage(C.USAGE_MEDIA)
-                        .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
-                        .build(),
-                    false
+                    .setUsage(C.USAGE_MEDIA)
+                    .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+                    .build(),
+                    true
                 )
                 .build()
                 .apply {
@@ -239,7 +224,7 @@ class MusicService : Service() {
     private fun resume() {
         val currentPlayer = player
         if (currentPlayer != null) {
-            if (requestAudioFocus()) runCatching { currentPlayer.play() }
+            runCatching { currentPlayer.play() }
             updateState()
             return
         }
@@ -309,7 +294,6 @@ class MusicService : Service() {
         player?.release()
         player = null
         releaseEffects()
-        abandonAudioFocus()
         sleepMode = SLEEP_OFF
         sleepEndsAt = 0
         database.setCurrent("")
@@ -403,19 +387,6 @@ class MusicService : Service() {
         bassBoost = null
         virtualizer = null
         effectsSessionId = C.AUDIO_SESSION_ID_UNSET
-    }
-
-    private fun requestAudioFocus(): Boolean {
-        if (focusRequest == null) focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
-            .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
-            .setOnAudioFocusChangeListener(focusListener)
-            .build()
-        return audioManager.requestAudioFocus(focusRequest!!) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
-    }
-
-    private fun abandonAudioFocus() {
-        focusRequest?.let(audioManager::abandonAudioFocusRequest)
-        focusRequest = null
     }
 
     private fun updateMetadata(item: AudioItem) {

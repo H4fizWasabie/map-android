@@ -1,7 +1,6 @@
 package app.map.android
 
-import android.Manifest
-import android.app.AlertDialog
+import androidx.appcompat.app.AlertDialog
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -20,7 +19,6 @@ import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.AbsListView
 import android.widget.BaseAdapter
-import android.widget.Button
 import android.widget.EditText
 import android.widget.HorizontalScrollView
 import android.widget.ImageButton
@@ -34,9 +32,11 @@ import android.widget.Spinner
 import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.core.content.ContextCompat
+import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import java.util.ArrayDeque
 import java.util.concurrent.Executors
 
@@ -68,7 +68,7 @@ private class TrackRowHolder(
     val title: TextView,
     val meta: TextView,
     val unavailable: TextView,
-    val more: Button,
+    val more: MaterialButton,
 )
 
 private class ActionRowHolder(
@@ -77,7 +77,7 @@ private class ActionRowHolder(
     val content: View,
 )
 
-class MusicActivity : ComponentActivity() {
+class MusicActivity : AppCompatActivity() {
     private lateinit var database: MusicDatabase
     private val executor = Executors.newSingleThreadExecutor()
     private var mode = MusicViewMode.SONGS
@@ -129,12 +129,7 @@ class MusicActivity : ComponentActivity() {
             duration = event.getIntExtra(MusicService.EXTRA_DURATION, duration)
             val sleepMode = event.getStringExtra(MusicService.EXTRA_SLEEP_MODE).orEmpty()
             val sleepRemaining = event.getIntExtra(MusicService.EXTRA_SLEEP_REMAINING, 0)
-            sleepModeText = when (sleepMode) {
-                MusicService.SLEEP_TRACK -> "Stops after this track"
-                MusicService.SLEEP_QUEUE -> "Stops after this queue"
-                MusicService.SLEEP_TIMER -> "Stops in ${sleepRemaining / 60}:${(sleepRemaining % 60).toString().padStart(2, '0')}"
-                else -> ""
-            }
+            sleepModeText = sleepText(sleepMode, sleepRemaining.toLong())
             eqEnabled = event.getBooleanExtra(MusicService.EXTRA_ENABLED, eqEnabled)
             event.getShortArrayExtra(MusicService.EXTRA_EQ_LEVELS)?.let { eqLevels = it }
             event.getShortArrayExtra(MusicService.EXTRA_EQ_RANGE)?.let { eqRange = it }
@@ -242,6 +237,12 @@ class MusicActivity : ComponentActivity() {
     private fun renderLibrary() {
         showingPlayer = false
         activePlaylist = null
+        val trackCount = database.trackCount()
+        val hasTracks = trackCount > 0
+        val hasFolders = database.folders().isNotEmpty()
+        val hasPlaylists = database.playlists().isNotEmpty()
+        val firstUse = !hasTracks && !hasFolders && !hasPlaylists
+        if (!hasTracks && !hasPlaylists && mode != MusicViewMode.SONGS) mode = MusicViewMode.SONGS
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(getColor(R.color.map_background))
@@ -256,42 +257,65 @@ class MusicActivity : ComponentActivity() {
             MapUi.display(this)
             setPadding(0, dp(8), 0, dp(4))
         })
-        body.addView(TextView(this).apply {
-            val count = database.trackCount()
-            text = if (refreshing) "Refreshing your selected folders…" else "$count local ${if (count == 1) "track" else "tracks"}"
-            MapUi.body(this)
-            setTextColor(getColor(R.color.map_muted))
-            setPadding(0, 0, 0, dp(16))
-        })
-        body.addView(actionGroup(
-            actionButton("Add folder") { requestFolder() },
-            actionButton("Refresh") { refreshFolders() },
-            actionButton("Folders") { showFoldersDialog() },
-        ))
-        body.addView(horizontalModes())
-        val search = EditText(this).apply {
-            hint = "Search your music"
-            setSingleLine(true)
-            setText(query)
-            contentDescription = "Search music"
-            addTextChangedListener(object : TextWatcher {
-                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
-                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) { query = s?.toString().orEmpty(); renderResults() }
-                override fun afterTextChanged(s: Editable?) = Unit
+        if (firstUse) {
+            body.addView(TextView(this).apply {
+                text = "Choose a local folder to start listening. Your files stay on this device."
+                MapUi.body(this)
+                setTextColor(getColor(R.color.map_muted))
+                setPadding(0, 0, 0, dp(16))
             })
+            body.addView(MapUi.primaryButton(this).apply {
+                text = "Add folder"
+                MapUi.label(this)
+                setTextColor(getColor(R.color.map_on_accent))
+                isAllCaps = false
+                minimumHeight = dp(56)
+                contentDescription = "Add music folder"
+                setOnClickListener { requestFolder() }
+            }, LinearLayout.LayoutParams(-1, -2))
+        } else {
+            body.addView(TextView(this).apply {
+                text = if (refreshing) "Refreshing your selected folders…" else "$trackCount local ${if (trackCount == 1) "track" else "tracks"}"
+                MapUi.body(this)
+                setTextColor(getColor(R.color.map_muted))
+                setPadding(0, 0, 0, dp(16))
+            })
+            val addFolder = actionButton("Add folder") { requestFolder() }
+            body.addView(if (hasFolders) {
+                actionGroup(addFolder, actionButton("Refresh") { refreshFolders() }, actionButton("Manage folders") { showFoldersDialog() })
+            } else addFolder)
+            if (hasTracks || hasPlaylists) {
+                val modes = if (hasTracks) MusicViewMode.values().toList() else listOf(MusicViewMode.SONGS, MusicViewMode.PLAYLISTS)
+                body.addView(horizontalModes(modes), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+                if (hasTracks) {
+                    val search = EditText(this).apply {
+                        hint = "Search your music"
+                        setSingleLine(true)
+                        setText(query)
+                        contentDescription = "Search music"
+                        addTextChangedListener(object : TextWatcher {
+                            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+                            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) { query = s?.toString().orEmpty(); renderResults() }
+                            override fun afterTextChanged(s: Editable?) = Unit
+                        })
+                    }
+                    body.addView(search, LinearLayout.LayoutParams(-1, dp(56)).apply { topMargin = dp(12) })
+                    LinearLayout(this).apply {
+                        orientation = LinearLayout.HORIZONTAL
+                        addView(actionButton("Filters") { showFiltersDialog() })
+                        addView(actionButton("Sort: $sort") { showSortDialog() }, LinearLayout.LayoutParams(-2, -2).apply {
+                            marginStart = dp(8)
+                        })
+                        addView(TextView(this@MusicActivity).apply {
+                            text = activeFilterSummary()
+                            MapUi.metadata(this)
+                            gravity = Gravity.CENTER_VERTICAL
+                            setPadding(dp(8), 0, 0, 0)
+                        }, LinearLayout.LayoutParams(0, -1, 1f))
+                    }.also { body.addView(it) }
+                }
+            }
         }
-        body.addView(search, LinearLayout.LayoutParams(-1, dp(56)).apply { topMargin = dp(12) })
-        LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            addView(actionButton("Filters") { showFiltersDialog() })
-            addView(actionButton("Sort: $sort") { showSortDialog() })
-            addView(TextView(this@MusicActivity).apply {
-                text = activeFilterSummary()
-                MapUi.metadata(this)
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(8), 0, 0, 0)
-            }, LinearLayout.LayoutParams(0, -1, 1f))
-        }.also { body.addView(it) }
         val list = ListView(this).apply {
             divider = null
             dividerHeight = 0
@@ -320,6 +344,8 @@ class MusicActivity : ComponentActivity() {
         executor.execute {
             val result = runCatching {
                 val all = database.tracks()
+                val folders = database.folders()
+                val hasPlaylists = database.playlists().isNotEmpty()
                 val rows = when (selectedMode) {
                     MusicViewMode.SONGS -> trackRows(filteredTracks(all, selectedQuery, selectedFilters, selectedSort))
                     MusicViewMode.FAVORITES -> trackRows(filteredTracks(all.filter { it.favorite }, selectedQuery, selectedFilters, selectedSort))
@@ -330,7 +356,12 @@ class MusicActivity : ComponentActivity() {
                     MusicViewMode.FOLDERS -> groupRows(filteredTracks(all, selectedQuery, selectedFilters, selectedSort), { it.folderName }, "folder")
                     MusicViewMode.PLAYLISTS -> listOf(LibraryRow.NewPlaylist) + database.playlists().map(LibraryRow::Playlist)
                 }
-                if (rows.isEmpty()) listOf(LibraryRow.Empty(if (all.isEmpty()) "Add a local folder to start listening." else "Nothing matches these filters.")) else rows
+                if (rows.isEmpty()) when {
+                    all.isNotEmpty() -> listOf(LibraryRow.Empty("Nothing matches your search or filters."))
+                    folders.isNotEmpty() -> listOf(LibraryRow.Empty("No audio tracks found in the selected folders. Refresh or add another folder."))
+                    hasPlaylists -> listOf(LibraryRow.Empty("Add a local folder to start listening."))
+                    else -> emptyList()
+                } else rows
             }
             runOnUiThread {
                 if (!isFinishing && !isDestroyed && generation == resultsGeneration) {
@@ -340,12 +371,14 @@ class MusicActivity : ComponentActivity() {
         }
     }
 
-    private fun horizontalModes(): View = HorizontalScrollView(this).apply {
+    private fun horizontalModes(modes: List<MusicViewMode> = MusicViewMode.values().toList()): View = HorizontalScrollView(this).apply {
         isHorizontalScrollBarEnabled = false
         addView(LinearLayout(this@MusicActivity).apply {
             orientation = LinearLayout.HORIZONTAL
-            MusicViewMode.values().forEach { item ->
-                addView(actionButton(item.label) { mode = item; activePlaylist = null; renderLibrary() }.apply { isEnabled = item != mode })
+            modes.forEachIndexed { index, item ->
+                addView(actionButton(item.label) { mode = item; activePlaylist = null; renderLibrary() }.apply { isSelected = item == mode }, LinearLayout.LayoutParams(-2, -2).apply {
+                    if (index > 0) marginStart = dp(8)
+                })
             }
         })
     }
@@ -482,7 +515,7 @@ class MusicActivity : ComponentActivity() {
                 activePlaylist = row.item.id
                 showPlaylist(row.item.id)
             }
-            LibraryRow.NewPlaylist -> (recycled as? Button ?: actionButton("New playlist") {}).apply {
+            LibraryRow.NewPlaylist -> (recycled as? MaterialButton ?: actionButton("New playlist") {}).apply {
                 text = "New playlist"
                 setOnClickListener { promptPlaylist() }
                 layoutParams = AbsListView.LayoutParams(-1, -2)
@@ -564,7 +597,7 @@ class MusicActivity : ComponentActivity() {
 
     private fun showTrackMenu(item: AudioItem, visibleTracks: List<AudioItem>) {
         val actions = arrayOf("Play now", "Play next", "Add to queue", if (item.favorite) "Remove favorite" else "Add favorite", "Add to playlist")
-        AlertDialog.Builder(this).setTitle(item.title).setItems(actions) { _, which ->
+        MaterialAlertDialogBuilder(this).setTitle(item.title).setItems(actions) { _, which ->
             when (which) {
                 0 -> playTracks(visibleTracks, item)
                 1 -> { database.playNext(item); Toast.makeText(this, "Added to play next", Toast.LENGTH_SHORT).show() }
@@ -583,7 +616,6 @@ class MusicActivity : ComponentActivity() {
         val available = tracks.filter { it.available }
         database.setQueue(available, item.uri)
         currentUri = item.uri
-        requestNotificationsIfNeeded()
         if (startMusicAction(MusicService.ACTION_PLAY, item.uri)) renderPlayer()
     }
 
@@ -647,7 +679,7 @@ class MusicActivity : ComponentActivity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
             addView(iconButton(R.drawable.ic_map_skip_previous, "Previous") { startMusicAction(MusicService.ACTION_PREVIOUS) })
-            playButton = iconButton(if (playing) R.drawable.ic_map_pause else R.drawable.ic_map_play, if (playing) "Pause" else "Play") { requestNotificationsIfNeeded(); startMusicAction(MusicService.ACTION_TOGGLE) }
+            playButton = iconButton(if (playing) R.drawable.ic_map_pause else R.drawable.ic_map_play, if (playing) "Pause" else "Play") { startMusicAction(MusicService.ACTION_TOGGLE) }
             addView(playButton)
             addView(iconButton(R.drawable.ic_map_skip_next, "Next") { startMusicAction(MusicService.ACTION_NEXT) })
         }, LinearLayout.LayoutParams(-1, dp(72)))
@@ -693,20 +725,22 @@ class MusicActivity : ComponentActivity() {
 
     private fun showQueueDialog() {
         val queue = database.queue()
+        lateinit var dialog: AlertDialog
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), 0, dp(20), 0) }
-        body.addView(actionButton("Save queue as playlist") { promptPlaylist(queue) })
-        body.addView(actionButton("Clear queue") { database.clearQueue(); startMusicAction(MusicService.ACTION_STOP); renderLibrary() })
+        body.addView(actionButton("Save queue as playlist") { dialog.dismiss(); promptPlaylist(queue) })
+        body.addView(actionButton("Clear queue") { dialog.dismiss(); database.clearQueue(); startMusicAction(MusicService.ACTION_STOP); renderLibrary() })
         queue.forEach { item ->
             body.addView(LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
                 addView(TextView(this@MusicActivity).apply { text = "${item.title}\n${item.artist}"; setTextColor(getColor(R.color.map_text)) }, LinearLayout.LayoutParams(0, -2, 1f))
-                addView(actionButton("Up") { database.moveQueue(item.uri, -1); showQueueDialog() })
-                addView(actionButton("Down") { database.moveQueue(item.uri, 1); showQueueDialog() })
-                addView(actionButton("Remove") { database.removeFromQueue(item.uri); showQueueDialog() })
+                addView(actionButton("Up") { database.moveQueue(item.uri, -1); dialog.dismiss(); showQueueDialog() })
+                addView(actionButton("Down") { database.moveQueue(item.uri, 1); dialog.dismiss(); showQueueDialog() })
+                addView(actionButton("Remove") { database.removeFromQueue(item.uri); dialog.dismiss(); showQueueDialog() })
             })
         }
-        AlertDialog.Builder(this).setTitle("Queue").setView(ScrollView(this).apply { addView(body) }).setPositiveButton("Done", null).show()
+        dialog = MaterialAlertDialogBuilder(this).setTitle("Queue").setView(ScrollView(this).apply { addView(body) }).setPositiveButton("Done", null).create()
+        dialog.show()
     }
 
     private fun showEqualizerDialog() {
@@ -723,6 +757,7 @@ class MusicActivity : ComponentActivity() {
         if (eqPresets.isNotEmpty()) {
             val preset = Spinner(this).apply {
                 adapter = ArrayAdapter(this@MusicActivity, android.R.layout.simple_spinner_dropdown_item, eqPresets.toList())
+                contentDescription = "Equalizer preset"
                 database.equalizerPreset()?.toInt()?.takeIf { it in eqPresets.indices }?.let(::setSelection)
             }
             body.addView(preset)
@@ -732,6 +767,7 @@ class MusicActivity : ComponentActivity() {
             val frequency = if (index < eqFrequencies.size) "${eqFrequencies[index] / 1000} Hz" else "Band ${index + 1}"
             body.addView(TextView(this).apply { text = frequency; setTextColor(getColor(R.color.map_muted)); setPadding(0, dp(8), 0, 0) })
             body.addView(SeekBar(this).apply {
+                contentDescription = "$frequency equalizer band"
                 max = (eqRange[1] - eqRange[0]).toInt()
                 progress = (level - eqRange[0]).toInt().coerceIn(0, max)
                 setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -743,13 +779,14 @@ class MusicActivity : ComponentActivity() {
         }
         if (bassSupported) body.addView(effectSlider("Bass", bassLevel, MusicService.ACTION_BASS))
         if (virtualizerSupported) body.addView(effectSlider("Spatial", virtualizerLevel, MusicService.ACTION_VIRTUALIZER))
-        AlertDialog.Builder(this).setTitle("Equalizer").setView(ScrollView(this).apply { addView(body) }).setPositiveButton("Done", null).show()
+        MaterialAlertDialogBuilder(this).setTitle("Equalizer").setView(ScrollView(this).apply { addView(body) }).setPositiveButton("Done", null).show()
     }
 
     private fun effectSlider(label: String, level: Short, action: String): View = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         addView(TextView(this@MusicActivity).apply { text = label; setTextColor(getColor(R.color.map_muted)); setPadding(0, dp(8), 0, 0) })
         addView(SeekBar(this@MusicActivity).apply {
+            contentDescription = "$label level"
             max = 1_000
             progress = level.toInt()
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -762,14 +799,14 @@ class MusicActivity : ComponentActivity() {
 
     private fun showSleepDialog() {
         val choices = arrayOf("Off", "After this track", "After this queue", "Custom duration")
-        AlertDialog.Builder(this).setTitle("Sleep timer").setItems(choices) { _, which ->
+        MaterialAlertDialogBuilder(this).setTitle("Sleep timer").setItems(choices) { _, which ->
             when (which) {
                 0 -> setSleep(MusicService.SLEEP_OFF)
                 1 -> setSleep(MusicService.SLEEP_TRACK)
                 2 -> setSleep(MusicService.SLEEP_QUEUE)
                 else -> {
                     val minutes = EditText(this).apply { hint = "Minutes"; inputType = android.text.InputType.TYPE_CLASS_NUMBER }
-                    AlertDialog.Builder(this).setTitle("Sleep after how many minutes?").setView(minutes).setNegativeButton("Cancel", null).setPositiveButton("Set") { _, _ -> setSleep(MusicService.SLEEP_TIMER, minutes.text.toString().toIntOrNull() ?: 0) }.show()
+                    MaterialAlertDialogBuilder(this).setTitle("Sleep after how many minutes?").setView(minutes).setNegativeButton("Cancel", null).setPositiveButton("Set") { _, _ -> setSleep(MusicService.SLEEP_TIMER, minutes.text.toString().toIntOrNull() ?: 0) }.show()
                 }
             }
         }.show()
@@ -780,7 +817,7 @@ class MusicActivity : ComponentActivity() {
             Toast.makeText(this, "Enter a sleep duration greater than zero minutes.", Toast.LENGTH_LONG).show()
             return
         }
-        sleepModeText = when (mode) { MusicService.SLEEP_TRACK -> "Stops after this track"; MusicService.SLEEP_QUEUE -> "Stops after this queue"; MusicService.SLEEP_TIMER -> "Stops in $minutes minutes"; else -> "" }
+        sleepModeText = sleepText(mode, minutes.toLong() * 60L)
         startMusicAction(MusicService.ACTION_SLEEP, extras = mapOf(MusicService.EXTRA_SLEEP_MODE to mode, MusicService.EXTRA_MINUTES to minutes))
         updatePlaybackViews()
     }
@@ -799,7 +836,7 @@ class MusicActivity : ComponentActivity() {
         val spinners = fields.map { (_, options) -> Spinner(this).apply { adapter = ArrayAdapter(this@MusicActivity, android.R.layout.simple_spinner_dropdown_item, options); setSelection(options.indexOf(filterValue(options, fields.indexOfFirst { it.second === options })).coerceAtLeast(0)) } }
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(24), 0, dp(24), 0) }
         fields.forEachIndexed { index, field -> body.addView(TextView(this).apply { text = field.first; setTextColor(getColor(R.color.map_muted)); setPadding(0, dp(8), 0, 0) }); body.addView(spinners[index]) }
-        AlertDialog.Builder(this).setTitle("Filter library").setView(ScrollView(this).apply { addView(body) }).setNegativeButton("Clear") { _, _ -> filters = MusicFilters(); renderLibrary() }.setPositiveButton("Apply") { _, _ ->
+        MaterialAlertDialogBuilder(this).setTitle("Filter library").setView(ScrollView(this).apply { addView(body) }).setNegativeButton("Clear") { _, _ -> filters = MusicFilters(); renderLibrary() }.setPositiveButton("Apply") { _, _ ->
             filters.format = spinners[0].selectedItem.toString(); filters.artist = spinners[1].selectedItem.toString(); filters.album = spinners[2].selectedItem.toString(); filters.genre = spinners[3].selectedItem.toString(); filters.folder = spinners[4].selectedItem.toString(); filters.duration = spinners[5].selectedItem.toString(); filters.availability = spinners[6].selectedItem.toString(); renderLibrary()
         }.show()
     }
@@ -810,36 +847,51 @@ class MusicActivity : ComponentActivity() {
 
     private fun showSortDialog() {
         val options = arrayOf("Title", "Artist", "Album", "Duration", "Recently played")
-        AlertDialog.Builder(this).setTitle("Sort library").setSingleChoiceItems(options, options.indexOf(sort)) { dialog, which -> sort = options[which]; dialog.dismiss(); renderLibrary() }.show()
+        MaterialAlertDialogBuilder(this).setTitle("Sort library").setSingleChoiceItems(options, options.indexOf(sort)) { dialog, which -> sort = options[which]; dialog.dismiss(); renderLibrary() }.show()
     }
 
     private fun showPlaylistPicker(item: AudioItem) {
         val playlists = database.playlists()
         if (playlists.isEmpty()) { promptPlaylist(listOf(item)); return }
-        AlertDialog.Builder(this).setTitle("Add to playlist").setItems(playlists.map { it.name }.toTypedArray()) { _, which -> database.addToPlaylist(playlists[which].id, item); Toast.makeText(this, "Added to ${playlists[which].name}", Toast.LENGTH_SHORT).show() }.setPositiveButton("New playlist") { _, _ -> promptPlaylist(listOf(item)) }.setNegativeButton("Cancel", null).show()
+        MaterialAlertDialogBuilder(this).setTitle("Add to playlist").setItems(playlists.map { it.name }.toTypedArray()) { _, which -> database.addToPlaylist(playlists[which].id, item); Toast.makeText(this, "Added to ${playlists[which].name}", Toast.LENGTH_SHORT).show() }.setPositiveButton("New playlist") { _, _ -> promptPlaylist(listOf(item)) }.setNegativeButton("Cancel", null).show()
     }
 
     private fun promptPlaylist(items: List<AudioItem> = emptyList()) {
         val input = EditText(this).apply { hint = "Playlist name"; contentDescription = "Playlist name" }
-        AlertDialog.Builder(this).setTitle("New playlist").setView(input).setNegativeButton("Cancel", null).setPositiveButton("Create") { _, _ -> runCatching { database.createPlaylist(input.text.toString(), items) }.onSuccess { renderLibrary() }.onFailure { Toast.makeText(this, "Choose a unique playlist name.", Toast.LENGTH_LONG).show() } }.show()
+        MaterialAlertDialogBuilder(this).setTitle("New playlist").setView(input).setNegativeButton("Cancel", null).setPositiveButton("Create") { _, _ -> runCatching { database.createPlaylist(input.text.toString(), items) }.onSuccess { renderLibrary() }.onFailure { Toast.makeText(this, "Choose a unique playlist name.", Toast.LENGTH_LONG).show() } }.show()
     }
 
     private fun promptRenamePlaylist(playlist: MusicPlaylist) {
         val input = EditText(this).apply { setText(playlist.name); selectAll(); contentDescription = "Playlist name" }
-        AlertDialog.Builder(this).setTitle("Rename playlist").setView(input).setNegativeButton("Cancel", null).setPositiveButton("Save") { _, _ -> runCatching { database.renamePlaylist(playlist.id, input.text.toString()) }.onSuccess { showPlaylist(playlist.id) }.onFailure { Toast.makeText(this, "Choose a unique playlist name.", Toast.LENGTH_LONG).show() } }.show()
+        MaterialAlertDialogBuilder(this).setTitle("Rename playlist").setView(input).setNegativeButton("Cancel", null).setPositiveButton("Save") { _, _ -> runCatching { database.renamePlaylist(playlist.id, input.text.toString()) }.onSuccess { showPlaylist(playlist.id) }.onFailure { Toast.makeText(this, "Choose a unique playlist name.", Toast.LENGTH_LONG).show() } }.show()
     }
 
     private fun confirmDeletePlaylist(playlist: MusicPlaylist) {
-        AlertDialog.Builder(this).setTitle("Delete ${playlist.name}?").setMessage("The audio files will stay on your device.").setNegativeButton("Cancel", null).setPositiveButton("Delete") { _, _ -> database.deletePlaylist(playlist.id); renderLibrary() }.show()
+        MaterialAlertDialogBuilder(this).setTitle("Delete ${playlist.name}?").setMessage("The audio files will stay on your device.").setNegativeButton("Cancel", null).setPositiveButton("Delete") { _, _ -> database.deletePlaylist(playlist.id); renderLibrary() }.show()
     }
 
     private fun showFoldersDialog() {
         val folders = database.folders()
         if (folders.isEmpty()) { Toast.makeText(this, "No folders selected yet.", Toast.LENGTH_SHORT).show(); return }
-        AlertDialog.Builder(this).setTitle("Selected folders").setItems(folders.map { it.name }.toTypedArray()) { _, which ->
+        MaterialAlertDialogBuilder(this).setTitle("Selected folders").setItems(folders.map { it.name }.toTypedArray()) { _, which ->
             val folder = folders[which]
-            AlertDialog.Builder(this).setTitle("Remove ${folder.name}?").setMessage("Its tracks will remain in the library as unavailable records.").setNegativeButton("Keep", null).setPositiveButton("Remove") { _, _ -> database.removeFolder(folder.uri); renderLibrary() }.show()
+            MaterialAlertDialogBuilder(this).setTitle("Remove ${folder.name}?").setMessage("Its tracks will remain in the library as unavailable records.").setNegativeButton("Keep", null).setPositiveButton("Remove") { _, _ -> removeFolder(folder) }.show()
         }.setPositiveButton("Done", null).show()
+    }
+
+    private fun removeFolder(folder: MusicFolder) {
+        val uri = Uri.parse(folder.uri)
+        val permission = contentResolver.persistedUriPermissions.firstOrNull { it.uri == uri }
+        if (permission != null) {
+            val flags = (if (permission.isReadPermission) Intent.FLAG_GRANT_READ_URI_PERMISSION else 0) or
+                (if (permission.isWritePermission) Intent.FLAG_GRANT_WRITE_URI_PERMISSION else 0)
+            if (flags != 0 && runCatching { contentResolver.releasePersistableUriPermission(uri, flags) }.isFailure) {
+                Toast.makeText(this, "Couldn't release access to this folder. It is still selected.", Toast.LENGTH_LONG).show()
+                return
+            }
+        }
+        database.removeFolder(folder.uri)
+        renderLibrary()
     }
 
     private fun requestFolder() = startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), FOLDER_REQUEST)
@@ -1040,14 +1092,14 @@ class MusicActivity : ComponentActivity() {
         orientation = if (stacked) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
         actions.forEachIndexed { index, action ->
             addView(action, if (stacked) {
-                LinearLayout.LayoutParams(-1, -2).apply { if (index > 0) topMargin = dp(4) }
+                LinearLayout.LayoutParams(-1, -2).apply { if (index > 0) topMargin = dp(8) }
             } else {
-                LinearLayout.LayoutParams(-2, -2)
+                LinearLayout.LayoutParams(-2, -2).apply { if (index > 0) marginStart = dp(8) }
             })
         }
     }
 
-    private fun actionButton(text: String, click: () -> Unit): Button = Button(this).apply {
+    private fun actionButton(text: String, click: () -> Unit): MaterialButton = MapUi.button(this).apply {
         this.text = text
         isAllCaps = false
         minHeight = dp(48)
@@ -1082,11 +1134,12 @@ class MusicActivity : ComponentActivity() {
         }
     }
 
-    private fun requestNotificationsIfNeeded() {
-        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), NOTIFICATION_REQUEST)
+    private fun sleepText(mode: String, remainingSeconds: Long) = when (mode) {
+        MusicService.SLEEP_TRACK -> "Stops after this track"
+        MusicService.SLEEP_QUEUE -> "Stops after this queue"
+        MusicService.SLEEP_TIMER -> "Stops in ${formatDuration(remainingSeconds * 1_000)}"
+        else -> ""
     }
-
-    private fun sleepText(mode: String, minutes: Int) = when (mode) { MusicService.SLEEP_TRACK -> "Stops after this track"; MusicService.SLEEP_QUEUE -> "Stops after this queue"; MusicService.SLEEP_TIMER -> "Stops in $minutes minutes"; else -> "" }
 
     companion object {
         const val EXTRA_OPEN_PLAYER = "open_player"
@@ -1098,7 +1151,6 @@ class MusicActivity : ComponentActivity() {
         private const val STATE_SORT = "sort"
         private const val STATE_FILTERS = "filters"
         private const val FOLDER_REQUEST = 30
-        private const val NOTIFICATION_REQUEST = 31
         private const val MAX_ARTWORK_PIXELS = 1024
         private const val MAX_ARTWORK_BYTES = 8 * 1024 * 1024
     }

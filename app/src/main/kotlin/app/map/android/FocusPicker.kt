@@ -41,4 +41,8 @@ object FocusPicker {
         if (taskId == null) preferences.edit().remove(PINNED_FOCUS_ID).apply()
         else preferences.edit().putLong(PINNED_FOCUS_ID, taskId).apply()
     }
+
+    fun unpinIfCurrent(preferences: SharedPreferences, taskId: Long) {
+        if (preferences.getLong(PINNED_FOCUS_ID, -1L) == taskId) setPinned(preferences, null)
+    }
 }

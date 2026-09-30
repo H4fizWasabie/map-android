@@ -2,22 +2,31 @@ package app.map.android
 
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Typeface
 import android.animation.ValueAnimator
+import android.provider.Settings
 import android.view.Gravity
 import android.view.animation.PathInterpolator
 import android.view.View
-import android.widget.Button
 import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.navigation.NavigationBarView
+import com.google.android.material.navigationrail.NavigationRailView
 import kotlin.math.roundToInt
 
 object MapUi {
-    private fun expandedNavigation(context: Context): Boolean = context.resources.configuration.screenWidthDp >= 600
+    private fun expandedNavigation(context: Context): Boolean =
+        context.resources.configuration.screenWidthDp >= 600 && context.resources.configuration.screenHeightDp >= 500
 
     fun dp(context: Context, value: Int): Int = (value * context.resources.displayMetrics.density).roundToInt()
 
@@ -52,8 +61,22 @@ object MapUi {
     fun numeral(view: TextView, size: Float = 16f, color: Int = R.color.map_text) =
         textRole(view, size, color, signage(view.context), weight = 900)
 
-    fun markPrimaryAction(button: Button) {
-        // Signal design carries identity through type and hairline rules, not iconography.
+    fun brandMark(activity: Activity): View = LinearLayout(activity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            contentDescription = "MAP. Private data stays on this device."
+            addView(TextView(activity).apply {
+                text = "MAP"
+                label(this)
+                setTextColor(activity.getColor(R.color.map_text))
+            })
+            addView(View(activity).apply {
+                setBackgroundResource(R.drawable.map_status_dot)
+            }, LinearLayout.LayoutParams(dp(activity, 8), dp(activity, 8)).apply { marginStart = dp(activity, 8) })
+        }
+
+    fun addBrandMark(activity: Activity, parent: LinearLayout) {
+        parent.addView(brandMark(activity), LinearLayout.LayoutParams(-1, -2))
     }
 
     /** Shared by Home and Calendar: shows the last completed task with an Undo action. */
@@ -68,7 +91,7 @@ object MapUi {
                 text = "Completed ${state.task.title}"
                 label(this)
             }, LinearLayout.LayoutParams(0, -2, 1f))
-            addView(Button(activity).apply {
+            addView(button(activity).apply {
                 text = "Undo"
                 isAllCaps = false
                 setOnClickListener {
@@ -87,6 +110,27 @@ object MapUi {
         }
     }
 
+    fun handleNotificationPermissionResult(
+        activity: Activity,
+        requestCode: Int,
+        expectedRequestCode: Int,
+        grantResults: IntArray,
+        message: String,
+    ) {
+        if (requestCode != expectedRequestCode || grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) return
+        MaterialAlertDialogBuilder(activity)
+            .setTitle("Notifications are off")
+            .setMessage(message)
+            .setNegativeButton("Not now", null)
+            .setPositiveButton("Open settings") { _, _ ->
+                activity.startActivity(
+                    Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                        .putExtra(Settings.EXTRA_APP_PACKAGE, activity.packageName)
+                )
+            }
+            .show()
+    }
+
     fun settlePrimaryAction(view: View) {
         if (!ValueAnimator.areAnimatorsEnabled()) return
         view.post {
@@ -101,6 +145,10 @@ object MapUi {
     }
 
     fun applySystemBarInsets(view: View) {
+        val activity = view.context as? Activity
+        val lightTheme = view.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK !=
+            android.content.res.Configuration.UI_MODE_NIGHT_YES
+        activity?.window?.let { WindowInsetsControllerCompat(it, it.decorView).isAppearanceLightNavigationBars = lightTheme }
         val initialLeft = view.paddingLeft
         val initialTop = view.paddingTop
         val initialRight = view.paddingRight
@@ -119,9 +167,10 @@ object MapUi {
     }
 
     fun addPrimaryNavigation(root: LinearLayout, content: View, navigation: View) {
-        if (expandedNavigation(root.context)) {
+        if (navigation is NavigationRailView) {
             root.orientation = LinearLayout.HORIZONTAL
-            root.addView(navigation, LinearLayout.LayoutParams(dp(root.context, 104), -1))
+            val railWidth = if (root.context.resources.configuration.fontScale >= 1.3f) 208 else 112
+            root.addView(navigation, LinearLayout.LayoutParams(dp(root.context, railWidth), -1))
             root.addView(content, LinearLayout.LayoutParams(0, -1, 1f))
         } else {
             root.orientation = LinearLayout.VERTICAL
@@ -132,80 +181,59 @@ object MapUi {
 
     fun bottomNavigation(activity: Activity, selected: String, onNavigate: (String) -> Unit): View {
         val expanded = expandedNavigation(activity)
-        val landscapePhone = !expanded && activity.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-        val largePhoneText = !expanded && activity.resources.configuration.fontScale >= 1.3f
-        val labels = listOf("Home", "Calendar", "Tasks", "Tools")
-        fun destinationButton(label: String) = Button(activity, null, 0, R.style.MapNavigationButton).apply {
-            text = label
-            isSelected = label == selected
-            contentDescription = "$label navigation"
-            val color = activity.getColor(if (label == selected) R.color.map_accent else R.color.map_muted)
-            setTextColor(color)
-            setBackgroundResource(R.drawable.map_nav_button)
-            backgroundTintList = null
-            val icon = when (label) {
-                "Home" -> R.drawable.ic_map_home
-                "Calendar" -> R.drawable.ic_map_calendar
-                "Tasks" -> R.drawable.ic_map_tasks
-                else -> R.drawable.ic_map_tools
-            }
-            activity.getDrawable(icon)?.mutate()?.apply { setTint(color) }?.let {
-                setCompoundDrawablesWithIntrinsicBounds(
-                    if (largePhoneText && !landscapePhone) it else null,
-                    if (largePhoneText) null else it,
-                    null,
-                    null,
-                )
-            }
-            if (largePhoneText || landscapePhone) gravity = Gravity.CENTER
-            compoundDrawablePadding = dp(activity, 2)
-            setOnClickListener { if (label != selected) onNavigate(label) }
+        val navigation = if (expanded) NavigationRailView(activity) else BottomNavigationView(activity)
+        navigation.inflateMenu(R.menu.map_primary_navigation)
+        for (index in 0 until navigation.menu.size()) {
+            val item = navigation.menu.getItem(index)
+            item.contentDescription = "${item.title} navigation"
         }
-        val destinations = LinearLayout(activity).apply {
-            val grid = largePhoneText && !landscapePhone
-            orientation = if (expanded || grid) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
-            gravity = if (expanded || grid) Gravity.TOP or Gravity.CENTER_HORIZONTAL else Gravity.CENTER
-            setPadding(
-                dp(activity, if (expanded) 6 else if (landscapePhone) 0 else 8),
-                dp(activity, if (expanded) 12 else if (landscapePhone) 0 else 6),
-                dp(activity, if (expanded) 6 else if (landscapePhone) 0 else 8),
-                dp(activity, if (expanded) 12 else if (landscapePhone) 0 else 8),
-            )
-            if (grid) {
-                labels.chunked(2).forEach { rowLabels ->
-                    addView(LinearLayout(activity).apply {
-                        orientation = LinearLayout.HORIZONTAL
-                        rowLabels.forEach { addView(destinationButton(it), LinearLayout.LayoutParams(0, -2, 1f)) }
-                    }, LinearLayout.LayoutParams(-1, -2))
-                }
-            } else labels.forEach { label ->
-                addView(destinationButton(label), if (expanded) {
-                    LinearLayout.LayoutParams(-1, dp(activity, 80)).apply {
-                        topMargin = dp(activity, 4)
-                        bottomMargin = dp(activity, 4)
-                    }
-                } else LinearLayout.LayoutParams(0, -2, 1f))
+        navigation.labelVisibilityMode = NavigationBarView.LABEL_VISIBILITY_LABELED
+        navigation.itemActiveIndicatorColor = ContextCompat.getColorStateList(activity, R.color.map_selection)
+        navigation.backgroundTintList = ContextCompat.getColorStateList(activity, R.color.map_nav_background)
+        navigation.elevation = 0f
+        if (navigation is NavigationRailView && activity.resources.configuration.fontScale >= 1.3f) {
+            navigation.itemIconGravity = NavigationBarView.ITEM_ICON_GRAVITY_START
+        }
+        navigation.selectedItemId = when (selected) {
+            "Calendar" -> R.id.nav_calendar
+            "Tasks" -> R.id.nav_tasks
+            "Tools" -> R.id.nav_tools
+            else -> R.id.nav_home
+        }
+        navigation.setOnItemSelectedListener { item ->
+            val destination = when (item.itemId) {
+                R.id.nav_home -> "Home"
+                R.id.nav_calendar -> "Calendar"
+                R.id.nav_tasks -> "Tasks"
+                R.id.nav_tools -> "Tools"
+                else -> return@setOnItemSelectedListener false
             }
+            if (destination != selected) onNavigate(destination)
+            true
         }
-        return LinearLayout(activity).apply {
-            orientation = if (expanded) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL
-            setBackgroundColor(activity.getColor(R.color.map_nav_background))
-            addView(View(activity).apply {
-                setBackgroundColor(activity.getColor(R.color.map_divider))
-                layoutParams = if (expanded) {
-                    LinearLayout.LayoutParams(dp(activity, 1), -1)
-                } else {
-                    LinearLayout.LayoutParams(-1, dp(activity, 1))
-                }
-            })
-            addView(
-                if (expanded) ScrollView(activity).apply {
-                    isVerticalScrollBarEnabled = false
-                    isFillViewport = true
-                    addView(destinations, android.widget.FrameLayout.LayoutParams(-1, -2))
-                } else destinations,
-                if (expanded) LinearLayout.LayoutParams(0, -1, 1f) else LinearLayout.LayoutParams(-1, -2)
-            )
-        }
+        return navigation
+    }
+
+    fun button(activity: Activity): MaterialButton = MaterialButton(activity).apply {
+        isAllCaps = false
+        minHeight = dp(activity, 48)
+        minWidth = dp(activity, 48)
+        insetTop = 0
+        insetBottom = 0
+        cornerRadius = dp(activity, 12)
+        backgroundTintList = ContextCompat.getColorStateList(activity, R.color.map_card)
+        strokeColor = ContextCompat.getColorStateList(activity, R.color.map_divider)
+        strokeWidth = dp(activity, 1)
+        setTextColor(ContextCompat.getColorStateList(activity, R.color.map_button_text))
+        typeface = plain(activity)
+        textSize = 14f
+    }
+
+    fun primaryButton(activity: Activity): MaterialButton = button(activity).apply {
+        backgroundTintList = ContextCompat.getColorStateList(activity, R.color.map_accent)
+        strokeWidth = 0
+        setTextColor(ContextCompat.getColorStateList(activity, R.color.map_primary_button_text))
+        typeface = signage(activity)
+        textSize = 16f
     }
 }

@@ -2,11 +2,106 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Reworked Home around a high-contrast local-time instrument deck, gave Tasks a live local-work summary, added a selected-date readout to Calendar, and rebuilt Tools as icon-led Documents, Scan, and Music workbench modules (issue #199).
+- Adapted short landscape windows to a labeled bottom navigation bar and a compact Home layout with the clock, empty-state focus, and Add task all visible (issue #199).
+
+### Fixed
+
+- Made Calendar's selected date visibly distinct and kept all seven date targets within the normal phone-width strip (issue #199).
+- Announced unavailable document status in Tools to accessibility services (issue #171).
+- Kept unavailable documents openable from Tools so their viewer recovery action stays reachable.
+- Gave Home's Add task action a drawn icon and kept its visible action label clear.
+- Explained denied task-reminder notifications with a direct Settings recovery action and removed the unnecessary permission prompt from Music controls (issue #199).
+- Used locale-aware time patterns for Home's digital clock while respecting the system 12/24-hour preference (issue #199).
+- Kept Calendar week labels accurate for the selected date and clarified the return action as Agenda (issue #199).
+- Kept the Calendar composer navigation test independent of the Android notification prompt, then passed all 40 connected tests on the Pixel_10_Pro API 37 / Android 17 AVD (issue #199).
+- Added connected coverage for saving a timed weekly Calendar task with notes and tags, and scheduling its reminder (issue #199).
+- Rechecked fresh-install Home, Calendar week, Tasks, Tools, scanner cancellation, task complete/Undo/delete, and document/music picker cancellation on the Pixel_10_Pro API 37 emulator (issue #171).
+- Recorded emulator verification and remaining device acceptance checks in `docs/quality-matrix.md` (issue #171).
+- Verified MAP's Calendar and task composer in a true Android split-screen session with the keyboard open (issue #171).
+- Corrected the quality matrix's emulator version and recorded the unresolved TalkBack audio-capture limit (issue #171).
+- Verified virtual-camera capture through corner correction and confirmed cancel/discard leaves no scan pages (issue #171).
+- Verified SAF music-folder import, playback state, queue, playlist lifecycle, and favorite filtering with generated audio; removed the test files and app state (issue #199).
+- Applied an equalizer preset to active playback and verified its saved bands; tested setting and clearing a one-minute sleep timer and labeled the effect controls for accessibility (issue #199).
+- Added a connected regression test that injects a real two-finger pinch into the PDF viewer (issue #199).
+- Clarified empty Calendar week days as “Nothing scheduled” instead of the ambiguous “Open.”
+- Added large-text narrow-window reachability checks for the Documents, Scan, and Music actions.
+- Added large-text narrow-window reachability checks for document viewer controls.
+- Verified document search jumps directly to a matching page when system animations are disabled.
+- Reset the task composer time control to “All day” after choosing a date following a time selection.
+- Stacked Home’s Now & next surface and allowed its empty-state text to wrap at large text and narrow widths.
+
+- Stacked task detail actions at narrow widths and larger system text so every action remains reachable.
+
+- Stacked Calendar's Today, Week, and Add task actions in narrow windows to keep every label clear and tappable.
+
+- Kept disabled action labels legible in dark theme, including Scan's empty-export state.
+
+- Dismissed the open queue dialog before showing reordered or updated queue contents.
+
+- Let ExoPlayer manage audio focus so Music resumes after transient interruptions and stays paused after permanent loss until the user presses Play.
+
+- Skipped missed recurrence dates when a task is completed late so its next reminder is scheduled in the future.
+
+- Released the persisted SAF permission when removing a selected music folder, and added a connected regression check.
+
+- Spaced Calendar action controls and Music action groups, clarified Music's folder-management action, let the Home focus divider grow with wrapped text, and inset task composer actions.
+
+- Kept Calendar behind its shared task composer; it retains the selected day across save, cancel, and rotation, with the title and actions usable beside the landscape keyboard.
+
+- Prevented scan PDF exports from overwriting an existing same-second export; extracted the local image-to-PDF path for isolated testing.
+
+- Added connected coverage for task detail, focus pin/unpin, completion/Undo, and synthetic multi-page scan PDF export.
+
+- Added successful scan exports to Tools' local Documents list and exposed PDF page numbers to accessibility services.
+
+- Requeued PDF rendering after rapid zoom changes so an outdated render cannot leave the visible page blank.
+
+- Kept Music's storage permission regression check compatible with Android's picker when it opens at the device root.
+
+- Kept Music queue reorder coverage stable when identical row actions appear multiple times.
+
+- Gave Music a focused first-use folder action and hid library controls until tracks or playlists are available.
+
+- Added a connected synthetic Scan → PDF export → Documents record → MAP viewer smoke with exact-ID/file cleanup.
+
+- Marked exported scan sessions complete so Tools reports only unfinished pages and a later capture begins a fresh batch; source pages remain on device.
+
+- Kept unavailable scan pages visible but out of the export selection, and prevented an export from silently omitting a selected page.
+
+- Added an isolated connected check of ML Kit camera capture returning a corrected page into MAP's local scan session.
+
+- Separated Music library actions from its horizontally scrolling categories for clearer grouping at large text sizes.
+
+- Kept Calendar date chips fully tappable and gave TalkBack complete dates instead of abbreviations, using localized narrow weekday labels when large text needs the space.
+
+- Calendar actions reflowed to full-width rows at large text sizes so labels stay readable and Add task remains easy to reach.
+
+- Expanded navigation widened and moved its icons beside labels at large text sizes; Calendar actions stack whenever enlarged text could crowd them.
+
+- Added a connected reduced-motion check for Home's animated task action and composer entry.
+
+- Added RTL regression coverage for mirrored navigation and reachable Calendar and Tools actions.
+
 ### Added
 
-- Started the selected Atelier visual direction in the native shared MAP system: warm paper, deep teal, saffron focus, vermilion actions, and tactile 10dp surfaces (issue #193).
+- Adopted adaptive Material 3 expressive navigation and shared Material buttons across MAP screens (issue #199).
+- Themed task confirmations and Music action dialogs with Material 3 expressive surfaces and buttons (issue #199).
+- Added connected coverage confirming missing documents retain their metadata, are marked unavailable, and offer recovery.
+- Added a task-composer regression check for title-first entry and progressive details.
+- Added an instrumented regression check for the task date/time transition.
 
-- Styled Home Focus as a tactile saffron surface to carry Atelier’s primary attention state.
+- Added confirmed deletion for open tasks; reminders and pinned Focus are cleared with the task (issue #199).
+
+- Replaced the Atelier surface with MAP's mineral enamel Field instrument direction and refreshed Home hierarchy (issue #199).
+
+- Made Home's current time live and gave Now & next a clearer, tappable layout while retaining Focus pinning (issue #199).
+
+- Carried MAP's local-first identity mark into Scan and DocumentViewer without expanding their top spacing (issue #199).
+
+- Added a native, static field clock dial beside Home's live localized clock and aligned the direction documents with the shipped palette and hierarchy (issue #199).
 
 - Added a disposable browser mockup board with three MAP visual redesign directions for review (issue #192).
 
@@ -66,6 +161,8 @@
 - Added the full Google document-scanner capture flow for automatic corner correction, perspective cleanup, rotation, and multi-page review.
 
 ### Changed
+
+- Unified Home, Calendar, Tasks, and Tools under the Field instrument mark and selected/disabled control states (issue #199).
 
 - Keep the PDF scroll hierarchy receiving touch events while pinch zoom observes them (issue #196).
 - Bound PDF raster rendering in physical pixels so 450% zoom cannot crash Canvas (issue #196).
