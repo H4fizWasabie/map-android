@@ -74,7 +74,13 @@
         <item name="android:colorControlNormal">@color/map_muted</item>
         <item name="android:colorControlActivated">@color/map_accent</item>
         <item name="android:colorAccent">@color/map_accent</item>
+        <item name="android:buttonBarPositiveButtonStyle">@style/Widget.MAP.Dialog.ActionButton</item>
+        <item name="android:buttonBarNegativeButtonStyle">@style/Widget.MAP.Dialog.ActionButton</item>
         <item name="android:background">@color/map_card</item>
         <item name="android:windowBackground">@color/map_card</item>
+    </style>
+
+    <style name="Widget.MAP.Dialog.ActionButton" parent="android:style/Widget.Material.Button.Borderless">
+        <item name="android:textColor">@color/map_dialog_positive_button_text</item>
     </style>
 </resources>

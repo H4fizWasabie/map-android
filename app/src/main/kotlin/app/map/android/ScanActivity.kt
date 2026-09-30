@@ -161,7 +161,7 @@ class ScanActivity : AppCompatActivity() {
             })
         })
         root.addView(TextView(this).apply {
-            text = "Capture documents"
+            text = "Your scans"
             MapUi.display(this)
             setPadding(0, dp(16), 0, dp(4))
         })
@@ -171,19 +171,19 @@ class ScanActivity : AppCompatActivity() {
             setTextColor(getColor(R.color.map_muted))
             setPadding(0, 0, 0, dp(16))
         })
-        root.addView(MapUi.primaryButton(this).apply {
+        val storedPages = database.pages(sessionId)
+        root.addView((if (storedPages.isEmpty()) MapUi.primaryButton(this) else MapUi.button(this)).apply {
             text = if (importing) "Importing pages…" else "Scan documents"
             isAllCaps = false
             isEnabled = !importing && !exporting
             setOnClickListener { startScanner() }
         })
-        val storedPages = database.pages(sessionId)
         if (!selectionInitialized) {
             selectedPageIds += storedPages.filter { File(it.path).isFile }.map { it.id }
             selectionInitialized = true
         }
         selectedPageIds.retainAll(storedPages.filter { File(it.path).isFile }.map { it.id }.toSet())
-        val exportButton = MapUi.primaryButton(this).apply {
+        val exportButton = (if (selectedPageIds.isNotEmpty()) MapUi.primaryButton(this) else MapUi.button(this)).apply {
             text = when {
                 importing -> "Importing pages…"
                 exporting -> "Exporting PDF…"
@@ -208,10 +208,15 @@ class ScanActivity : AppCompatActivity() {
         pages = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         if (storedPages.isEmpty()) pages.addView(TextView(this).apply {
             text = "No pages captured yet."
+            MapUi.body(this)
+            setPadding(dp(16), dp(24), dp(16), dp(24))
+            setBackgroundResource(R.drawable.map_focus_surface)
             setTextColor(getColor(R.color.map_muted))
         })
         storedPages.forEachIndexed { index, page ->
             pages.addView(CheckBox(this).apply {
+                MapUi.body(this)
+                minHeight = dp(56)
                 val available = File(page.path).isFile
                 val status = if (available) "" else " (Unavailable)"
                 text = "Page ${index + 1}: ${File(page.path).name}$status"

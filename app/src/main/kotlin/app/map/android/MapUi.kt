@@ -15,6 +15,7 @@ import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.ViewCompat
+import androidx.core.view.doOnAttach
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.google.android.material.bottomnavigation.BottomNavigationView
@@ -43,7 +44,10 @@ object MapUi {
         }
     }
 
-    fun display(view: TextView) = textRole(view, 34f, R.color.map_text, signage(view.context), weight = 900, width = 112)
+    fun display(view: TextView) {
+        textRole(view, 30f, R.color.map_text, signage(view.context), weight = 800)
+        view.letterSpacing = -0.025f
+    }
 
     fun headline(view: TextView) = textRole(view, 22f, R.color.map_text, signage(view.context), weight = 800)
 
@@ -66,17 +70,17 @@ object MapUi {
             gravity = Gravity.CENTER_VERTICAL
             contentDescription = "MAP. Private data stays on this device."
             addView(TextView(activity).apply {
-                text = "MAP"
-                label(this)
+                text = "map"
+                textRole(this, 18f, R.color.map_text, signage(activity), weight = 800)
                 setTextColor(activity.getColor(R.color.map_text))
             })
             addView(View(activity).apply {
                 setBackgroundResource(R.drawable.map_status_dot)
-            }, LinearLayout.LayoutParams(dp(activity, 8), dp(activity, 8)).apply { marginStart = dp(activity, 8) })
+            }, LinearLayout.LayoutParams(dp(activity, 7), dp(activity, 7)).apply { marginStart = dp(activity, 3) })
         }
 
     fun addBrandMark(activity: Activity, parent: LinearLayout) {
-        parent.addView(brandMark(activity), LinearLayout.LayoutParams(-1, -2))
+        parent.addView(brandMark(activity), LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(activity, 18) })
     }
 
     /** Shared by Home and Calendar: shows the last completed task with an Undo action. */
@@ -163,7 +167,7 @@ object MapUi {
             )
             insets
         }
-        ViewCompat.requestApplyInsets(view)
+        view.doOnAttach { ViewCompat.requestApplyInsets(it) }
     }
 
     fun addPrimaryNavigation(root: LinearLayout, content: View, navigation: View) {
@@ -220,7 +224,7 @@ object MapUi {
         minWidth = dp(activity, 48)
         insetTop = 0
         insetBottom = 0
-        cornerRadius = dp(activity, 12)
+        cornerRadius = dp(activity, 16)
         backgroundTintList = ContextCompat.getColorStateList(activity, R.color.map_card)
         strokeColor = ContextCompat.getColorStateList(activity, R.color.map_divider)
         strokeWidth = dp(activity, 1)

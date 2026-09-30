@@ -6,25 +6,40 @@ import android.os.Bundle
 import android.provider.OpenableColumns
 import android.view.Gravity
 import android.view.View
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.addCallback
+import androidx.core.widget.doAfterTextChanged
 
 class ToolsActivity : AppCompatActivity() {
     private lateinit var documents: DocumentDatabase
     private var contentScroll: ScrollView? = null
     private var restoredScrollY = 0
     private var initialResumePending = true
+    private var documentsMode = false
+    private var documentQuery = ""
+    private var documentFilter = "Recent"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         documents = DocumentDatabase(this)
         restoredScrollY = savedInstanceState?.getInt(STATE_SCROLL_Y, 0) ?: 0
+        documentsMode = savedInstanceState?.getBoolean("documents_mode") ?: false
+        documentQuery = savedInstanceState?.getString("document_query").orEmpty()
+        documentFilter = savedInstanceState?.getString("document_filter") ?: "Recent"
+        onBackPressedDispatcher.addCallback(this) {
+            if (documentsMode) { documentsMode = false; render() } else finish()
+        }
         render()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
+        outState.putBoolean("documents_mode", documentsMode)
+        outState.putString("document_query", documentQuery)
+        outState.putString("document_filter", documentFilter)
         outState.putInt(STATE_SCROLL_Y, contentScroll?.scrollY ?: 0)
         super.onSaveInstanceState(outState)
     }
@@ -57,37 +72,31 @@ class ToolsActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(24), dp(24), dp(24), dp(24))
         }
-        MapUi.addBrandMark(this, body)
+        if (documentsMode) body.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(MapUi.brandMark(this@ToolsActivity), LinearLayout.LayoutParams(0, -2, 1f))
+            addView(button("Tools") { documentsMode = false; render() }.apply {
+                icon = getDrawable(R.drawable.ic_map_back)
+                contentDescription = "Back to tools"
+            })
+        }, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(18) })
+        else MapUi.addBrandMark(this, body)
         body.addView(TextView(this).apply {
-            text = "ON THIS DEVICE"
-            MapUi.label(this)
-            setTextColor(getColor(R.color.map_accent))
-            letterSpacing = 0.12f
-            setPadding(0, dp(18), 0, 0)
-        })
-        body.addView(TextView(this).apply {
-            text = "Tools"
+            text = if (documentsMode) "Your documents" else "Your tools"
             MapUi.display(this)
-            setPadding(0, dp(4), 0, dp(4))
-        })
-        body.addView(View(this).apply {
-            setBackgroundColor(getColor(R.color.map_divider))
-        }, LinearLayout.LayoutParams(-1, dp(1)).apply { bottomMargin = dp(16) })
-        body.addView(TextView(this).apply {
-            text = "Files, scanning, and music stay in your local workspace."
-            MapUi.body(this)
-            setTextColor(getColor(R.color.map_muted))
             setPadding(0, 0, 0, dp(8))
         })
         body.addView(TextView(this).apply {
-            text = "YOUR WORKBENCH"
-            MapUi.caption(this)
-            letterSpacing = 0.14f
-            setPadding(0, dp(16), 0, dp(8))
+            text = if (documentsMode) "Your files stay where you saved them." else "Documents, scanning, and music. All on this device."
+            MapUi.metadata(this)
+            setPadding(0, 0, 0, dp(16))
         })
-        addDocuments(body)
-        addScan(body)
-        addMusic(body)
+        if (documentsMode) addDocumentLibrary(body) else {
+            addDocuments(body)
+            addScan(body)
+            addMusic(body)
+        }
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             addView(ScrollView(this@ToolsActivity).apply {
@@ -119,18 +128,104 @@ class ToolsActivity : AppCompatActivity() {
             if (recent.isEmpty()) "Read local PDFs and images directly." else "${recent.size} saved document${if (recent.size == 1) "" else "s"}",
             "Open document",
         ) { openDocument() }
-        recent.take(3).forEach { item ->
-            parent.addView(TextView(this).apply {
-                text = if (item.available) item.name else "${item.name} · unavailable"
-                MapUi.body(this)
-                setTextColor(if (item.available) getColor(R.color.map_text) else getColor(R.color.map_muted))
-                minHeight = dp(48)
+        addDocumentRows(parent, recent.take(3))
+    }
+
+    private fun addDocumentRows(parent: LinearLayout, items: List<DocumentItem>) {
+        items.forEach { item ->
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(0, dp(6), 0, dp(6))
+                minimumHeight = dp(72)
+                setPadding(dp(12), dp(8), dp(12), dp(8))
+                setBackgroundResource(R.drawable.map_signal_row)
+                isFocusable = true
                 contentDescription = if (item.available) "Document: ${item.name}" else "Unavailable document: ${item.name}"
                 setOnClickListener { openDocument(item) }
-            })
+            }
+            row.addView(toolIcon(R.drawable.ic_map_documents), LinearLayout.LayoutParams(dp(40), dp(48)))
+            row.addView(LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+                addView(TextView(this@ToolsActivity).apply {
+                    text = item.name
+                    MapUi.section(this)
+                    maxLines = 2
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                })
+                addView(TextView(this@ToolsActivity).apply {
+                    text = when {
+                        !item.available -> "Unavailable · tap to recover"
+                        item.mime == "application/pdf" -> "PDF · on this device"
+                        else -> "Image · on this device"
+                    }
+                    MapUi.metadata(this)
+                    setPadding(0, dp(4), 0, 0)
+                })
+            }, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(12) })
+            parent.addView(row)
+            parent.addView(View(this).apply { setBackgroundColor(getColor(R.color.map_divider)) }, LinearLayout.LayoutParams(-1, dp(1)))
         }
+    }
+
+    private fun addDocumentLibrary(parent: LinearLayout) {
+        // ponytail: filter small local libraries in memory; use SQLite paging if lists grow large.
+        val recent = documents.recent()
+        val rows = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        fun refreshRows() {
+            rows.removeAllViews()
+            val items = recent.filter { item ->
+                val pdf = item.mime == "application/pdf" || item.name.endsWith(".pdf", ignoreCase = true)
+                item.name.contains(documentQuery.trim(), ignoreCase = true) &&
+                    (documentFilter == "Recent" || (documentFilter == "PDFs" && pdf) || (documentFilter == "Images" && !pdf))
+            }
+            if (items.isEmpty()) rows.addView(TextView(this).apply {
+                text = if (recent.isEmpty()) "No documents yet. Open a PDF or image to keep it here." else "No documents match. Try another name or file type."
+                MapUi.body(this)
+                setPadding(0, dp(24), 0, dp(24))
+            }) else addDocumentRows(rows, items)
+        }
+        parent.addView(EditText(this).apply {
+            hint = "Search documents"
+            setHintTextColor(getColor(R.color.map_muted))
+            contentDescription = "Search documents"
+            isSingleLine = true
+            inputType = android.text.InputType.TYPE_CLASS_TEXT
+            MapUi.body(this)
+            minHeight = dp(48)
+            setPadding(dp(14), dp(8), dp(14), dp(8))
+            setBackgroundResource(R.drawable.map_surface)
+            setText(documentQuery)
+            doAfterTextChanged { documentQuery = it.toString(); refreshRows() }
+        })
+        val stackFilters = resources.configuration.screenWidthDp < 360 || resources.configuration.fontScale >= 1.3f
+        parent.addView(LinearLayout(this).apply {
+            orientation = if (stackFilters) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
+            listOf("Recent", "PDFs", "Images").forEachIndexed { index, filter ->
+                addView(button(filter) {
+                    documentFilter = filter
+                    for (i in 0 until childCount) {
+                        val control = getChildAt(i) as com.google.android.material.button.MaterialButton
+                        control.isSelected = control.text.toString() == filter
+                        control.backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(if (control.isSelected) R.color.map_selection else R.color.map_card))
+                    }
+                    refreshRows()
+                }.apply {
+                    cornerRadius = dp(24)
+                    isSelected = documentFilter == filter
+                    backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(if (isSelected) R.color.map_selection else R.color.map_card))
+                }, LinearLayout.LayoutParams(if (stackFilters) -1 else 0, -2, if (stackFilters) 0f else 1f).apply {
+                    if (index > 0) { if (stackFilters) topMargin = dp(8) else marginStart = dp(8) }
+                })
+            }
+        }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12); bottomMargin = dp(18) })
+        parent.addView(TextView(this).apply { text = "Recently opened"; MapUi.section(this) })
+        parent.addView(rows)
+        refreshRows()
+        parent.addView(MapUi.primaryButton(this).apply {
+            text = "Open document"
+            setOnClickListener { openDocument() }
+        }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(20) })
     }
 
     private fun addScan(parent: LinearLayout) {
@@ -177,6 +272,11 @@ class ToolsActivity : AppCompatActivity() {
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(12), dp(12), dp(12), dp(12))
             setBackgroundResource(R.drawable.map_tool_surface)
+            if (title == "Documents") {
+                contentDescription = "Browse documents"
+                isFocusable = true
+                setOnClickListener { documentsMode = true; render() }
+            }
             if (stacked) {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.START

@@ -104,13 +104,10 @@ class CalendarActivity : AppCompatActivity() {
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(24), dp(24), dp(24), dp(24)) }
         MapUi.addBrandMark(this, body)
         body.addView(TextView(this).apply {
-            text = if (weekMode) "Week of ${formatWeekStart(weekStart)}" else "Today"
+            text = if (weekMode) "Week of ${formatWeekStart(weekStart)}" else "Your calendar"
             MapUi.display(this)
-            setPadding(0, dp(4), 0, dp(4))
+            setPadding(0, 0, 0, dp(18))
         })
-        body.addView(View(this).apply {
-            setBackgroundColor(getColor(R.color.map_divider))
-        }, LinearLayout.LayoutParams(-1, dp(1)).apply { bottomMargin = dp(16) })
         body.addView(dateReadout())
         body.addView(dateStrip())
         val todayButton = actionButton("Today") { selectedDay = dayStart(System.currentTimeMillis()); weekMode = false; render() }
@@ -176,9 +173,8 @@ class CalendarActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(12), 0, 0, 0)
             addView(TextView(this@CalendarActivity).apply {
-                text = if (weekMode) "SELECTED WEEK" else "DAY AGENDA"
+                text = if (weekMode) "Selected week" else "Day agenda"
                 MapUi.caption(this)
-                letterSpacing = 0.1f
             })
             addView(TextView(this@CalendarActivity).apply {
                 text = formatDate(selectedDay)
@@ -220,11 +216,12 @@ class CalendarActivity : AppCompatActivity() {
                     contentDescription = SimpleDateFormat("EEEE, d MMMM", Locale.getDefault()).format(Date(day))
                     setPadding(0, paddingTop, 0, paddingBottom)
                     isSelected = selected
+                    cornerRadius = dp(24)
+                    strokeWidth = 0
+                    backgroundTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.TRANSPARENT)
                     if (selected) {
-                        backgroundTintList = ContextCompat.getColorStateList(this@CalendarActivity, R.color.map_selection)
-                        strokeColor = ContextCompat.getColorStateList(this@CalendarActivity, R.color.map_accent)
-                        strokeWidth = dp(2)
-                        setTextColor(getColor(R.color.map_accent_pressed))
+                        backgroundTintList = ContextCompat.getColorStateList(this@CalendarActivity, R.color.map_accent)
+                        setTextColor(getColor(R.color.map_on_accent))
                     }
                 }, LinearLayout.LayoutParams(targetWidth, -2))
             }

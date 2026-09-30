@@ -154,7 +154,7 @@ class RightToLeftAccessibilityTest {
         context.startActivity(Intent(context, ToolsActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
         })
-        val document = device.wait(Until.findObject(By.text("$name · unavailable")), TIMEOUT)
+        val document = device.wait(Until.findObject(By.desc("Unavailable document: $name")), TIMEOUT)
             ?: error("Tools did not show the unavailable document")
         assertTrue(
             "TalkBack description omitted unavailable state: ${document.contentDescription}",

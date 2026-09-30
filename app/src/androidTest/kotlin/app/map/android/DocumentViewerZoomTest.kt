@@ -73,6 +73,46 @@ class DocumentViewerZoomTest {
     }
 
     @Test
+    fun rebuiltPdfHeaderStaysBelowSystemStatusBar() {
+        openPdfViewer()
+        val brand = device.wait(Until.findObject(By.desc("MAP. Private data stays on this device.")), TIMEOUT)
+            ?: error("Document header did not load")
+        val heightId = context.resources.getIdentifier("status_bar_height", "dimen", "android")
+        val statusHeight = if (heightId != 0) context.resources.getDimensionPixelSize(heightId) else 0
+        assertTrue("Rebuilt PDF header overlaps system status bar: ${brand.visibleBounds}", brand.visibleBounds.top >= statusHeight)
+    }
+
+    @Test
+    fun documentLibrarySearchAndTypeFiltersRetainUnavailableRecords() {
+        val pdfUri = Uri.fromFile(pdfFile).toString()
+        val imageUri = "file://${context.filesDir}/map-library-test.png"
+        val database = DocumentDatabase(context)
+        try {
+            database.upsert(pdfUri, "MAP library PDF.pdf", "application/pdf")
+            database.upsert(imageUri, "MAP library image.png", "image/png")
+            database.markUnavailable(imageUri)
+            cleanupUri = pdfUri
+            context.startActivity(Intent(context, ToolsActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            })
+            device.wait(Until.findObject(By.desc("Browse documents")), TIMEOUT)?.click() ?: error("Document library was not reachable")
+            val search = device.wait(Until.findObject(By.desc("Search documents")), TIMEOUT) ?: error("Library search did not open")
+            search.setText("library")
+            device.wait(Until.findObject(By.text("PDFs")), TIMEOUT)?.click() ?: error("PDF filter was not reachable")
+            assertTrue("PDF filter hid the PDF record", device.wait(Until.hasObject(By.desc("Document: MAP library PDF.pdf")), TIMEOUT))
+            assertTrue("PDF filter retained an image row", !device.hasObject(By.desc("Unavailable document: MAP library image.png")))
+            device.findObject(By.text("Images")).click()
+            assertTrue("Image filter hid the unavailable record", device.wait(Until.hasObject(By.desc("Unavailable document: MAP library image.png")), TIMEOUT))
+            search.setText("no such document")
+            assertTrue("Search did not explain empty results", device.wait(Until.hasObject(By.text("No documents match. Try another name or file type.")), TIMEOUT))
+            assertTrue("Filtering removed metadata", database.recent().any { it.uri == imageUri && !it.available })
+        } finally {
+            database.writableDatabase.delete("documents", "uri = ?", arrayOf(imageUri))
+            database.close()
+        }
+    }
+
+    @Test
     fun pinchGestureChangesPdfZoom() {
         openPdfViewer()
         val page = device.wait(Until.findObject(By.desc("PDF page 1")), TIMEOUT)

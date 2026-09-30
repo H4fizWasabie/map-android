@@ -2,7 +2,17 @@
 
 Last checked: 2026-09-30 on Pixel_10_Pro API 37 / Android 17 emulator `emulator-5554`, with connected tests isolated on disposable `MAP_Disposable`.
 
-## Verified
+## Lavender workspace verification (issue #203)
+
+- Native screenshot review covered Home, Tasks, Calendar, Tools, searchable Documents, Scan and PDF viewing; light/dark Home, expanded Home, and large-text Home/Calendar were also captured. The approved comp uses illustrative records; the app only shows local records.
+- Impeccable finish review: **ship**. Searchable document access, Home task priority, PDF header insets and search-hint contrast were resolved. Fresh generic agents substituted for the unavailable named finish-reviewer/documenter roles.
+- Native task date/time OK actions use explicit theme-aware text colors (6.00:1 light, 8.06:1 dark). Cancel shares the same color selector. Search hint contrast is 5.86:1 in the light screenshot.
+- The first connected run completed 42 checks with three failures: an equalizer preset interaction, an old unavailable-document text selector, and a floating task action covering a task title at 2x text. Equalizer passed isolated without a product change; the document check now uses the preserved accessibility label. Large text uses an inline Add task action, preventing the overlap.
+- Final focused TaskActions, DocumentViewerZoom and large-text Home gate passed **11/11**, including actual 450% PDF magnification, pinch zoom, local document search/type filters, retained unavailable records, rebuilt PDF header insets, task detail actions, and completion/Undo/delete. `test lint assembleDebug` passed with that gate.
+- Final complete connected gate: running before merge.
+- Phone acceptance of this redesigned debug build remains pending; no signed release was produced.
+
+## Earlier verified baseline
 
 | Area | Result | Evidence |
 | --- | --- | --- |
