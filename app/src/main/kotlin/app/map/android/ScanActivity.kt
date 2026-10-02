@@ -32,7 +32,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.Executors
 
-class ScanActivity : AppCompatActivity() {
+class ScanActivity : MapActivity() {
     private lateinit var database: ScanDatabase
     private lateinit var scanner: GmsDocumentScanner
     private var sessionId = 0L
@@ -139,7 +139,7 @@ class ScanActivity : AppCompatActivity() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(24), dp(6), dp(24), dp(24))
-            setBackgroundColor(getColor(R.color.map_background))
+            setBackgroundColor(mapColor(R.color.map_background))
         }
         MapUi.addBrandMark(this, root)
         root.addView(LinearLayout(this).apply {
@@ -147,7 +147,7 @@ class ScanActivity : AppCompatActivity() {
             gravity = Gravity.CENTER_VERTICAL
             addView(ImageButton(this@ScanActivity).apply {
                 setImageResource(R.drawable.ic_map_back)
-                imageTintList = ColorStateList.valueOf(getColor(R.color.map_text))
+                imageTintList = ColorStateList.valueOf(mapColor(R.color.map_text))
                 setBackgroundResource(R.drawable.map_button_surface)
                 backgroundTintList = null
                 contentDescription = "Back"
@@ -168,7 +168,7 @@ class ScanActivity : AppCompatActivity() {
         root.addView(TextView(this).apply {
             text = "Corrected pages stay on this device until you export them."
             MapUi.body(this)
-            setTextColor(getColor(R.color.map_muted))
+            setTextColor(mapColor(R.color.map_muted))
             setPadding(0, 0, 0, dp(16))
         })
         val storedPages = database.pages(sessionId)
@@ -197,7 +197,7 @@ class ScanActivity : AppCompatActivity() {
         this.exportButton = exportButton
         root.addView(exportButton)
         root.addView(View(this).apply {
-            setBackgroundColor(getColor(R.color.map_divider))
+            setBackgroundColor(mapColor(R.color.map_divider))
             layoutParams = LinearLayout.LayoutParams(-1, dp(1)).apply { topMargin = dp(16) }
         })
         root.addView(TextView(this).apply {
@@ -211,16 +211,17 @@ class ScanActivity : AppCompatActivity() {
             MapUi.body(this)
             setPadding(dp(16), dp(24), dp(16), dp(24))
             setBackgroundResource(R.drawable.map_focus_surface)
-            setTextColor(getColor(R.color.map_muted))
+            setTextColor(mapColor(R.color.map_muted))
         })
         storedPages.forEachIndexed { index, page ->
             pages.addView(CheckBox(this).apply {
+                MapUi.tintCheckbox(this)
                 MapUi.body(this)
                 minHeight = dp(56)
                 val available = File(page.path).isFile
                 val status = if (available) "" else " (Unavailable)"
                 text = "Page ${index + 1}: ${File(page.path).name}$status"
-                setTextColor(if (status.isEmpty()) getColor(R.color.map_text) else getColor(R.color.map_muted))
+                setTextColor(if (status.isEmpty()) mapColor(R.color.map_text) else mapColor(R.color.map_muted))
                 isChecked = page.id in selectedPageIds
                 isEnabled = available && !exporting && !importing
                 contentDescription = "Include page ${index + 1}"
@@ -245,7 +246,7 @@ class ScanActivity : AppCompatActivity() {
         music.close()
         if (item == null) return
         parent.addView(View(this).apply {
-            setBackgroundColor(getColor(R.color.map_divider))
+            setBackgroundColor(mapColor(R.color.map_divider))
             layoutParams = LinearLayout.LayoutParams(-1, dp(1)).apply { topMargin = dp(16) }
         })
         parent.addView(TextView(this).apply {

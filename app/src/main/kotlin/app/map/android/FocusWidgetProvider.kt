@@ -39,6 +39,11 @@ class FocusWidgetProvider : AppWidgetProvider() {
             }
             val task = selection.focus ?: selection.next
             val views = RemoteViews(context.packageName, R.layout.widget_focus)
+            val appearance = MapAppearance.selected(context)
+            views.setInt(R.id.widget_root, "setBackgroundColor", context.resources.getColor(appearance.paper, context.theme))
+            views.setTextColor(R.id.widget_label, context.resources.getColor(appearance.accent, context.theme))
+            views.setTextColor(R.id.widget_title, context.resources.getColor(appearance.ink, context.theme))
+            views.setTextColor(R.id.widget_subtitle, context.resources.getColor(appearance.muted, context.theme))
             views.setTextViewText(R.id.widget_title, task?.title ?: "Nothing scheduled")
             views.setTextViewText(
                 R.id.widget_subtitle,

@@ -1,0 +1,19 @@
+<resources>
+    <attr name="mapColorBackground" format="color" />
+    <attr name="mapColorText" format="color" />
+    <attr name="mapColorMuted" format="color" />
+    <attr name="mapColorAccent" format="color" />
+    <attr name="mapColorAccentPressed" format="color" />
+    <attr name="mapColorSelection" format="color" />
+    <attr name="mapColorOnAccent" format="color" />
+    <attr name="mapColorDivider" format="color" />
+    <attr name="mapColorCard" format="color" />
+    <attr name="mapColorFocus" format="color" />
+    <attr name="mapColorNavBackground" format="color" />
+    <attr name="mapColorDisabled" format="color" />
+    <attr name="mapColorInstrument" format="color" />
+    <attr name="mapColorInstrumentInk" format="color" />
+    <attr name="mapColorInstrumentMuted" format="color" />
+    <attr name="mapColorToolIcon" format="color" />
+    <attr name="mapColorNavMuted" format="color" />
+</resources>

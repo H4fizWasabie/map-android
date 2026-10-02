@@ -1,4 +1,4 @@
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="@color/map_tool_icon" />
+    <solid android:color="?attr/mapColorToolIcon" />
     <corners android:radius="14dp" />
 </shape>

@@ -2,7 +2,7 @@
 
 Last checked: 2026-09-30 on Pixel_10_Pro API 37 / Android 17 emulator `emulator-5554`, with connected tests isolated on disposable `MAP_Disposable`.
 
-## Lavender workspace verification (issue #203)
+## Previous Lavender workspace verification (issue #203)
 
 - Native screenshot review covered Home, Tasks, Calendar, Tools, searchable Documents, Scan and PDF viewing; light/dark Home, expanded Home, and large-text Home/Calendar were also captured. The approved comp uses illustrative records; the app only shows local records.
 - Impeccable finish review: **ship**. Searchable document access, Home task priority, PDF header insets and search-hint contrast were resolved. Fresh generic agents substituted for the unavailable named finish-reviewer/documenter roles.

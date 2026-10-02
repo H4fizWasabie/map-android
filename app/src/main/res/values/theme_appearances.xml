@@ -1,0 +1,110 @@
+<resources>
+    <style name="Theme.MAP.ColoristDaybook" parent="Theme.MAP">
+        <item name="mapColorBackground">@color/daybook_background</item><item name="mapColorText">@color/daybook_text</item>
+        <item name="mapColorMuted">@color/daybook_muted</item><item name="mapColorAccent">@color/daybook_accent</item>
+        <item name="mapColorAccentPressed">@color/daybook_accent_pressed</item><item name="mapColorSelection">@color/daybook_selection</item>
+        <item name="mapColorOnAccent">@color/daybook_on_accent</item><item name="mapColorDivider">@color/daybook_divider</item>
+        <item name="mapColorCard">@color/daybook_card</item><item name="mapColorFocus">@color/daybook_focus</item>
+        <item name="mapColorNavBackground">@color/daybook_nav</item><item name="mapColorDisabled">@color/daybook_disabled</item>
+        <item name="mapColorInstrument">@color/daybook_instrument</item><item name="mapColorInstrumentInk">@color/daybook_instrument_ink</item>
+        <item name="mapColorInstrumentMuted">@color/daybook_instrument_muted</item><item name="mapColorToolIcon">@color/daybook_tool_icon</item><item name="mapColorNavMuted">@color/daybook_nav_muted</item>
+        <item name="android:fontFamily">@font/dm_sans</item><item name="android:textColorPrimary">@color/daybook_text</item>
+        <item name="android:textColorSecondary">@color/daybook_muted</item><item name="colorPrimary">@color/daybook_accent</item>
+        <item name="android:colorAccent">@color/daybook_accent</item><item name="android:colorControlActivated">@color/daybook_accent</item>
+        <item name="android:alertDialogTheme">@style/Theme.MAP.Dialog.ColoristDaybook</item>
+        <item name="android:datePickerDialogTheme">@style/Theme.MAP.Dialog.ColoristDaybook</item>
+        <item name="android:timePickerDialogTheme">@style/Theme.MAP.Dialog.ColoristDaybook</item>
+        <item name="colorOnPrimary">@color/daybook_on_accent</item><item name="colorPrimaryContainer">@color/daybook_selection</item>
+        <item name="colorOnPrimaryContainer">@color/daybook_text</item><item name="colorSecondary">@color/daybook_muted</item>
+        <item name="colorSecondaryContainer">@color/daybook_selection</item><item name="colorOnSecondaryContainer">@color/daybook_accent_pressed</item>
+        <item name="colorTertiary">@color/daybook_accent</item><item name="colorSurface">@color/daybook_background</item>
+        <item name="colorOnSurface">@color/daybook_text</item><item name="colorSurfaceVariant">@color/daybook_card</item>
+        <item name="colorOnSurfaceVariant">@color/daybook_muted</item><item name="colorSurfaceContainer">@color/daybook_nav</item>
+        <item name="colorSurfaceContainerLow">@color/daybook_card</item><item name="colorSurfaceContainerHigh">@color/daybook_focus</item>
+        <item name="colorOutline">@color/daybook_divider</item><item name="android:colorBackground">@color/daybook_background</item>
+        <item name="android:windowBackground">@color/daybook_background</item><item name="android:navigationBarColor">@color/daybook_nav</item>
+    </style>
+    <style name="Theme.MAP.BotanicalPrint" parent="Theme.MAP">
+        <item name="mapColorBackground">@color/botanical_background</item><item name="mapColorText">@color/botanical_text</item>
+        <item name="mapColorMuted">@color/botanical_muted</item><item name="mapColorAccent">@color/botanical_accent</item>
+        <item name="mapColorAccentPressed">@color/botanical_accent_pressed</item><item name="mapColorSelection">@color/botanical_selection</item>
+        <item name="mapColorOnAccent">@color/botanical_on_accent</item><item name="mapColorDivider">@color/botanical_divider</item>
+        <item name="mapColorCard">@color/botanical_card</item><item name="mapColorFocus">@color/botanical_focus</item>
+        <item name="mapColorNavBackground">@color/botanical_nav</item><item name="mapColorDisabled">@color/botanical_disabled</item>
+        <item name="mapColorInstrument">@color/botanical_instrument</item><item name="mapColorInstrumentInk">@color/botanical_instrument_ink</item>
+        <item name="mapColorInstrumentMuted">@color/botanical_instrument_muted</item><item name="mapColorToolIcon">@color/botanical_tool_icon</item><item name="mapColorNavMuted">@color/botanical_nav_muted</item>
+        <item name="android:fontFamily">@font/dm_sans</item><item name="android:textColorPrimary">@color/botanical_text</item>
+        <item name="android:textColorSecondary">@color/botanical_muted</item><item name="colorPrimary">@color/botanical_accent</item>
+        <item name="android:colorAccent">@color/botanical_accent</item><item name="android:colorControlActivated">@color/botanical_accent</item>
+        <item name="android:alertDialogTheme">@style/Theme.MAP.Dialog.BotanicalPrint</item>
+        <item name="android:datePickerDialogTheme">@style/Theme.MAP.Dialog.BotanicalPrint</item>
+        <item name="android:timePickerDialogTheme">@style/Theme.MAP.Dialog.BotanicalPrint</item>
+        <item name="colorOnPrimary">@color/botanical_on_accent</item><item name="colorPrimaryContainer">@color/botanical_selection</item>
+        <item name="colorOnPrimaryContainer">@color/botanical_text</item><item name="colorSecondary">@color/botanical_muted</item>
+        <item name="colorSecondaryContainer">@color/botanical_selection</item><item name="colorOnSecondaryContainer">@color/botanical_accent_pressed</item>
+        <item name="colorTertiary">@color/botanical_accent</item><item name="colorSurface">@color/botanical_background</item>
+        <item name="colorOnSurface">@color/botanical_text</item><item name="colorSurfaceVariant">@color/botanical_card</item>
+        <item name="colorOnSurfaceVariant">@color/botanical_muted</item><item name="colorSurfaceContainer">@color/botanical_nav</item>
+        <item name="colorSurfaceContainerLow">@color/botanical_card</item><item name="colorSurfaceContainerHigh">@color/botanical_focus</item>
+        <item name="colorOutline">@color/botanical_divider</item><item name="android:colorBackground">@color/botanical_background</item>
+        <item name="android:windowBackground">@color/botanical_background</item><item name="android:navigationBarColor">@color/botanical_nav</item>
+    </style>
+    <style name="Theme.MAP.WovenPoster" parent="Theme.MAP">
+        <item name="mapColorBackground">@color/woven_background</item><item name="mapColorText">@color/woven_text</item>
+        <item name="mapColorMuted">@color/woven_muted</item><item name="mapColorAccent">@color/woven_accent</item>
+        <item name="mapColorAccentPressed">@color/woven_accent_pressed</item><item name="mapColorSelection">@color/woven_selection</item>
+        <item name="mapColorOnAccent">@color/woven_on_accent</item><item name="mapColorDivider">@color/woven_divider</item>
+        <item name="mapColorCard">@color/woven_card</item><item name="mapColorFocus">@color/woven_focus</item>
+        <item name="mapColorNavBackground">@color/woven_nav</item><item name="mapColorDisabled">@color/woven_disabled</item>
+        <item name="mapColorInstrument">@color/woven_instrument</item><item name="mapColorInstrumentInk">@color/woven_instrument_ink</item>
+        <item name="mapColorInstrumentMuted">@color/woven_instrument_muted</item><item name="mapColorToolIcon">@color/woven_tool_icon</item><item name="mapColorNavMuted">@color/woven_nav_muted</item>
+        <item name="android:fontFamily">@font/dm_sans</item><item name="android:textColorPrimary">@color/woven_text</item>
+        <item name="android:textColorSecondary">@color/woven_muted</item><item name="colorPrimary">@color/woven_accent</item>
+        <item name="android:colorAccent">@color/woven_accent</item><item name="android:colorControlActivated">@color/woven_accent</item>
+        <item name="android:alertDialogTheme">@style/Theme.MAP.Dialog.WovenPoster</item>
+        <item name="android:datePickerDialogTheme">@style/Theme.MAP.Dialog.WovenPoster</item>
+        <item name="android:timePickerDialogTheme">@style/Theme.MAP.Dialog.WovenPoster</item>
+        <item name="colorOnPrimary">@color/woven_on_accent</item><item name="colorPrimaryContainer">@color/woven_selection</item>
+        <item name="colorOnPrimaryContainer">@color/woven_text</item><item name="colorSecondary">@color/woven_muted</item>
+        <item name="colorSecondaryContainer">@color/woven_selection</item><item name="colorOnSecondaryContainer">@color/woven_accent_pressed</item>
+        <item name="colorTertiary">@color/woven_accent</item><item name="colorSurface">@color/woven_background</item>
+        <item name="colorOnSurface">@color/woven_text</item><item name="colorSurfaceVariant">@color/woven_card</item>
+        <item name="colorOnSurfaceVariant">@color/woven_muted</item><item name="colorSurfaceContainer">@color/woven_nav</item>
+        <item name="colorSurfaceContainerLow">@color/woven_card</item><item name="colorSurfaceContainerHigh">@color/woven_focus</item>
+        <item name="colorOutline">@color/woven_divider</item><item name="android:colorBackground">@color/woven_background</item>
+        <item name="android:windowBackground">@color/woven_background</item><item name="android:navigationBarColor">@color/woven_nav</item>
+    </style>
+    <style name="Theme.MAP.Dialog.ColoristDaybook" parent="Theme.MAP.Dialog">
+        <item name="android:fontFamily">@font/dm_sans</item><item name="android:textColorPrimary">@color/daybook_text</item>
+        <item name="android:textColorSecondary">@color/daybook_muted</item><item name="android:colorAccent">@color/daybook_accent</item>
+        <item name="android:colorControlActivated">@color/daybook_accent</item><item name="android:background">@color/daybook_card</item>
+        <item name="android:windowBackground">@color/daybook_card</item>
+        <item name="android:buttonBarPositiveButtonStyle">@style/Widget.MAP.Dialog.ActionButton.ColoristDaybook</item>
+        <item name="android:buttonBarNegativeButtonStyle">@style/Widget.MAP.Dialog.ActionButton.ColoristDaybook</item>
+    </style>
+    <style name="Widget.MAP.Dialog.ActionButton.ColoristDaybook" parent="Widget.MAP.Dialog.ActionButton">
+        <item name="android:textColor">@color/daybook_accent</item>
+    </style>
+    <style name="Theme.MAP.Dialog.BotanicalPrint" parent="Theme.MAP.Dialog">
+        <item name="android:fontFamily">@font/dm_sans</item><item name="android:textColorPrimary">@color/botanical_text</item>
+        <item name="android:textColorSecondary">@color/botanical_muted</item><item name="android:colorAccent">@color/botanical_accent</item>
+        <item name="android:colorControlActivated">@color/botanical_accent</item><item name="android:background">@color/botanical_card</item>
+        <item name="android:windowBackground">@color/botanical_card</item>
+        <item name="android:buttonBarPositiveButtonStyle">@style/Widget.MAP.Dialog.ActionButton.BotanicalPrint</item>
+        <item name="android:buttonBarNegativeButtonStyle">@style/Widget.MAP.Dialog.ActionButton.BotanicalPrint</item>
+    </style>
+    <style name="Widget.MAP.Dialog.ActionButton.BotanicalPrint" parent="Widget.MAP.Dialog.ActionButton">
+        <item name="android:textColor">@color/botanical_accent</item>
+    </style>
+    <style name="Theme.MAP.Dialog.WovenPoster" parent="Theme.MAP.Dialog">
+        <item name="android:fontFamily">@font/dm_sans</item><item name="android:textColorPrimary">@color/woven_text</item>
+        <item name="android:textColorSecondary">@color/woven_muted</item><item name="android:colorAccent">@color/woven_accent</item>
+        <item name="android:colorControlActivated">@color/woven_accent</item><item name="android:background">@color/woven_card</item>
+        <item name="android:windowBackground">@color/woven_card</item>
+        <item name="android:buttonBarPositiveButtonStyle">@style/Widget.MAP.Dialog.ActionButton.WovenPoster</item>
+        <item name="android:buttonBarNegativeButtonStyle">@style/Widget.MAP.Dialog.ActionButton.WovenPoster</item>
+    </style>
+    <style name="Widget.MAP.Dialog.ActionButton.WovenPoster" parent="Widget.MAP.Dialog.ActionButton">
+        <item name="android:textColor">@color/woven_accent</item>
+    </style>
+</resources>

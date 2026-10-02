@@ -1,36 +1,36 @@
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:state_selected="true">
         <shape>
-            <solid android:color="@color/map_focus" />
-            <stroke android:width="1dp" android:color="@color/map_accent" />
+            <solid android:color="?attr/mapColorFocus" />
+            <stroke android:width="1dp" android:color="?attr/mapColorAccent" />
             <corners android:radius="10dp" />
         </shape>
     </item>
     <item android:state_enabled="false">
         <shape>
-            <solid android:color="@color/map_disabled" />
-            <stroke android:width="1dp" android:color="@color/map_divider" />
+            <solid android:color="?attr/mapColorDisabled" />
+            <stroke android:width="1dp" android:color="?attr/mapColorDivider" />
             <corners android:radius="10dp" />
         </shape>
     </item>
     <item android:state_pressed="true">
         <shape>
-            <solid android:color="@color/map_focus" />
-            <stroke android:width="1dp" android:color="@color/map_accent" />
+            <solid android:color="?attr/mapColorFocus" />
+            <stroke android:width="1dp" android:color="?attr/mapColorAccent" />
             <corners android:radius="10dp" />
         </shape>
     </item>
     <item android:state_focused="true">
         <shape>
-            <solid android:color="@color/map_card" />
-            <stroke android:width="2dp" android:color="@color/map_accent" />
+            <solid android:color="?attr/mapColorCard" />
+            <stroke android:width="2dp" android:color="?attr/mapColorAccent" />
             <corners android:radius="10dp" />
         </shape>
     </item>
     <item>
         <shape>
-            <solid android:color="@color/map_card" />
-            <stroke android:width="1dp" android:color="@color/map_divider" />
+            <solid android:color="?attr/mapColorCard" />
+            <stroke android:width="1dp" android:color="?attr/mapColorDivider" />
             <corners android:radius="10dp" />
         </shape>
     </item>

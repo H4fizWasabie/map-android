@@ -26,7 +26,7 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-class CalendarActivity : AppCompatActivity() {
+class CalendarActivity : MapActivity() {
     private lateinit var database: TaskDatabase
     private var selectedDay = dayStart(System.currentTimeMillis())
     private var weekMode = false
@@ -98,7 +98,7 @@ class CalendarActivity : AppCompatActivity() {
     private fun render() {
         val weekStart = monday(selectedDay)
         val root = LinearLayout(this).apply {
-            setBackgroundColor(getColor(R.color.map_background))
+            setBackgroundColor(mapColor(R.color.map_background))
         }
         val scroll = ScrollView(this).also { contentScroll = it }
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(24), dp(24), dp(24), dp(24)) }
@@ -220,8 +220,8 @@ class CalendarActivity : AppCompatActivity() {
                     strokeWidth = 0
                     backgroundTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.TRANSPARENT)
                     if (selected) {
-                        backgroundTintList = ContextCompat.getColorStateList(this@CalendarActivity, R.color.map_accent)
-                        setTextColor(getColor(R.color.map_on_accent))
+                        backgroundTintList = android.content.res.ColorStateList.valueOf(mapColor(R.color.map_accent))
+                        setTextColor(mapColor(R.color.map_on_accent))
                     }
                 }, LinearLayout.LayoutParams(targetWidth, -2))
             }
@@ -264,7 +264,7 @@ class CalendarActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(8), dp(6), 0, dp(2))
             addView(View(this@CalendarActivity).apply {
-                setBackgroundColor(getColor(R.color.map_divider))
+                setBackgroundColor(mapColor(R.color.map_divider))
                 layoutParams = LinearLayout.LayoutParams(-1, dp(1))
             })
         }
@@ -301,6 +301,7 @@ class CalendarActivity : AppCompatActivity() {
             }
         }
         row.addView(CheckBox(this).apply {
+            MapUi.tintCheckbox(this)
             contentDescription = "Complete ${task.title}"
             minWidth = dp(48)
             minHeight = dp(48)
@@ -322,7 +323,7 @@ class CalendarActivity : AppCompatActivity() {
         }, LinearLayout.LayoutParams(0, -2, 1f))
         parent.addView(row)
         parent.addView(View(this).apply {
-            setBackgroundColor(getColor(R.color.map_divider))
+            setBackgroundColor(mapColor(R.color.map_divider))
             layoutParams = LinearLayout.LayoutParams(-1, dp(1))
         })
     }
@@ -361,7 +362,7 @@ class CalendarActivity : AppCompatActivity() {
         music.close()
         if (item == null) return
         parent.addView(View(this).apply {
-            setBackgroundColor(getColor(R.color.map_divider))
+            setBackgroundColor(mapColor(R.color.map_divider))
             layoutParams = LinearLayout.LayoutParams(-1, dp(1))
         })
         parent.addView(LinearLayout(this).apply {
@@ -410,13 +411,13 @@ class CalendarActivity : AppCompatActivity() {
         isAllCaps = false
         minHeight = dp(48)
         minWidth = dp(48)
-        setTextColor(getColor(R.color.map_text))
+        setTextColor(mapColor(R.color.map_text))
         setOnClickListener { click() }
     }
 
     private fun addHeading(parent: LinearLayout, text: String) {
         parent.addView(View(this).apply {
-            setBackgroundColor(getColor(R.color.map_divider))
+            setBackgroundColor(mapColor(R.color.map_divider))
         }, LinearLayout.LayoutParams(-1, dp(1)).apply { topMargin = dp(16) })
         parent.addView(TextView(this).apply {
             this.text = text
@@ -428,7 +429,7 @@ class CalendarActivity : AppCompatActivity() {
     private fun addEmpty(parent: LinearLayout, text: String) = parent.addView(TextView(this).apply {
         this.text = text
         MapUi.body(this)
-        setTextColor(getColor(R.color.map_muted))
+        setTextColor(mapColor(R.color.map_muted))
         setPadding(0, 0, 0, dp(8))
     })
 

@@ -36,14 +36,14 @@ import java.util.Locale
 
 /**
  * THESIS: A calm private workspace makes the next real action clear.
- * OWN-WORLD: off-white, charcoal, lavender, purple; Archivo and Work Sans.
+ * OWN-WORLD: selected Colorist Daybook, Botanical Print, or Woven Poster appearance.
  * STORY: read the current moment, act on tasks, and open local tools.
  * FIRST VIEWPORT: map/date/greeting, live clock and outline dial, focus/tasks,
  * native Add task, Home/Calendar/Tasks/Tools navigation. Empty data stays empty.
- * FORM: Operate; user-approved Design 2 comp in .impeccable/mocks/lavender-approved.png.
+ * FORM: Operate; preserve local task truth while matching the selected visual theme.
  * FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md.
  */
-class MainActivity : AppCompatActivity() {
+class MainActivity : MapActivity() {
     private lateinit var database: TaskDatabase
     private lateinit var content: LinearLayout
     private var undoState: UndoState? = null
@@ -113,6 +113,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        val coloristHome = selectedView == "Home" && MapAppearance.selected(this) == MapAppearance.COLORIST_DAYBOOK
+        window.statusBarColor = mapColor(if (coloristHome) R.color.map_accent else R.color.map_background)
+        androidx.core.view.WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = !coloristHome && resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK != android.content.res.Configuration.UI_MODE_NIGHT_YES
         val refresh = !initialResumePending
         initialResumePending = false
         if (::database.isInitialized) {
@@ -149,75 +152,7 @@ class MainActivity : AppCompatActivity() {
         render(
             "Today",
             "Home",
-            header = { body ->
-                MapUi.addBrandMark(this, body)
-                val shortHeight = resources.configuration.screenHeightDp < 500
-                if (!shortHeight) {
-                    body.addView(TextView(this).apply {
-                        text = SimpleDateFormat("EEEE, d MMMM", Locale.getDefault()).format(Date())
-                        MapUi.metadata(this)
-                    })
-                    body.addView(TextView(this).apply {
-                        text = when (Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) {
-                            in 0..11 -> "Good morning."
-                            in 12..17 -> "Good afternoon."
-                            else -> "Good evening."
-                        }
-                        MapUi.display(this)
-                        setPadding(0, dp(2), 0, dp(18))
-                    })
-                }
-                val landscape = resources.configuration.screenHeightDp < 500
-                val compact = resources.configuration.screenWidthDp < 368 || resources.configuration.fontScale >= 1.25f
-                val instrument = LinearLayout(this).apply {
-                    orientation = LinearLayout.VERTICAL
-                    setPadding(dp(if (landscape) 12 else 18), dp(if (landscape) 2 else 16), dp(if (landscape) 12 else 18), dp(if (landscape) 2 else 16))
-                    setBackgroundResource(R.drawable.map_instrument_surface)
-                }
-                if (!landscape) instrument.addView(TextView(this).apply {
-                    text = "LOCAL TIME"
-                    MapUi.label(this)
-                    setTextColor(getColor(R.color.map_instrument_muted))
-                })
-                val readoutRow = LinearLayout(this).apply {
-                    val stackedClock = compact && !landscape
-                    orientation = if (stackedClock) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
-                    gravity = if (stackedClock) Gravity.CENTER_HORIZONTAL else Gravity.CENTER_VERTICAL
-                    setPadding(0, dp(if (landscape) 0 else 8), 0, 0)
-                }
-                val dialSize = dp(when {
-                    landscape -> 64
-                    else -> 80
-                })
-                val timeReadout = LinearLayout(this).apply {
-                    orientation = LinearLayout.VERTICAL
-                    val stackedClock = compact && !landscape
-                    gravity = if (stackedClock) Gravity.CENTER else Gravity.CENTER_VERTICAL
-                    setPadding(0, 0, dp(12), 0)
-                }
-                timeReadout.addView(TextClock(this).apply {
-                    format24Hour = android.text.format.DateFormat.getBestDateTimePattern(Locale.getDefault(), "Hm")
-                    format12Hour = android.text.format.DateFormat.getBestDateTimePattern(Locale.getDefault(), "hm")
-                    MapUi.numeral(this, size = 34f, color = R.color.map_instrument_ink)
-                    maxLines = 1
-                })
-                timeReadout.addView(TextView(this).apply {
-                    text = "Today"
-                    MapUi.body(this)
-                    setTextColor(getColor(R.color.map_instrument_muted))
-                    setPadding(0, dp(2), 0, 0)
-                })
-                readoutRow.addView(timeReadout, if (compact && !landscape) {
-                    LinearLayout.LayoutParams(-2, -2)
-                } else {
-                    LinearLayout.LayoutParams(0, -2, 1f)
-                })
-                readoutRow.addView(FieldClockDialView(this), LinearLayout.LayoutParams(dialSize, dialSize).apply {
-                    if (compact && !landscape) topMargin = dp(12)
-                })
-                instrument.addView(readoutRow)
-                body.addView(instrument)
-            },
+            header = ::addDaybookHeader,
         ) { body ->
             addUndoBar(body)
             addFocusArea(body, openTasks)
@@ -232,8 +167,64 @@ class MainActivity : AppCompatActivity() {
             addMusicMiniPlayer(body)
             val completed = database.recentCompleted()
             if (completed.isNotEmpty()) addActivity(body, completed.take(3))
-            if (resources.configuration.screenHeightDp >= 500) addHomePrivacyStatus(body)
         }
+    }
+
+    private fun addDaybookHeader(body: LinearLayout) {
+        val appearance = MapAppearance.selected(this)
+        val compact = resources.configuration.screenWidthDp < 368 || resources.configuration.fontScale >= 1.3f
+        val landscape = resources.configuration.screenHeightDp < 500
+        val artworkWidth = dp(if (compact) 104 else 144)
+        val hero = FrameLayout(this).apply {
+            setBackgroundColor(mapColor(if (appearance == MapAppearance.COLORIST_DAYBOOK) R.color.map_accent else R.color.map_background))
+            contentDescription = null
+        }
+        hero.addView(android.widget.ImageView(this).apply {
+            setImageDrawable(MapUi.illustration(this@MainActivity, appearance.artwork))
+            scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            alpha = if (appearance == MapAppearance.BOTANICAL_PRINT) 0.68f else 1f
+        }, FrameLayout.LayoutParams(artworkWidth, dp(if (landscape) 120 else if (compact) 138 else 220), Gravity.END or Gravity.BOTTOM))
+        val details = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(if (compact) 12 else 18), dp(if (landscape || compact) 10 else 18), artworkWidth + dp(4), dp(if (landscape || compact) 10 else 18))
+        }
+        MapUi.addBrandMark(this, details)
+        details.addView(TextView(this).apply {
+            text = SimpleDateFormat("EEE, d MMM yyyy", Locale.getDefault()).format(Date()).uppercase(Locale.getDefault())
+            MapUi.label(this)
+            letterSpacing = 0.08f
+        })
+        details.addView(TextView(this).apply {
+            text = when (Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) {
+                in 0..11 -> "Good morning."
+                in 12..17 -> "Good afternoon."
+                else -> "Good evening."
+            }
+            MapUi.display(this)
+            setPadding(0, dp(2), 0, dp(8))
+            maxLines = 2
+        })
+        val readout = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        readout.addView(TextClock(this).apply {
+            format24Hour = android.text.format.DateFormat.getBestDateTimePattern(Locale.getDefault(), "Hm")
+            format12Hour = android.text.format.DateFormat.getBestDateTimePattern(Locale.getDefault(), "hm")
+            MapUi.numeral(this, size = if (compact) 22f else 30f, color = R.color.map_instrument_ink)
+            maxLines = 1
+        }, LinearLayout.LayoutParams(0, -2, 1f))
+        readout.addView(FieldClockDialView(this), LinearLayout.LayoutParams(dp(if (compact) 48 else 68), dp(if (compact) 48 else 68)))
+        details.addView(readout)
+        if (appearance == MapAppearance.COLORIST_DAYBOOK) setInstrumentInk(details)
+        hero.addView(details, FrameLayout.LayoutParams(-1, -2, Gravity.TOP))
+        body.addView(hero, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) })
+    }
+
+    private fun setInstrumentInk(view: View) {
+        if (view is TextView) view.setTextColor(mapColor(R.color.map_instrument_ink))
+        else if (view is android.view.ViewGroup) for (index in 0 until view.childCount) setInstrumentInk(view.getChildAt(index))
     }
 
     private fun showTasks() {
@@ -293,12 +284,12 @@ class MainActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             val shortHeight = resources.configuration.screenHeightDp < 500
             setPadding(dp(24), dp(if (shortHeight) 0 else 24), dp(24), dp(if (shortHeight) 0 else if (resources.configuration.fontScale >= 1.3f) 24 else 96))
-            setBackgroundColor(getColor(R.color.map_background))
+            setBackgroundColor(mapColor(if (selected == "Home" && MapAppearance.selected(this@MainActivity) == MapAppearance.COLORIST_DAYBOOK) R.color.map_accent else R.color.map_background))
         }
         header(content)
         fill(content)
         val root = LinearLayout(this).apply {
-            setBackgroundColor(getColor(R.color.map_background))
+            setBackgroundColor(mapColor(if (selected == "Home" && MapAppearance.selected(this@MainActivity) == MapAppearance.COLORIST_DAYBOOK) R.color.map_accent else R.color.map_background))
         }
         val scroll = ScrollView(this).apply {
             isFillViewport = selected == "Home" && resources.configuration.screenHeightDp >= 500
@@ -307,15 +298,42 @@ class MainActivity : AppCompatActivity() {
         }
         val action = createAddTaskButton()
         val shortHeight = resources.configuration.screenHeightDp < 500
+        val home = selected == "Home"
         val inlineAction = shortHeight || resources.configuration.fontScale >= 1.3f
+        val pinnedHomeAction = home && !inlineAction
+        if (home) {
+            val appearance = MapAppearance.selected(this)
+            val accentAction = appearance == MapAppearance.WOVEN_POSTER
+            action.backgroundTintList = android.content.res.ColorStateList.valueOf(
+                if (accentAction) mapColor(R.color.map_accent) else MapAppearance.color(this, appearance.highlight),
+            )
+            action.setTextColor(mapColor(if (accentAction) R.color.map_on_accent else R.color.map_text))
+            val label = SpannableString("  Add task")
+            val icon = requireNotNull(getDrawable(R.drawable.ic_map_add)).mutate().apply {
+                setTint(action.currentTextColor)
+                setBounds(0, 0, dp(20), dp(20))
+            }
+            label.setSpan(ImageSpan(icon, ImageSpan.ALIGN_BOTTOM), 0, 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            action.text = label
+            action.minimumHeight = dp(60)
+            if (inlineAction) content.addView(action, LinearLayout.LayoutParams(-1, dp(60)).apply { topMargin = dp(14) })
+            if (resources.configuration.screenHeightDp >= 500) addHomePrivacyStatus(content)
+        }
         val screen = FrameLayout(this).apply {
+            if (pinnedHomeAction) {
+                scroll.setPadding(0, 0, 0, dp(80))
+            }
             addView(scroll, FrameLayout.LayoutParams(-1, -1))
-            if (!inlineAction) addView(action, FrameLayout.LayoutParams(-2, dp(56), Gravity.BOTTOM or Gravity.END).apply {
+            if (pinnedHomeAction) addView(action, FrameLayout.LayoutParams(-1, dp(60), Gravity.BOTTOM).apply {
+                leftMargin = dp(24)
+                rightMargin = dp(24)
+                bottomMargin = dp(10)
+            }) else if (!inlineAction) addView(action, FrameLayout.LayoutParams(-2, dp(56), Gravity.BOTTOM or Gravity.END).apply {
                 marginEnd = dp(24)
                 bottomMargin = dp(16)
             })
         }
-        if (inlineAction) content.addView(action, LinearLayout.LayoutParams(-1, if (shortHeight) dp(48) else -2))
+        if (inlineAction && !home) content.addView(action, LinearLayout.LayoutParams(-1, if (shortHeight) dp(48) else -2))
         MapUi.addPrimaryNavigation(root, screen, MapUi.bottomNavigation(this, selected, ::navigate))
         if (selected == "Home" && !homePrimaryActionSettled) {
             MapUi.settlePrimaryAction(action)
@@ -341,11 +359,15 @@ class MainActivity : AppCompatActivity() {
                 orientation = LinearLayout.VERTICAL
                 addView(TextView(this@MainActivity).apply {
                     text = "Private by design"
-                    MapUi.label(this)
+                    MapUi.body(this)
+                    textSize = 14f
+                    typeface = android.graphics.Typeface.create(typeface, android.graphics.Typeface.BOLD)
+                    if (selectedView == "Home" && MapAppearance.selected(this@MainActivity) == MapAppearance.COLORIST_DAYBOOK) setTextColor(mapColor(R.color.map_instrument_ink))
                 })
                 addView(TextView(this@MainActivity).apply {
                     text = "Your tasks and files stay on this device."
-                    MapUi.caption(this)
+                    MapUi.metadata(this)
+                    if (selectedView == "Home" && MapAppearance.selected(this@MainActivity) == MapAppearance.COLORIST_DAYBOOK) setTextColor(mapColor(R.color.map_instrument_muted))
                     setPadding(0, dp(2), 0, 0)
                 })
             }, LinearLayout.LayoutParams(0, -2, 1f))
@@ -362,14 +384,39 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun addTaskSection(parent: LinearLayout, title: String, tasks: List<Task>) {
-        addSectionRule(parent, title, tasks.size)
-        if (tasks.isEmpty()) addEmpty(parent, "Nothing here.") else tasks.forEach { addTaskRow(parent, it) }
+        parent.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(12), dp(16), dp(8))
+            setBackgroundResource(R.drawable.map_surface)
+            layoutParams = LinearLayout.LayoutParams(-1, -2).apply {
+                topMargin = dp(8)
+                bottomMargin = dp(4)
+            }
+            addView(LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                addView(TextView(this@MainActivity).apply {
+                    text = title
+                    MapUi.section(this)
+                }, LinearLayout.LayoutParams(0, -2, 1f))
+                addView(TextView(this@MainActivity).apply {
+                    text = tasks.size.toString()
+                    MapUi.numeral(this, size = 15f, color = R.color.map_muted)
+                })
+            })
+            if (tasks.isEmpty()) addEmpty(this, "Nothing here.") else tasks.forEachIndexed { index, task ->
+                if (index > 0) addView(View(this@MainActivity).apply {
+                    setBackgroundColor(mapColor(R.color.map_divider))
+                }, LinearLayout.LayoutParams(-1, dp(1)))
+                addTaskRow(this, task, drawDivider = false)
+            }
+        })
     }
 
     private fun addSectionRule(parent: LinearLayout, title: String, count: Int? = null) {
         val shortHeight = resources.configuration.screenHeightDp < 500
         if (!shortHeight) parent.addView(View(this).apply {
-            setBackgroundColor(getColor(R.color.map_divider))
+            setBackgroundColor(mapColor(R.color.map_divider))
         }, LinearLayout.LayoutParams(-1, dp(1)).apply { topMargin = dp(16) })
         parent.addView(LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -378,6 +425,7 @@ class MainActivity : AppCompatActivity() {
             addView(TextView(this@MainActivity).apply {
                 text = title
                 MapUi.section(this)
+                if (selectedView == "Home" && MapAppearance.selected(this@MainActivity) == MapAppearance.COLORIST_DAYBOOK) setTextColor(mapColor(R.color.map_instrument_ink))
             }, LinearLayout.LayoutParams(0, -2, 1f))
             if (count != null) {
                 addView(TextView(this@MainActivity).apply {
@@ -392,19 +440,19 @@ class MainActivity : AppCompatActivity() {
         MapUi.primaryButton(this)
     } else {
         ExtendedFloatingActionButton(this).apply {
-            backgroundTintList = ContextCompat.getColorStateList(this@MainActivity, R.color.map_accent)
-            setTextColor(requireNotNull(ContextCompat.getColorStateList(this@MainActivity, R.color.map_primary_button_text)))
+            backgroundTintList = android.content.res.ColorStateList.valueOf(mapColor(R.color.map_accent))
+            setTextColor(mapColor(R.color.map_on_accent))
         }
     }).apply {
         val addLabel = SpannableString("  Add task")
         val addIcon = requireNotNull(getDrawable(R.drawable.ic_map_add)).mutate().apply {
-            setTint(getColor(R.color.map_on_accent))
+            setTint(mapColor(R.color.map_on_accent))
             setBounds(0, 0, dp(20), dp(20))
         }
         addLabel.setSpan(ImageSpan(addIcon, ImageSpan.ALIGN_BOTTOM), 0, 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         text = addLabel
-        MapUi.label(this)
-        setTextColor(getColor(R.color.map_on_accent))
+        MapUi.body(this)
+        setTextColor(mapColor(R.color.map_on_accent))
         isAllCaps = false
         minimumHeight = dp(56)
         contentDescription = "Add task"
@@ -421,7 +469,7 @@ class MainActivity : AppCompatActivity() {
             orientation = if (shortHeight && actionTask == null) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL
             gravity = if (shortHeight && actionTask == null) Gravity.CENTER_VERTICAL else Gravity.NO_GRAVITY
             setPadding(dp(16), dp(if (shortHeight) 4 else 14), dp(16), dp(if (shortHeight) 4 else 14))
-            setBackgroundResource(R.drawable.map_focus_surface)
+            setBackgroundResource(R.drawable.map_surface)
             layoutParams = LinearLayout.LayoutParams(-1, -2).apply {
                 topMargin = dp(4)
                 bottomMargin = dp(if (shortHeight) 4 else 8)
@@ -446,7 +494,7 @@ class MainActivity : AppCompatActivity() {
                 val now = focusBlock("Now", selection.focus, "Nothing in progress")
                 val next = focusBlock("Next", selection.next, "Nothing queued")
                 val divider = View(this@MainActivity).apply {
-                    setBackgroundColor(getColor(R.color.map_divider))
+                    setBackgroundColor(mapColor(R.color.map_divider))
                 }
                 if (compact) {
                     addView(now)
@@ -483,7 +531,7 @@ class MainActivity : AppCompatActivity() {
         addView(TextView(this@MainActivity).apply {
             text = label
             MapUi.label(this)
-            setTextColor(getColor(R.color.map_muted))
+            setTextColor(mapColor(R.color.map_muted))
         })
         addView(TextView(this@MainActivity).apply {
             text = task?.title ?: empty
@@ -503,7 +551,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun addTaskRow(parent: LinearLayout, task: Task) {
+    private fun addTaskRow(parent: LinearLayout, task: Task, drawDivider: Boolean = true) {
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -512,6 +560,7 @@ class MainActivity : AppCompatActivity() {
             setOnClickListener { showTaskDetails(task) }
         }
         row.addView(CheckBox(this).apply {
+            MapUi.tintCheckbox(this)
             contentDescription = "Complete ${task.title}"
             minWidth = dp(48)
             minHeight = dp(48)
@@ -522,7 +571,7 @@ class MainActivity : AppCompatActivity() {
             setPadding(dp(8), 0, dp(8), 0)
             addView(TextView(this@MainActivity).apply {
                 text = task.title
-                MapUi.section(this)
+                MapUi.taskTitle(this)
                 maxLines = 2
             })
             val metadata = buildList {
@@ -536,8 +585,8 @@ class MainActivity : AppCompatActivity() {
             })
         }, LinearLayout.LayoutParams(0, -2, 1f))
         parent.addView(row)
-        parent.addView(View(this).apply {
-            setBackgroundColor(getColor(R.color.map_divider))
+        if (drawDivider) parent.addView(View(this).apply {
+            setBackgroundColor(mapColor(R.color.map_divider))
             layoutParams = LinearLayout.LayoutParams(-1, dp(1))
         })
     }
@@ -690,7 +739,7 @@ class MainActivity : AppCompatActivity() {
                 text = "Delete task"
                 contentDescription = "Delete task"
                 isAllCaps = false
-                setTextColor(getColor(R.color.map_accent))
+                setTextColor(mapColor(R.color.map_accent))
                 setOnClickListener {
                     MaterialAlertDialogBuilder(this@MainActivity)
                         .setTitle("Delete task?")
@@ -711,7 +760,7 @@ class MainActivity : AppCompatActivity() {
         }
         val sheet = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(getColor(R.color.map_card))
+            setBackgroundColor(mapColor(R.color.map_card))
             addView(TextView(this@MainActivity).apply {
                 text = "Task details"
                 MapUi.headline(this)
@@ -725,7 +774,7 @@ class MainActivity : AppCompatActivity() {
         dialog.setContentView(sheet)
         dialog.show()
         dialog.window?.apply {
-            setBackgroundDrawable(ColorDrawable(getColor(R.color.map_card)))
+            setBackgroundDrawable(ColorDrawable(mapColor(R.color.map_card)))
             setLayout(-1, -2)
             attributes = attributes.apply { gravity = Gravity.BOTTOM }
         }
@@ -800,7 +849,7 @@ class MainActivity : AppCompatActivity() {
         parent.addView(TextView(this).apply {
             text = message
             MapUi.body(this)
-            setTextColor(getColor(R.color.map_muted))
+            setTextColor(mapColor(R.color.map_muted))
             setPadding(0, 0, 0, dp(4))
         })
     }
