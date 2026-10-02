@@ -77,7 +77,7 @@ private class ActionRowHolder(
     val content: View,
 )
 
-class MusicActivity : AppCompatActivity() {
+class MusicActivity : MapActivity() {
     private lateinit var database: MusicDatabase
     private val executor = Executors.newSingleThreadExecutor()
     private var mode = MusicViewMode.SONGS
@@ -169,8 +169,8 @@ class MusicActivity : AppCompatActivity() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() = handleBack()
         })
-        window.statusBarColor = getColor(R.color.map_background)
-        window.navigationBarColor = getColor(R.color.map_background)
+        window.statusBarColor = mapColor(R.color.map_background)
+        window.navigationBarColor = mapColor(R.color.map_nav_background)
         val restorePlayer = savedInstanceState?.getBoolean(STATE_SHOWING_PLAYER, false) == true
         when {
             restorePlayer && currentUri != null -> renderPlayer()
@@ -245,7 +245,7 @@ class MusicActivity : AppCompatActivity() {
         if (!hasTracks && !hasPlaylists && mode != MusicViewMode.SONGS) mode = MusicViewMode.SONGS
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(getColor(R.color.map_background))
+            setBackgroundColor(mapColor(R.color.map_background))
         }
         root.addView(header("Music", false))
         val body = LinearLayout(this).apply {
@@ -261,13 +261,13 @@ class MusicActivity : AppCompatActivity() {
             body.addView(TextView(this).apply {
                 text = "Choose a local folder to start listening. Your files stay on this device."
                 MapUi.body(this)
-                setTextColor(getColor(R.color.map_muted))
+                setTextColor(mapColor(R.color.map_muted))
                 setPadding(0, 0, 0, dp(16))
             })
             body.addView(MapUi.primaryButton(this).apply {
                 text = "Add folder"
-                MapUi.label(this)
-                setTextColor(getColor(R.color.map_on_accent))
+                MapUi.body(this)
+                setTextColor(mapColor(R.color.map_on_accent))
                 isAllCaps = false
                 minimumHeight = dp(56)
                 contentDescription = "Add music folder"
@@ -277,7 +277,7 @@ class MusicActivity : AppCompatActivity() {
             body.addView(TextView(this).apply {
                 text = if (refreshing) "Refreshing your selected folders…" else "$trackCount local ${if (trackCount == 1) "track" else "tracks"}"
                 MapUi.body(this)
-                setTextColor(getColor(R.color.map_muted))
+                setTextColor(mapColor(R.color.map_muted))
                 setPadding(0, 0, 0, dp(16))
             })
             val addFolder = actionButton("Add folder") { requestFolder() }
@@ -428,7 +428,7 @@ class MusicActivity : AppCompatActivity() {
             val meta = TextView(this@MusicActivity).apply { MapUi.metadata(this); setPadding(0, dp(3), 0, 0) }
             val unavailable = TextView(this@MusicActivity).apply {
                 MapUi.label(this)
-                setTextColor(getColor(R.color.map_accent))
+                setTextColor(mapColor(R.color.map_accent))
             }
             val text = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
@@ -450,7 +450,7 @@ class MusicActivity : AppCompatActivity() {
                 setPadding(0, 0, 0, dp(8))
                 addView(row)
                 addView(View(this@MusicActivity).apply {
-                    setBackgroundColor(getColor(R.color.map_divider))
+                    setBackgroundColor(mapColor(R.color.map_divider))
                 }, LinearLayout.LayoutParams(-1, dp(1)))
                 layoutParams = AbsListView.LayoutParams(-1, -2)
             }
@@ -473,7 +473,7 @@ class MusicActivity : AppCompatActivity() {
     private fun emptyRow(message: String, recycled: View? = null): View {
         val view = if (recycled is TextView && recycled.tag == "empty") recycled else TextView(this).apply {
             MapUi.body(this)
-            setTextColor(getColor(R.color.map_muted))
+            setTextColor(mapColor(R.color.map_muted))
             setPadding(0, dp(16), 0, dp(16))
             tag = "empty"
         }
@@ -534,7 +534,7 @@ class MusicActivity : AppCompatActivity() {
     private fun showPlaylist(id: Long) {
         showingPlayer = false
         val playlist = database.playlists().firstOrNull { it.id == id } ?: run { renderLibrary(); return }
-        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(getColor(R.color.map_background)) }
+        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(mapColor(R.color.map_background)) }
         root.addView(header(playlist.name, true))
         val scroll = ScrollView(this)
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(24), 0, dp(24), dp(24)) }
@@ -590,7 +590,7 @@ class MusicActivity : AppCompatActivity() {
             }
             parent.addView(row, LinearLayout.LayoutParams(-1, -2))
             parent.addView(View(this).apply {
-                setBackgroundColor(getColor(R.color.map_divider))
+                setBackgroundColor(mapColor(R.color.map_divider))
             }, LinearLayout.LayoutParams(-1, dp(1)))
         }
     }
@@ -627,14 +627,14 @@ class MusicActivity : AppCompatActivity() {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
         setPadding(dp(16), dp(8), dp(16), dp(8))
-        setBackgroundColor(getColor(R.color.map_card))
+        setBackgroundColor(mapColor(R.color.map_card))
         contentDescription = "Now playing ${item.title}"
         setOnClickListener { renderPlayer() }
         addView(cover(item, dp(52)), LinearLayout.LayoutParams(dp(52), dp(52)))
         addView(TextView(this@MusicActivity).apply {
             text = "${item.title}\n${item.artist}"
             MapUi.body(this)
-            setTextColor(getColor(R.color.map_text))
+            setTextColor(mapColor(R.color.map_text))
             setPadding(dp(12), 0, dp(8), 0)
         }, LinearLayout.LayoutParams(0, -2, 1f))
         addView(iconButton(if (playing) R.drawable.ic_map_pause else R.drawable.ic_map_play, if (playing) "Pause" else "Play") { startMusicAction(MusicService.ACTION_TOGGLE) })
@@ -644,7 +644,7 @@ class MusicActivity : AppCompatActivity() {
         showingPlayer = true
         val item = currentTrack() ?: run { renderLibrary(); return }
         nowPlayingDuration = item.durationMs
-        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(getColor(R.color.map_background)) }
+        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(mapColor(R.color.map_background)) }
         root.addView(header("Now Playing", true))
         val scroll = ScrollView(this).apply {
             playerScroll = this
@@ -655,7 +655,7 @@ class MusicActivity : AppCompatActivity() {
         body.addView(cover(item, artworkSize), LinearLayout.LayoutParams(artworkSize, artworkSize).apply { topMargin = dp(20); bottomMargin = dp(24) })
         nowPlayingTitle = TextView(this).apply { text = item.title; MapUi.headline(this); gravity = Gravity.CENTER }
         body.addView(nowPlayingTitle)
-        nowPlayingArtist = TextView(this).apply { text = "${item.artist} · ${item.album}"; MapUi.body(this); setTextColor(getColor(R.color.map_muted)); gravity = Gravity.CENTER; setPadding(0, dp(6), 0, dp(16)) }
+        nowPlayingArtist = TextView(this).apply { text = "${item.artist} · ${item.album}"; MapUi.body(this); setTextColor(mapColor(R.color.map_muted)); gravity = Gravity.CENTER; setPadding(0, dp(6), 0, dp(16)) }
         body.addView(nowPlayingArtist)
         seekBar = SeekBar(this).apply {
             max = maxOf(duration, item.durationMs.toInt(), 1)
@@ -733,7 +733,7 @@ class MusicActivity : AppCompatActivity() {
             body.addView(LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                addView(TextView(this@MusicActivity).apply { text = "${item.title}\n${item.artist}"; setTextColor(getColor(R.color.map_text)) }, LinearLayout.LayoutParams(0, -2, 1f))
+                addView(TextView(this@MusicActivity).apply { text = "${item.title}\n${item.artist}"; setTextColor(mapColor(R.color.map_text)) }, LinearLayout.LayoutParams(0, -2, 1f))
                 addView(actionButton("Up") { database.moveQueue(item.uri, -1); dialog.dismiss(); showQueueDialog() })
                 addView(actionButton("Down") { database.moveQueue(item.uri, 1); dialog.dismiss(); showQueueDialog() })
                 addView(actionButton("Remove") { database.removeFromQueue(item.uri); dialog.dismiss(); showQueueDialog() })
@@ -765,7 +765,7 @@ class MusicActivity : AppCompatActivity() {
         }
         eqLevels.forEachIndexed { index, level ->
             val frequency = if (index < eqFrequencies.size) "${eqFrequencies[index] / 1000} Hz" else "Band ${index + 1}"
-            body.addView(TextView(this).apply { text = frequency; setTextColor(getColor(R.color.map_muted)); setPadding(0, dp(8), 0, 0) })
+            body.addView(TextView(this).apply { text = frequency; setTextColor(mapColor(R.color.map_muted)); setPadding(0, dp(8), 0, 0) })
             body.addView(SeekBar(this).apply {
                 contentDescription = "$frequency equalizer band"
                 max = (eqRange[1] - eqRange[0]).toInt()
@@ -784,7 +784,7 @@ class MusicActivity : AppCompatActivity() {
 
     private fun effectSlider(label: String, level: Short, action: String): View = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
-        addView(TextView(this@MusicActivity).apply { text = label; setTextColor(getColor(R.color.map_muted)); setPadding(0, dp(8), 0, 0) })
+        addView(TextView(this@MusicActivity).apply { text = label; setTextColor(mapColor(R.color.map_muted)); setPadding(0, dp(8), 0, 0) })
         addView(SeekBar(this@MusicActivity).apply {
             contentDescription = "$label level"
             max = 1_000
@@ -835,7 +835,7 @@ class MusicActivity : AppCompatActivity() {
         )
         val spinners = fields.map { (_, options) -> Spinner(this).apply { adapter = ArrayAdapter(this@MusicActivity, android.R.layout.simple_spinner_dropdown_item, options); setSelection(options.indexOf(filterValue(options, fields.indexOfFirst { it.second === options })).coerceAtLeast(0)) } }
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(24), 0, dp(24), 0) }
-        fields.forEachIndexed { index, field -> body.addView(TextView(this).apply { text = field.first; setTextColor(getColor(R.color.map_muted)); setPadding(0, dp(8), 0, 0) }); body.addView(spinners[index]) }
+        fields.forEachIndexed { index, field -> body.addView(TextView(this).apply { text = field.first; setTextColor(mapColor(R.color.map_muted)); setPadding(0, dp(8), 0, 0) }); body.addView(spinners[index]) }
         MaterialAlertDialogBuilder(this).setTitle("Filter library").setView(ScrollView(this).apply { addView(body) }).setNegativeButton("Clear") { _, _ -> filters = MusicFilters(); renderLibrary() }.setPositiveButton("Apply") { _, _ ->
             filters.format = spinners[0].selectedItem.toString(); filters.artist = spinners[1].selectedItem.toString(); filters.album = spinners[2].selectedItem.toString(); filters.genre = spinners[3].selectedItem.toString(); filters.folder = spinners[4].selectedItem.toString(); filters.duration = spinners[5].selectedItem.toString(); filters.availability = spinners[6].selectedItem.toString(); renderLibrary()
         }.show()
@@ -990,7 +990,7 @@ class MusicActivity : AppCompatActivity() {
         setPadding(dp(16), dp(24), dp(16), dp(4))
         addView(ImageButton(this@MusicActivity).apply {
             setImageResource(R.drawable.ic_map_back)
-            imageTintList = ColorStateList.valueOf(getColor(R.color.map_text))
+            imageTintList = ColorStateList.valueOf(mapColor(R.color.map_text))
             setBackgroundResource(R.drawable.map_button_surface)
             backgroundTintList = null
             contentDescription = "Back"
@@ -1010,7 +1010,7 @@ class MusicActivity : AppCompatActivity() {
         image.contentDescription = "Artwork for ${item.title}"
         image.setBackgroundResource(R.drawable.map_focus_surface)
         image.setImageResource(if (size >= dp(100)) R.drawable.ic_map_music_artwork else R.drawable.ic_map_music)
-        image.imageTintList = ColorStateList.valueOf(getColor(R.color.map_accent))
+        image.imageTintList = ColorStateList.valueOf(mapColor(R.color.map_accent))
         runCatching {
             executor.execute {
                 val bitmap = loadArtwork(item, size)
@@ -1072,7 +1072,7 @@ class MusicActivity : AppCompatActivity() {
                 setPadding(0, 0, 0, dp(8))
                 addView(content)
                 addView(View(this@MusicActivity).apply {
-                    setBackgroundColor(getColor(R.color.map_divider))
+                    setBackgroundColor(mapColor(R.color.map_divider))
                 }, LinearLayout.LayoutParams(-1, dp(1)))
                 layoutParams = AbsListView.LayoutParams(-1, -2)
             }
@@ -1104,7 +1104,7 @@ class MusicActivity : AppCompatActivity() {
         isAllCaps = false
         minHeight = dp(48)
         minWidth = dp(48)
-        setTextColor(getColor(R.color.map_text))
+        setTextColor(mapColor(R.color.map_text))
         setBackgroundResource(R.drawable.map_button_surface)
         backgroundTintList = null
         setOnClickListener { click() }
@@ -1117,7 +1117,7 @@ class MusicActivity : AppCompatActivity() {
         minimumHeight = dp(56)
         setBackgroundResource(R.drawable.map_button_surface)
         backgroundTintList = null
-        imageTintList = ColorStateList.valueOf(getColor(R.color.map_text))
+        imageTintList = ColorStateList.valueOf(mapColor(R.color.map_text))
         setOnClickListener { click() }
     }
 

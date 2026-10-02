@@ -60,19 +60,40 @@ class FieldClockDialView(context: Context) : View(context) {
         stroke.strokeWidth = dp(1f)
         canvas.drawCircle(centerX, centerY, radius, stroke)
 
+        val appearance = MapAppearance.selected(context)
+        val handColor = when (appearance) {
+            MapAppearance.COLORIST_DAYBOOK, MapAppearance.BOTANICAL_PRINT -> MapAppearance.color(context, appearance.highlight)
+            MapAppearance.WOVEN_POSTER -> color(R.color.map_accent)
+        }
+        for (tick in 0 until 60) {
+            val angle = Math.toRadians(tick * 6.0 - 90.0)
+            val length = if (tick % 5 == 0) dp(5f) else dp(2f)
+            stroke.color = if (tick % 5 == 0) handColor else color(R.color.map_instrument_muted)
+            stroke.strokeWidth = if (tick % 5 == 0) dp(1.25f) else dp(0.7f)
+            val outer = radius - dp(3f)
+            val inner = outer - length
+            canvas.drawLine(
+                centerX + cos(angle).toFloat() * inner,
+                centerY + sin(angle).toFloat() * inner,
+                centerX + cos(angle).toFloat() * outer,
+                centerY + sin(angle).toFloat() * outer,
+                stroke,
+            )
+        }
+
         val time = Calendar.getInstance()
         val minuteAngle = Math.toRadians(time.get(Calendar.MINUTE) * 6.0 - 90.0)
         val hourAngle = Math.toRadians(
             ((time.get(Calendar.HOUR) % 12) + time.get(Calendar.MINUTE) / 60.0) * 30.0 - 90.0,
         )
-        hand(canvas, centerX, centerY, hourAngle, radius * 0.43f, dp(2f), R.color.map_instrument_ink)
-        hand(canvas, centerX, centerY, minuteAngle, radius * 0.65f, dp(1.5f), R.color.map_instrument_muted)
-        fill.color = color(R.color.map_instrument_muted)
+        hand(canvas, centerX, centerY, hourAngle, radius * 0.43f, dp(2.1f), color(R.color.map_accent_pressed))
+        hand(canvas, centerX, centerY, minuteAngle, radius * 0.65f, dp(1.5f), handColor)
+        fill.color = handColor
         canvas.drawCircle(centerX, centerY, dp(3f), fill)
     }
 
     private fun hand(canvas: Canvas, x: Float, y: Float, angle: Double, length: Float, thickness: Float, tint: Int) {
-        stroke.color = color(tint)
+        stroke.color = tint
         stroke.strokeWidth = thickness
         stroke.strokeCap = Paint.Cap.ROUND
         canvas.drawLine(
@@ -84,6 +105,6 @@ class FieldClockDialView(context: Context) : View(context) {
         )
     }
 
-    private fun color(id: Int) = context.getColor(id)
+    private fun color(id: Int) = context.mapColor(id)
     private fun dp(value: Float) = value * resources.displayMetrics.density
 }

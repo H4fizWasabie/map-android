@@ -14,7 +14,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.addCallback
 import androidx.core.widget.doAfterTextChanged
 
-class ToolsActivity : AppCompatActivity() {
+class ToolsActivity : MapActivity() {
     private lateinit var documents: DocumentDatabase
     private var contentScroll: ScrollView? = null
     private var restoredScrollY = 0
@@ -66,7 +66,7 @@ class ToolsActivity : AppCompatActivity() {
 
     private fun render() {
         val root = LinearLayout(this).apply {
-            setBackgroundColor(getColor(R.color.map_background))
+            setBackgroundColor(mapColor(R.color.map_background))
         }
         val body = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -93,9 +93,12 @@ class ToolsActivity : AppCompatActivity() {
             setPadding(0, 0, 0, dp(16))
         })
         if (documentsMode) addDocumentLibrary(body) else {
+            val compact = resources.configuration.screenWidthDp < 360 || resources.configuration.fontScale >= 1.3f
+            if (!compact) addAppearanceSelector(body)
             addDocuments(body)
             addScan(body)
             addMusic(body)
+            if (compact) addAppearanceSelector(body)
         }
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -164,7 +167,7 @@ class ToolsActivity : AppCompatActivity() {
                 })
             }, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(12) })
             parent.addView(row)
-            parent.addView(View(this).apply { setBackgroundColor(getColor(R.color.map_divider)) }, LinearLayout.LayoutParams(-1, dp(1)))
+            parent.addView(View(this).apply { setBackgroundColor(mapColor(R.color.map_divider)) }, LinearLayout.LayoutParams(-1, dp(1)))
         }
     }
 
@@ -187,7 +190,7 @@ class ToolsActivity : AppCompatActivity() {
         }
         parent.addView(EditText(this).apply {
             hint = "Search documents"
-            setHintTextColor(getColor(R.color.map_muted))
+            setHintTextColor(mapColor(R.color.map_muted))
             contentDescription = "Search documents"
             isSingleLine = true
             inputType = android.text.InputType.TYPE_CLASS_TEXT
@@ -207,13 +210,13 @@ class ToolsActivity : AppCompatActivity() {
                     for (i in 0 until childCount) {
                         val control = getChildAt(i) as com.google.android.material.button.MaterialButton
                         control.isSelected = control.text.toString() == filter
-                        control.backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(if (control.isSelected) R.color.map_selection else R.color.map_card))
+                        control.backgroundTintList = android.content.res.ColorStateList.valueOf(mapColor(if (control.isSelected) R.color.map_selection else R.color.map_card))
                     }
                     refreshRows()
                 }.apply {
                     cornerRadius = dp(24)
                     isSelected = documentFilter == filter
-                    backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(if (isSelected) R.color.map_selection else R.color.map_card))
+                    backgroundTintList = android.content.res.ColorStateList.valueOf(mapColor(if (isSelected) R.color.map_selection else R.color.map_card))
                 }, LinearLayout.LayoutParams(if (stackFilters) -1 else 0, -2, if (stackFilters) 0f else 1f).apply {
                     if (index > 0) { if (stackFilters) topMargin = dp(8) else marginStart = dp(8) }
                 })
@@ -244,6 +247,72 @@ class ToolsActivity : AppCompatActivity() {
         music.close()
         addToolRow(parent, "Music", current?.let { if (playing) "Playing ${it.title}" else "Ready with ${it.title}" } ?: "Play music stored on this device", "Open music") {
             startActivity(Intent(this, MusicActivity::class.java).putExtra(MusicActivity.EXTRA_OPEN_PLAYER, true))
+        }
+    }
+
+    private fun addAppearanceSelector(parent: LinearLayout) {
+        parent.addView(TextView(this).apply {
+            text = "Appearance"
+            MapUi.section(this)
+            setPadding(0, dp(22), 0, dp(4))
+        })
+        parent.addView(TextView(this).apply {
+            text = "Choose a daybook style for MAP."
+            MapUi.metadata(this)
+            setPadding(0, 0, 0, dp(6))
+        })
+        val selected = MapAppearance.selected(this)
+        MapAppearance.entries.forEach { appearance ->
+            val isSelected = appearance == selected
+            val title = TextView(this).apply {
+                text = appearance.title
+                MapUi.headline(this)
+            }
+            val detail = TextView(this).apply {
+                text = appearance.description
+                MapUi.metadata(this)
+                setPadding(0, dp(2), 0, 0)
+            }
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                minimumHeight = dp(84)
+                setPadding(dp(10), dp(8), dp(8), dp(8))
+                setBackgroundResource(if (isSelected) R.drawable.map_focus_surface else R.drawable.map_surface)
+                contentDescription = "${appearance.title}. ${appearance.description}${if (isSelected) ". Current appearance" else ". Select appearance"}"
+                isFocusable = true
+                isClickable = true
+                setOnClickListener {
+                    if (!isSelected) {
+                        MapAppearance.select(this@ToolsActivity, appearance)
+                        recreate()
+                    }
+                }
+            }
+            row.addView(android.widget.ImageView(this).apply {
+                setImageDrawable(MapUi.illustration(this@ToolsActivity, appearance.artwork))
+                scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            }, LinearLayout.LayoutParams(dp(54), dp(68)))
+            row.addView(LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(title)
+                addView(detail)
+                if (isSelected) addView(TextView(this@ToolsActivity).apply {
+                    text = "Selected"
+                    MapUi.label(this)
+                    setTextColor(mapColor(R.color.map_accent))
+                    setPadding(0, dp(3), 0, 0)
+                })
+            }, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(10) })
+            row.addView(android.widget.RadioButton(this).apply {
+                isChecked = isSelected
+                isClickable = false
+                isFocusable = false
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                buttonTintList = android.content.res.ColorStateList.valueOf(mapColor(R.color.map_accent))
+            }, LinearLayout.LayoutParams(dp(48), dp(48)))
+            parent.addView(row, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
         }
     }
 
@@ -298,7 +367,7 @@ class ToolsActivity : AppCompatActivity() {
 
     private fun toolIcon(resource: Int) = android.widget.ImageView(this).apply {
         setImageResource(resource)
-        imageTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.map_accent))
+        imageTintList = android.content.res.ColorStateList.valueOf(mapColor(R.color.map_accent))
         background = getDrawable(R.drawable.map_tool_icon)
         setPadding(dp(10), dp(10), dp(10), dp(10))
         contentDescription = null
@@ -346,8 +415,8 @@ class ToolsActivity : AppCompatActivity() {
 
     private fun button(label: String, click: () -> Unit) = MapUi.button(this).apply {
         text = label
+        minHeight = dp(56)
         isAllCaps = false
-        minHeight = dp(48)
         minWidth = dp(48)
         setOnClickListener { click() }
     }

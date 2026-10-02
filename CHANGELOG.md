@@ -4,6 +4,8 @@
 
 ### Changed
 
+- Added persistent Colorist Daybook, Botanical Print, and Woven Poster themes with bundled type and artwork, available from Tools → Appearance (issue #205).
+
 - Applied the approved lavender workspace direction across Home, grouped Tasks, Calendar, Tools/Documents, Scan, document viewing, and shared Music controls, with paired light/dark palettes and native floating task actions (issue #203).
 
 - Reworked Home around a high-contrast local-time instrument deck, gave Tasks a live local-work summary, added a selected-date readout to Calendar, and rebuilt Tools as icon-led Documents, Scan, and Music workbench modules (issue #199).

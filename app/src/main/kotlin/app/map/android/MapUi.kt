@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Typeface
+import android.graphics.BitmapFactory
+import android.graphics.drawable.BitmapDrawable
 import android.animation.ValueAnimator
 import android.provider.Settings
 import android.view.Gravity
@@ -31,14 +33,21 @@ object MapUi {
 
     fun dp(context: Context, value: Int): Int = (value * context.resources.displayMetrics.density).roundToInt()
 
-    private fun signage(context: Context): Typeface = ResourcesCompat.getFont(context, R.font.archivo) ?: Typeface.DEFAULT
+    fun illustration(activity: Activity, resource: Int): BitmapDrawable = BitmapDrawable(
+        activity.resources,
+        BitmapFactory.decodeResource(activity.resources, resource, BitmapFactory.Options().apply { inSampleSize = 4 }),
+    )
 
-    private fun plain(context: Context): Typeface = ResourcesCompat.getFont(context, R.font.work_sans) ?: Typeface.SANS_SERIF
+    private fun signage(context: Context): Typeface = ResourcesCompat.getFont(context, MapAppearance.headingFont(context)) ?: Typeface.DEFAULT
+
+    private fun plain(context: Context): Typeface = ResourcesCompat.getFont(context, MapAppearance.bodyFont(context)) ?: Typeface.SANS_SERIF
+
+    private fun measured(context: Context): Typeface = ResourcesCompat.getFont(context, MapAppearance.labelFont(context)) ?: Typeface.MONOSPACE
 
     private fun textRole(view: TextView, size: Float, color: Int, typeface: Typeface, weight: Int? = null, width: Int? = null) {
         view.textSize = size
         view.typeface = typeface
-        view.setTextColor(view.context.getColor(color))
+        view.setTextColor(view.context.mapColor(color))
         if (weight != null) {
             view.fontVariationSettings = if (width != null) "'wght' $weight, 'wdth' $width" else "'wght' $weight"
         }
@@ -53,13 +62,22 @@ object MapUi {
 
     fun section(view: TextView) = textRole(view, 16f, R.color.map_text, signage(view.context), weight = 700)
 
+    fun taskTitle(view: TextView) = textRole(view, 16f, R.color.map_text, plain(view.context), weight = 700)
+
     fun body(view: TextView) = textRole(view, 16f, R.color.map_text, plain(view.context), weight = 400)
 
-    fun label(view: TextView) = textRole(view, 14f, R.color.map_text, signage(view.context), weight = 700)
+    fun label(view: TextView) = textRole(view, 14f, R.color.map_text, measured(view.context), weight = 500)
 
     fun metadata(view: TextView) = textRole(view, 13f, R.color.map_muted, plain(view.context), weight = 500)
 
-    fun caption(view: TextView) = textRole(view, 12f, R.color.map_muted, plain(view.context), weight = 400)
+    fun caption(view: TextView) = textRole(view, 12f, R.color.map_muted, measured(view.context), weight = 400)
+
+    fun tintCheckbox(view: android.widget.CompoundButton) {
+        view.buttonTintList = android.content.res.ColorStateList(
+            arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()),
+            intArrayOf(view.context.mapColor(R.color.map_accent), view.context.mapColor(R.color.map_muted)),
+        )
+    }
 
     /** Large numeric readouts: clock, group totals — set in the display face at full weight. */
     fun numeral(view: TextView, size: Float = 16f, color: Int = R.color.map_text) =
@@ -70,9 +88,9 @@ object MapUi {
             gravity = Gravity.CENTER_VERTICAL
             contentDescription = "MAP. Private data stays on this device."
             addView(TextView(activity).apply {
-                text = "map"
+                text = "MAP"
                 textRole(this, 18f, R.color.map_text, signage(activity), weight = 800)
-                setTextColor(activity.getColor(R.color.map_text))
+                setTextColor(activity.mapColor(R.color.map_text))
             })
             addView(View(activity).apply {
                 setBackgroundResource(R.drawable.map_status_dot)
@@ -150,9 +168,10 @@ object MapUi {
 
     fun applySystemBarInsets(view: View) {
         val activity = view.context as? Activity
-        val lightTheme = view.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK !=
-            android.content.res.Configuration.UI_MODE_NIGHT_YES
-        activity?.window?.let { WindowInsetsControllerCompat(it, it.decorView).isAppearanceLightNavigationBars = lightTheme }
+        activity?.window?.let {
+            WindowInsetsControllerCompat(it, it.decorView).isAppearanceLightNavigationBars =
+                androidx.core.graphics.ColorUtils.calculateLuminance(MapAppearance.color(view.context, R.color.map_nav_background)) > 0.5
+        }
         val initialLeft = view.paddingLeft
         val initialTop = view.paddingTop
         val initialRight = view.paddingRight
@@ -192,8 +211,14 @@ object MapUi {
             item.contentDescription = "${item.title} navigation"
         }
         navigation.labelVisibilityMode = NavigationBarView.LABEL_VISIBILITY_LABELED
-        navigation.itemActiveIndicatorColor = ContextCompat.getColorStateList(activity, R.color.map_selection)
-        navigation.backgroundTintList = ContextCompat.getColorStateList(activity, R.color.map_nav_background)
+        navigation.itemActiveIndicatorColor = android.content.res.ColorStateList.valueOf(activity.mapColor(R.color.map_nav_background))
+        navigation.backgroundTintList = android.content.res.ColorStateList.valueOf(activity.mapColor(R.color.map_nav_background))
+        val navigationColors = android.content.res.ColorStateList(
+            arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()),
+            intArrayOf(MapAppearance.color(activity, MapAppearance.selected(activity).highlight), activity.mapColor(R.color.map_nav_muted)),
+        )
+        navigation.itemIconTintList = navigationColors
+        navigation.itemTextColor = navigationColors
         navigation.elevation = 0f
         if (navigation is NavigationRailView && activity.resources.configuration.fontScale >= 1.3f) {
             navigation.itemIconGravity = NavigationBarView.ITEM_ICON_GRAVITY_START
@@ -225,19 +250,19 @@ object MapUi {
         insetTop = 0
         insetBottom = 0
         cornerRadius = dp(activity, 16)
-        backgroundTintList = ContextCompat.getColorStateList(activity, R.color.map_card)
-        strokeColor = ContextCompat.getColorStateList(activity, R.color.map_divider)
+        backgroundTintList = android.content.res.ColorStateList.valueOf(activity.mapColor(R.color.map_card))
+        strokeColor = android.content.res.ColorStateList.valueOf(activity.mapColor(R.color.map_divider))
         strokeWidth = dp(activity, 1)
-        setTextColor(ContextCompat.getColorStateList(activity, R.color.map_button_text))
+        setTextColor(activity.mapColor(R.color.map_text))
         typeface = plain(activity)
         textSize = 14f
     }
 
     fun primaryButton(activity: Activity): MaterialButton = button(activity).apply {
-        backgroundTintList = ContextCompat.getColorStateList(activity, R.color.map_accent)
+        backgroundTintList = android.content.res.ColorStateList.valueOf(activity.mapColor(R.color.map_accent))
         strokeWidth = 0
-        setTextColor(ContextCompat.getColorStateList(activity, R.color.map_primary_button_text))
-        typeface = signage(activity)
+        setTextColor(activity.mapColor(R.color.map_on_accent))
+        typeface = plain(activity)
         textSize = 16f
     }
 }

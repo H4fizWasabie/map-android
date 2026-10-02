@@ -40,6 +40,7 @@ class TaskReminderReceiver : BroadcastReceiver() {
             taskId.hashCode(),
             android.app.Notification.Builder(context, channelId)
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setColor(context.resources.getColor(MapAppearance.selected(context).accent, context.theme))
                 .setContentTitle("MAP reminder")
                 .setContentText(title)
                 .setContentIntent(openApp)

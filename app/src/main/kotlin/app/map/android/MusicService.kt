@@ -125,6 +125,7 @@ class MusicService : Service() {
                 ACTION_EQ_PRESET -> usePreset(intent.getShortExtra(EXTRA_PRESET, 0))
                 ACTION_BASS -> setBass(intent.getShortExtra(EXTRA_LEVEL, 0))
                 ACTION_VIRTUALIZER -> setVirtualizer(intent.getShortExtra(EXTRA_LEVEL, 0))
+                ACTION_APPEARANCE_CHANGED -> Unit
                 ACTION_STOP -> {
                     stopPlayback()
                     return START_NOT_STICKY
@@ -433,6 +434,7 @@ class MusicService : Service() {
         val next = serviceIntent(13, ACTION_NEXT)
         return Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(if (playing) android.R.drawable.ic_media_play else android.R.drawable.ic_media_pause)
+            .setColor(resources.getColor(MapAppearance.selected(this).accent, theme))
             .setContentTitle(item?.title ?: "MAP Music")
             .setContentText(item?.artist ?: "Ready to play")
             .setContentIntent(content)
@@ -513,6 +515,7 @@ class MusicService : Service() {
         const val ACTION_EQ_PRESET = "app.map.android.music.EQ_PRESET"
         const val ACTION_BASS = "app.map.android.music.BASS"
         const val ACTION_VIRTUALIZER = "app.map.android.music.VIRTUALIZER"
+        const val ACTION_APPEARANCE_CHANGED = "app.map.android.music.APPEARANCE_CHANGED"
         const val ACTION_STATE = "app.map.android.music.STATE"
         const val EXTRA_URI = "uri"
         const val EXTRA_RESTORE_POSITION = "restore_position"

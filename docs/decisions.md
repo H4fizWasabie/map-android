@@ -4,7 +4,8 @@
 - Application ID: `app.map.android`.
 - Home/Today is the primary surface. Home, Calendar, Tasks, and Tools are primary navigation; Tools contains Documents, Scan, and Music as personal tools.
 - Issue #203 records the user-approved **Lavender workspace** redesign: Design 2 typography, clean spacing and rounded surfaces, adapted with lavender warmth from Design 1. The reviewed Home/Documents/Tasks comp is `.impeccable/mocks/lavender-approved.png`; this supersedes the Field instrument world from issue #199.
-- The shared visual system uses warm off-white, charcoal, lavender focus and purple actions, plus a paired plum dark scheme. Archivo carries headings/labels/numerals; Work Sans carries body/metadata. Tonal rounded surfaces and row rules organize real content; keep 48dp targets, accessible contrast and restrained motion. Primary navigation remains Home, Calendar, Tasks and Tools. Native floating Add task actions stay reachable; short landscape and large text retain an inline action.
+- Issue #205 supersedes lavender as MAP's active visual system with the selectable Colorist Daybook, Botanical Print, and Woven Poster themes. Colorist Daybook is the first-install default; the user's choice is private on-device state and carries through every screen and dialog in both system light and dark mode.
+- Issue #203's Lavender/Archivo/Work Sans system is historical. Issue #205 defines the active theme palettes, type families, artwork, surfaces, and selected-theme action colors; all three retain Home, Calendar, Tasks, and Tools navigation, 48dp targets, accessible contrast, and large-text reachability.
 - Home pairs a custom, non-animated analog dial with Android TextClock; both represent current device-local time. TextClock retains the user's 12/24-hour preference and is the accessible exact-time readout. The dial refreshes on system time, date, locale, and timezone changes. Empty task states stay empty; do not create sample appointments or other task data.
 - Use Material 3 structure, calm tonal surfaces, restrained depth, one active accent, accessible contrast, system light/dark themes, and minimal motion. Avoid full neumorphism, dense card grids, and decorative productivity-game patterns.
 - Scheduled tasks appear in both Tasks and Calendar; unscheduled tasks remain in Inbox.
@@ -27,6 +28,6 @@
 - Music restores the last track, queue, playback position, shuffle, repeat, and equalizer state between sessions, but never starts playback automatically after MAP or the device restarts.
 - Active playback exposes a mini-player across MAP plus notification and lock-screen controls. Sleep timer supports custom duration, end of track, and end of queue.
 - Equalizer exposes available bands, presets, and device-supported effects; unsupported effects are clearly hidden or disabled. Missing audio files remain retained as unavailable records.
-- Music follows the Lavender workspace visual system: primary playback controls stay visible, while queue, equalizer, sleep timer, and metadata use focused sheets or secondary screens rather than crowding Now Playing.
+- Music follows the selected appearance; primary playback controls stay visible, while queue, equalizer, sleep timer, and metadata use focused sheets or secondary screens rather than crowding Now Playing.
 - Tasks support Inbox, Overdue, Today, Upcoming, recurrence, completion history, reminders, and bounded snooze.
 - Open tasks can be deleted from Task details after confirmation; deletion cancels its reminder and removes only that pending task.

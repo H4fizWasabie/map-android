@@ -37,7 +37,7 @@ import java.util.concurrent.Executors
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
-class DocumentViewerActivity : AppCompatActivity() {
+class DocumentViewerActivity : MapActivity() {
     private lateinit var database: DocumentDatabase
     private lateinit var uri: Uri
     private var mime = "application/pdf"
@@ -174,7 +174,7 @@ class DocumentViewerActivity : AppCompatActivity() {
         pdfBaseWidth = (resources.displayMetrics.widthPixels - dp(32)).coerceAtLeast(dp(240))
         val pages = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(getColor(R.color.map_divider))
+            setBackgroundColor(mapColor(R.color.map_divider))
             layoutParams = ViewGroup.LayoutParams(pdfBaseWidth, -2)
         }
         pdfPages = dimensions.mapIndexed { index, size ->
@@ -353,7 +353,7 @@ class DocumentViewerActivity : AppCompatActivity() {
 
     private fun viewerRoot(): LinearLayout = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
-        setBackgroundColor(getColor(R.color.map_background))
+        setBackgroundColor(mapColor(R.color.map_background))
         MapUi.applySystemBarInsets(this)
         addView(MapUi.brandMark(this@DocumentViewerActivity), LinearLayout.LayoutParams(-1, -2).apply {
             marginStart = dp(16)
@@ -367,7 +367,7 @@ class DocumentViewerActivity : AppCompatActivity() {
             setPadding(dp(16), dp(6), dp(16), dp(4))
             addView(ImageButton(this@DocumentViewerActivity).apply {
                 setImageResource(R.drawable.ic_map_back)
-                imageTintList = ColorStateList.valueOf(getColor(R.color.map_text))
+                imageTintList = ColorStateList.valueOf(mapColor(R.color.map_text))
                 setBackgroundResource(R.drawable.map_button_surface)
                 backgroundTintList = null
                 contentDescription = "Back"
@@ -546,7 +546,7 @@ class DocumentViewerActivity : AppCompatActivity() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(24), dp(6), dp(24), dp(24))
-            setBackgroundColor(getColor(R.color.map_background))
+            setBackgroundColor(mapColor(R.color.map_background))
         }
         MapUi.addBrandMark(this, root)
         root.addView(button("Back") { finish() })
@@ -558,7 +558,7 @@ class DocumentViewerActivity : AppCompatActivity() {
         root.addView(TextView(this).apply {
             text = message
             MapUi.body(this)
-            setTextColor(getColor(R.color.map_muted))
+            setTextColor(mapColor(R.color.map_muted))
             setPadding(0, 0, 0, dp(16))
         })
         root.addView(MapUi.primaryButton(this).apply {
@@ -630,7 +630,7 @@ class DocumentViewerActivity : AppCompatActivity() {
             canvas.drawColor(Color.WHITE)
             bitmap?.let { canvas.drawBitmap(it, null, Rect(0, 0, width, height), paint) }
                 ?: run {
-                    paint.color = getColor(R.color.map_muted)
+                    paint.color = Color.DKGRAY
                     paint.textSize = dp(14).toFloat()
                     canvas.drawText("Page ${index + 1}", dp(16).toFloat(), dp(28).toFloat(), paint)
                 }

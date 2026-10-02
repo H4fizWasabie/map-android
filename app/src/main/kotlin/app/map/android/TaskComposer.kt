@@ -208,7 +208,7 @@ internal class TaskComposer(
 
         val sheet = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(activity.getColor(R.color.map_card))
+            setBackgroundColor(activity.mapColor(R.color.map_card))
             addView(TextView(activity).apply {
                 text = "New task"
                 MapUi.headline(this)
@@ -257,7 +257,7 @@ internal class TaskComposer(
         composerDialog.setContentView(sheet)
         composerDialog.show()
         composerDialog.window?.apply {
-            setBackgroundDrawable(ColorDrawable(activity.getColor(R.color.map_card)))
+            setBackgroundDrawable(ColorDrawable(activity.mapColor(R.color.map_card)))
             setLayout(-1, -2)
             attributes = attributes.apply { gravity = Gravity.BOTTOM }
             setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
