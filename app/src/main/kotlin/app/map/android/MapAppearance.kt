@@ -88,7 +88,8 @@ abstract class MapActivity : AppCompatActivity() {
         window.navigationBarColor = MapAppearance.color(this, R.color.map_nav_background)
         androidx.core.view.WindowInsetsControllerCompat(window, window.decorView).apply {
             isAppearanceLightStatusBars = !dark
-            isAppearanceLightNavigationBars = false
+            isAppearanceLightNavigationBars =
+                androidx.core.graphics.ColorUtils.calculateLuminance(MapAppearance.color(this@MapActivity, R.color.map_nav_background)) > 0.5
         }
     }
 

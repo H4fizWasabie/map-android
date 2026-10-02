@@ -630,7 +630,7 @@ class DocumentViewerActivity : MapActivity() {
             canvas.drawColor(Color.WHITE)
             bitmap?.let { canvas.drawBitmap(it, null, Rect(0, 0, width, height), paint) }
                 ?: run {
-                    paint.color = mapColor(R.color.map_muted)
+                    paint.color = Color.DKGRAY
                     paint.textSize = dp(14).toFloat()
                     canvas.drawText("Page ${index + 1}", dp(16).toFloat(), dp(28).toFloat(), paint)
                 }

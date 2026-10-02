@@ -56,8 +56,8 @@
     <color name="woven_background">#F2E8D4</color>
     <color name="woven_text">#182B49</color>
     <color name="woven_muted">#53617A</color>
-    <color name="woven_accent">#B64A31</color>
-    <color name="woven_accent_pressed">#963A28</color>
+    <color name="woven_accent">#A03C27</color>
+    <color name="woven_accent_pressed">#7F2E1E</color>
     <color name="woven_selection">#F1D5C5</color>
     <color name="woven_on_accent">#FFFFFF</color>
     <color name="woven_divider">#D9CDBA</color>
@@ -73,6 +73,6 @@
     <color name="daybook_nav_muted">#C7D8CB</color>
     <color name="botanical_highlight">#F0C94B</color>
     <color name="botanical_nav_muted">#C1D0C1</color>
-    <color name="woven_highlight">#B64A31</color>
+    <color name="woven_highlight">#A03C27</color>
     <color name="woven_nav_muted">#182B49</color>
 </resources>

@@ -168,9 +168,10 @@ object MapUi {
 
     fun applySystemBarInsets(view: View) {
         val activity = view.context as? Activity
-        val lightTheme = view.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK !=
-            android.content.res.Configuration.UI_MODE_NIGHT_YES
-        activity?.window?.let { WindowInsetsControllerCompat(it, it.decorView).isAppearanceLightNavigationBars = lightTheme }
+        activity?.window?.let {
+            WindowInsetsControllerCompat(it, it.decorView).isAppearanceLightNavigationBars =
+                androidx.core.graphics.ColorUtils.calculateLuminance(MapAppearance.color(view.context, R.color.map_nav_background)) > 0.5
+        }
         val initialLeft = view.paddingLeft
         val initialTop = view.paddingTop
         val initialRight = view.paddingRight

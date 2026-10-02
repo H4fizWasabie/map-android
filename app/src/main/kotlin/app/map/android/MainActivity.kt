@@ -111,11 +111,15 @@ class MainActivity : MapActivity() {
         super.onStop()
     }
 
-    override fun onResume() {
-        super.onResume()
+    private fun updateStatusBar() {
         val coloristHome = selectedView == "Home" && MapAppearance.selected(this) == MapAppearance.COLORIST_DAYBOOK
         window.statusBarColor = mapColor(if (coloristHome) R.color.map_accent else R.color.map_background)
         androidx.core.view.WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = !coloristHome && resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK != android.content.res.Configuration.UI_MODE_NIGHT_YES
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateStatusBar()
         val refresh = !initialResumePending
         initialResumePending = false
         if (::database.isInitialized) {
@@ -205,16 +209,18 @@ class MainActivity : MapActivity() {
             setPadding(0, dp(2), 0, dp(8))
             maxLines = 2
         })
+        // Stack the dial under the clock when large fonts leave the clock too little width.
+        val stacked = resources.configuration.fontScale > 1.3f
         val readout = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
+            orientation = if (stacked) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
+            gravity = if (stacked) Gravity.START else Gravity.CENTER_VERTICAL
         }
         readout.addView(TextClock(this).apply {
             format24Hour = android.text.format.DateFormat.getBestDateTimePattern(Locale.getDefault(), "Hm")
             format12Hour = android.text.format.DateFormat.getBestDateTimePattern(Locale.getDefault(), "hm")
             MapUi.numeral(this, size = if (compact) 22f else 30f, color = R.color.map_instrument_ink)
             maxLines = 1
-        }, LinearLayout.LayoutParams(0, -2, 1f))
+        }, if (stacked) LinearLayout.LayoutParams(-1, -2) else LinearLayout.LayoutParams(0, -2, 1f))
         readout.addView(FieldClockDialView(this), LinearLayout.LayoutParams(dp(if (compact) 48 else 68), dp(if (compact) 48 else 68)))
         details.addView(readout)
         if (appearance == MapAppearance.COLORIST_DAYBOOK) setInstrumentInk(details)
@@ -280,6 +286,7 @@ class MainActivity : MapActivity() {
         fill: (LinearLayout) -> Unit,
     ) {
         musicPlayButton = null
+        updateStatusBar()
         content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             val shortHeight = resources.configuration.screenHeightDp < 500
