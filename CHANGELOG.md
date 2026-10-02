@@ -11,6 +11,7 @@
 
 ### Fixed
 
+- Task import no longer merges distinct tasks that share a title and date, and rejects oversized files before reading them fully (issue #212).
 - Task reminders are now rescheduled after an app update and after a clock or timezone change, not only after reboot (issue #208).
 
 ### Changed
