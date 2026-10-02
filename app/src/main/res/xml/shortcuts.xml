@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="add_task"
+        android:enabled="true"
+        android:icon="@drawable/ic_map_add"
+        android:shortcutShortLabel="@string/shortcut_add_task"
+        android:shortcutLongLabel="@string/shortcut_add_task">
+        <intent
+            android:action="app.map.android.action.ADD_TASK"
+            android:targetClass="app.map.android.MainActivity"
+            android:targetPackage="app.map.android" />
+    </shortcut>
+</shortcuts>
