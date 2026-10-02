@@ -140,6 +140,10 @@ class MainActivity : MapActivity() {
         selectedView = if (intent.getBooleanExtra(EXTRA_OPEN_TASKS, false)) "Tasks" else "Home"
         pendingTaskId = intent.getLongExtra(EXTRA_OPEN_TASK_ID, -1L).takeIf { it != -1L }
         if (selectedView == "Tasks") showTasks() else showHome()
+        if (intent.action == ACTION_ADD_TASK) {
+            intent.action = null
+            showAddTaskDialog()
+        }
     }
 
     private fun showHome() {
@@ -919,6 +923,7 @@ class MainActivity : MapActivity() {
     private fun formatDateTime(value: Long) = java.text.SimpleDateFormat("EEE, d MMM · HH:mm", java.util.Locale.getDefault()).format(java.util.Date(value))
 
     companion object {
+        const val ACTION_ADD_TASK = "app.map.android.action.ADD_TASK"
         const val EXTRA_OPEN_TASKS = "open_tasks"
         const val EXTRA_OPEN_TASK_ID = "open_task_id"
         private const val NOTIFICATION_REQUEST = 40
