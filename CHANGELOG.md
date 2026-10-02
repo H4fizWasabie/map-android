@@ -4,6 +4,7 @@
 
 ### Added
 
+- Tasks can be searched by title, notes, and tags; type `#tag` to filter by tag (issue #211).
 - Reminder notifications now have Done and Snooze actions and a MAP icon, so a task can be handled without opening the app (issue #210).
 
 ### Fixed
