@@ -59,6 +59,7 @@ object TaskBackup {
         }
     }
 
-    /** Identity used to skip tasks that are already present when importing. */
-    fun key(task: Task): String = listOf(task.title, task.dueAt, task.recurrence, task.completed).joinToString("\u0000")
+    /** Identity used to skip tasks that are already present. Includes every content field so distinct tasks are never merged. */
+    fun key(task: Task): String =
+        listOf(task.title, task.notes, task.dueAt, task.recurrence, task.tags, task.allDay, task.completed, task.completedAt).joinToString("\u0000")
 }

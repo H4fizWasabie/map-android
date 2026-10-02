@@ -289,9 +289,20 @@ class ToolsActivity : MapActivity() {
         runOnUiThread { Toast.makeText(this, message, Toast.LENGTH_LONG).show() }
     }
 
+    private fun java.io.InputStream.readNBytesUpTo(limit: Int): ByteArray {
+        val out = java.io.ByteArrayOutputStream()
+        val buffer = ByteArray(8192)
+        while (out.size() < limit) {
+            val read = read(buffer, 0, minOf(buffer.size, limit - out.size()))
+            if (read < 0) break
+            out.write(buffer, 0, read)
+        }
+        return out.toByteArray()
+    }
+
     private fun importTasks(uri: Uri) = backupExecutor.execute {
         val message = try {
-            val bytes = contentResolver.openInputStream(uri)!!.use { it.readBytes() }
+            val bytes = contentResolver.openInputStream(uri)!!.use { it.readNBytesUpTo(MAX_BACKUP_BYTES + 1) }
             if (bytes.size > MAX_BACKUP_BYTES) throw TaskBackup.InvalidBackup("This file is too large to be a MAP task export.")
             val parsed = TaskBackup.parse(String(bytes))
             val database = TaskDatabase(this)

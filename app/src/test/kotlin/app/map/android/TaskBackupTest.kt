@@ -16,9 +16,11 @@ class TaskBackupTest {
     }
 
     @Test
-    fun keyIgnoresIdAndSeparatesCompletion() {
-        assertEquals(TaskBackup.key(open), TaskBackup.key(open.copy(id = 9, notes = "changed")))
+    fun keyIgnoresIdButSeparatesContent() {
+        assertEquals(TaskBackup.key(open), TaskBackup.key(open.copy(id = 9)))
         assertNotEquals(TaskBackup.key(open), TaskBackup.key(open.copy(completed = true)))
+        assertNotEquals(TaskBackup.key(open), TaskBackup.key(open.copy(notes = "other")))
+        assertNotEquals(TaskBackup.key(open), TaskBackup.key(open.copy(tags = "other")))
     }
 
     @Test
