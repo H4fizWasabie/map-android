@@ -9,8 +9,10 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
+import android.text.Editable
 import android.text.Spannable
 import android.text.SpannableString
+import android.text.TextWatcher
 import android.text.style.ImageSpan
 import android.view.Gravity
 import android.view.View
@@ -48,6 +50,7 @@ class MainActivity : MapActivity() {
     private lateinit var content: LinearLayout
     private var undoState: UndoState? = null
     private var selectedView = "Home"
+    private var taskQuery = ""
     private var pendingTaskId: Long? = null
     private var contentScroll: ScrollView? = null
     private var restoredScrollY = 0
@@ -244,13 +247,30 @@ class MainActivity : MapActivity() {
             addTaskOverview(body, tasks, today, tomorrow)
             addUndoBar(body)
             if (tasks.isEmpty()) addEmpty(body, "No tasks yet.") else {
-                val groups = listOf(
-                    "Overdue" to tasks.filter { it.dueAt != null && it.dueAt < today },
-                    "Today" to tasks.filter { it.dueAt != null && it.dueAt in today until tomorrow },
-                    "Upcoming" to tasks.filter { it.dueAt != null && it.dueAt >= tomorrow },
-                    "Inbox" to tasks.filter { it.dueAt == null },
-                )
-                groups.filter { it.second.isNotEmpty() }.forEach { (label, items) -> addTaskSection(body, label, items) }
+                val results = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+                fun showResults() {
+                    results.removeAllViews()
+                    val shown = tasks.filter { TaskSearch.matches(it, taskQuery) }
+                    if (shown.isEmpty()) addEmpty(results, "No tasks match your search.") else listOf(
+                        "Overdue" to shown.filter { it.dueAt != null && it.dueAt < today },
+                        "Today" to shown.filter { it.dueAt != null && it.dueAt in today until tomorrow },
+                        "Upcoming" to shown.filter { it.dueAt != null && it.dueAt >= tomorrow },
+                        "Inbox" to shown.filter { it.dueAt == null },
+                    ).filter { it.second.isNotEmpty() }.forEach { (label, items) -> addTaskSection(results, label, items) }
+                }
+                body.addView(EditText(this).apply {
+                    hint = "Search tasks, or #tag"
+                    setSingleLine(true)
+                    setText(taskQuery)
+                    contentDescription = "Search tasks"
+                    addTextChangedListener(object : TextWatcher {
+                        override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+                        override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) { taskQuery = s?.toString().orEmpty(); showResults() }
+                        override fun afterTextChanged(s: Editable?) = Unit
+                    })
+                }, LinearLayout.LayoutParams(-1, dp(56)))
+                body.addView(results)
+                showResults()
             }
             database.recentCompleted().takeIf { it.isNotEmpty() }?.let { addActivity(body, it) }
         }
