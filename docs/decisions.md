@@ -31,3 +31,4 @@
 - Music follows the selected appearance; primary playback controls stay visible, while queue, equalizer, sleep timer, and metadata use focused sheets or secondary screens rather than crowding Now Playing.
 - Tasks support Inbox, Overdue, Today, Upcoming, recurrence, completion history, reminders, and bounded snooze.
 - Open tasks can be deleted from Task details after confirmation; deletion cancels its reminder and removes only that pending task.
+- Tasks can be exported to and imported from a versioned JSON file chosen through the system file picker (Tools → Backup). Import validates the whole file first, rejects newer versions, never deletes or overwrites existing tasks, and skips tasks already present. This is user-initiated local file I/O, not sync.

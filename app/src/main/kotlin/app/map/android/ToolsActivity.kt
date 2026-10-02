@@ -10,9 +10,14 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.addCallback
 import androidx.core.widget.doAfterTextChanged
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.concurrent.Executors
 
 class ToolsActivity : MapActivity() {
     private lateinit var documents: DocumentDatabase
@@ -22,6 +27,7 @@ class ToolsActivity : MapActivity() {
     private var documentsMode = false
     private var documentQuery = ""
     private var documentFilter = "Recent"
+    private val backupExecutor = Executors.newSingleThreadExecutor()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,6 +66,7 @@ class ToolsActivity : MapActivity() {
     }
 
     override fun onDestroy() {
+        backupExecutor.shutdown()
         if (::documents.isInitialized) documents.close()
         super.onDestroy()
     }
@@ -99,6 +106,7 @@ class ToolsActivity : MapActivity() {
             addScan(body)
             addMusic(body)
             if (compact) addAppearanceSelector(body)
+            addBackup(body)
         }
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -250,6 +258,57 @@ class ToolsActivity : MapActivity() {
         }
     }
 
+    private fun addBackup(parent: LinearLayout) {
+        parent.addView(TextView(this).apply {
+            text = "Backup"
+            MapUi.section(this)
+            setPadding(0, dp(22), 0, dp(4))
+        })
+        addToolRow(parent, "Export tasks", "Save all tasks to a file you choose.", "Export") {
+            startActivityForResult(
+                Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("application/json")
+                    .putExtra(Intent.EXTRA_TITLE, "map-tasks-${SimpleDateFormat("yyyyMMdd", Locale.US).format(Date())}.json"),
+                EXPORT_REQUEST
+            )
+        }
+        addToolRow(parent, "Import tasks", "Add tasks from an export. Existing tasks are kept.", "Import") {
+            startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"), IMPORT_REQUEST)
+        }
+    }
+
+    private fun exportTasks(uri: Uri) = backupExecutor.execute {
+        val message = try {
+            val database = TaskDatabase(this)
+            val tasks = try { database.allTasks() } finally { database.close() }
+            val json = TaskBackup.toJson(tasks, System.currentTimeMillis())
+            contentResolver.openOutputStream(uri, "wt")!!.use { it.write(json.toByteArray()) }
+            "Exported ${tasks.size} tasks."
+        } catch (error: Exception) {
+            "Export failed. Nothing was changed."
+        }
+        runOnUiThread { Toast.makeText(this, message, Toast.LENGTH_LONG).show() }
+    }
+
+    private fun importTasks(uri: Uri) = backupExecutor.execute {
+        val message = try {
+            val bytes = contentResolver.openInputStream(uri)!!.use { it.readBytes() }
+            if (bytes.size > MAX_BACKUP_BYTES) throw TaskBackup.InvalidBackup("This file is too large to be a MAP task export.")
+            val parsed = TaskBackup.parse(String(bytes))
+            val database = TaskDatabase(this)
+            val inserted = try { database.importTasks(parsed) } finally { database.close() }
+            val now = System.currentTimeMillis()
+            TaskReminderReceiver.reminderTargets(inserted.filter { !it.completed }, now).forEach { (task, dueAt) ->
+                ReminderScheduler.schedule(this, task.id, task.title, dueAt)
+            }
+            "Imported ${inserted.size} tasks, skipped ${parsed.size - inserted.size} already here."
+        } catch (error: TaskBackup.InvalidBackup) {
+            "${error.message} Nothing was imported."
+        } catch (error: Exception) {
+            "Could not read that file. Nothing was imported."
+        }
+        runOnUiThread { Toast.makeText(this, message, Toast.LENGTH_LONG).show() }
+    }
+
     private fun addAppearanceSelector(parent: LinearLayout) {
         parent.addView(TextView(this).apply {
             text = "Appearance"
@@ -320,6 +379,7 @@ class ToolsActivity : MapActivity() {
         val iconResource = when (title) {
             "Documents" -> R.drawable.ic_map_documents
             "Scan" -> R.drawable.ic_map_scan
+            "Export tasks", "Import tasks" -> R.drawable.ic_map_tasks
             else -> R.drawable.ic_map_music
         }
         val copy = LinearLayout(this).apply {
@@ -394,6 +454,10 @@ class ToolsActivity : MapActivity() {
     @Deprecated("Android activity result API retained for this small native app")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (resultCode == RESULT_OK && data?.data != null) {
+            if (requestCode == EXPORT_REQUEST) return exportTasks(data.data!!)
+            if (requestCode == IMPORT_REQUEST) return importTasks(data.data!!)
+        }
         if (requestCode != DOCUMENT_REQUEST || resultCode != RESULT_OK || data?.data == null) return
         val uri = data.data!!
         try {
@@ -425,6 +489,9 @@ class ToolsActivity : MapActivity() {
 
     companion object {
         private const val DOCUMENT_REQUEST = 31
+        private const val EXPORT_REQUEST = 32
+        private const val IMPORT_REQUEST = 33
+        private const val MAX_BACKUP_BYTES = 20_000_000
         private const val STATE_SCROLL_Y = "scroll_y"
     }
 }
