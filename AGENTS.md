@@ -18,6 +18,18 @@ MAP is a public, personal-first Android app. Keep the product local-first and th
 - Keep accessibility, explicit error states, and reduced motion in every UI flow.
 - Never commit credentials, signing keys, personal files, or generated build output.
 
+## Code navigation (Graft)
+
+This repo is indexed by Graft: a local, gitignored graph (`graft/`) of every symbol, its `file:line` span and who calls it. It rebuilds against the working tree before each query, so results include uncommitted edits. Use it before grepping or reading files to find or understand code:
+
+- `graft ask "<task>" --source` — locate and understand; ranked nodes with the code inlined. Keep the query short and built around identifiers.
+- `graft grep "<regex>"` — every occurrence, grouped by enclosing symbol. It takes a regex, so escape parentheses (`Stream\(`).
+- `graft skeleton <file>` — a file's full API with spans, far cheaper than reading it.
+- `graft callers <symbol> [--depth all]` — who calls it, or the full blast radius. Run it before changing or renaming a symbol.
+- `graft map` — orientation only.
+
+If `graft` is not installed or `graft/` is missing, fall back to grep and read, or run `graft build` to create the graph. Never commit `graft/`.
+
 ## Verification
 
 Run the checks in [docs/build.md](docs/build.md) before pushing. A release also needs a manual phone smoke test and a signed APK; release signing stays outside this repository.
