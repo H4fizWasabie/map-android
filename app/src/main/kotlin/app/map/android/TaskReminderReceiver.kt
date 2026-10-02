@@ -11,7 +11,7 @@ import android.os.Build
 
 class TaskReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
+        if (intent.action in RESTORE_ACTIONS) {
             restoreReminders(context)
             return
         }
@@ -53,13 +53,24 @@ class TaskReminderReceiver : BroadcastReceiver() {
         val now = System.currentTimeMillis()
         val database = TaskDatabase(context)
         try {
-            database.openTasks().forEach { task ->
-                task.dueAt?.takeIf { it > now }?.let { dueAt ->
-                    ReminderScheduler.schedule(context, task.id, task.title, dueAt)
-                }
+            reminderTargets(database.openTasks(), now).forEach { (task, dueAt) ->
+                ReminderScheduler.schedule(context, task.id, task.title, dueAt)
             }
         } finally {
             database.close()
         }
+    }
+
+    companion object {
+        // Alarms are lost on reboot and app update, and stale after a clock or timezone change.
+        val RESTORE_ACTIONS = setOf(
+            Intent.ACTION_BOOT_COMPLETED,
+            Intent.ACTION_MY_PACKAGE_REPLACED,
+            Intent.ACTION_TIME_CHANGED,
+            Intent.ACTION_TIMEZONE_CHANGED
+        )
+
+        fun reminderTargets(tasks: List<Task>, now: Long): List<Pair<Task, Long>> =
+            tasks.mapNotNull { task -> task.dueAt?.takeIf { it > now }?.let { task to it } }
     }
 }

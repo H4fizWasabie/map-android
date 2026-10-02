@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Task reminders are now rescheduled after an app update and after a clock or timezone change, not only after reboot (issue #208).
+
 ### Changed
 
 - Added persistent Colorist Daybook, Botanical Print, and Woven Poster themes with bundled type and artwork, available from Tools → Appearance (issue #205).
