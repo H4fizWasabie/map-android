@@ -4,6 +4,7 @@
 
 ### Added
 
+- Tools → Backup exports all tasks to a JSON file and imports them back without duplicating existing tasks (issue #212).
 - Long-pressing the MAP launcher icon offers an Add task shortcut that opens the composer directly (issue #213).
 - Tasks can be searched by title, notes, and tags; type `#tag` to filter by tag (issue #211).
 - Reminder notifications now have Done and Snooze actions and a MAP icon, so a task can be handled without opening the app (issue #210).

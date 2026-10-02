@@ -50,6 +50,37 @@ class TaskDatabase(context: Context) : SQLiteOpenHelper(context, "map.db", null,
 
     fun openTasks(): List<Task> = queryTasks("completed = 0")
 
+    fun allTasks(): List<Task> = queryTasks("1 = 1")
+
+    /** Inserts tasks not already present (by [TaskBackup.key]) and returns the inserted ones with their new ids. */
+    fun importTasks(tasks: List<Task>): List<Task> {
+        val known = allTasks().mapTo(HashSet(), TaskBackup::key)
+        val inserted = mutableListOf<Task>()
+        writableDatabase.beginTransaction()
+        try {
+            tasks.forEach { task ->
+                if (!known.add(TaskBackup.key(task))) return@forEach
+                val id = writableDatabase.insertOrThrow("tasks", null, ContentValues().apply {
+                    put("title", task.title)
+                    put("notes", task.notes)
+                    task.dueAt?.let { put("due_at", it) }
+                    put("recurrence", task.recurrence)
+                    put("tags", task.tags)
+                    put("all_day", if (task.allDay) 1 else 0)
+                    put("completed", if (task.completed) 1 else 0)
+                    put("created_at", System.currentTimeMillis())
+                    task.completedAt?.let { put("completed_at", it) }
+                })
+                inserted += task.copy(id = id)
+            }
+            writableDatabase.setTransactionSuccessful()
+        } finally {
+            writableDatabase.endTransaction()
+        }
+        FocusWidgetProvider.refresh(appContext)
+        return inserted
+    }
+
     fun recentCompleted(): List<Task> = queryTasks("completed = 1", "20")
 
     fun updateTask(task: Task, title: String, notes: String, tags: String, dueAt: Long?, recurrence: String, allDay: Boolean): Boolean {
