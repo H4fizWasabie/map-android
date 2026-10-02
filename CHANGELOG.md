@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Reminder notifications now have Done and Snooze actions and a MAP icon, so a task can be handled without opening the app (issue #210).
+
 ### Fixed
 
 - Task reminders are now rescheduled after an app update and after a clock or timezone change, not only after reboot (issue #208).

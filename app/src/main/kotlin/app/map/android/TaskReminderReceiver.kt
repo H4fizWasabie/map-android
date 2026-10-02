@@ -15,6 +15,10 @@ class TaskReminderReceiver : BroadcastReceiver() {
             restoreReminders(context)
             return
         }
+        if (intent.action == ACTION_DONE || intent.action == ACTION_SNOOZE) {
+            handleAction(context, intent.action!!, intent.getLongExtra(ReminderScheduler.EXTRA_TASK_ID, -1L))
+            return
+        }
         if (Build.VERSION.SDK_INT >= 33 &&
             context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
         ) return
@@ -39,14 +43,43 @@ class TaskReminderReceiver : BroadcastReceiver() {
         context.getSystemService(NotificationManager::class.java).notify(
             taskId.hashCode(),
             android.app.Notification.Builder(context, channelId)
-                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setSmallIcon(R.drawable.ic_map_tasks)
                 .setColor(context.resources.getColor(MapAppearance.selected(context).accent, context.theme))
                 .setContentTitle("MAP reminder")
                 .setContentText(title)
                 .setContentIntent(openApp)
                 .setAutoCancel(true)
+                .addAction(action(context, ACTION_DONE, taskId, "Done"))
+                .addAction(action(context, ACTION_SNOOZE, taskId, "Snooze"))
                 .build()
         )
+    }
+
+    private fun action(context: Context, action: String, taskId: Long, label: String): android.app.Notification.Action {
+        val intent = Intent(context, TaskReminderReceiver::class.java)
+            .setAction(action)
+            .setData(Uri.parse("map://task-action/$action/$taskId"))
+            .putExtra(ReminderScheduler.EXTRA_TASK_ID, taskId)
+        val pending = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        return android.app.Notification.Action.Builder(
+            android.graphics.drawable.Icon.createWithResource(context, R.drawable.ic_map_tasks), label, pending
+        ).build()
+    }
+
+    private fun handleAction(context: Context, action: String, taskId: Long) {
+        context.getSystemService(NotificationManager::class.java).cancel(taskId.hashCode())
+        val database = TaskDatabase(context)
+        try {
+            val task = database.openTasks().firstOrNull { it.id == taskId } ?: return
+            if (action == ACTION_DONE) {
+                TaskActions.complete(context, database, task)
+            } else {
+                ReminderScheduler.cancel(context, task.id)
+                database.snooze(task)?.let { ReminderScheduler.schedule(context, task.id, task.title, it) }
+            }
+        } finally {
+            database.close()
+        }
     }
 
     private fun restoreReminders(context: Context) {
@@ -62,6 +95,9 @@ class TaskReminderReceiver : BroadcastReceiver() {
     }
 
     companion object {
+        const val ACTION_DONE = "app.map.android.action.TASK_DONE"
+        const val ACTION_SNOOZE = "app.map.android.action.TASK_SNOOZE"
+
         // Alarms are lost on reboot and app update, and stale after a clock or timezone change.
         val RESTORE_ACTIONS = setOf(
             Intent.ACTION_BOOT_COMPLETED,
