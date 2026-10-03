@@ -11,6 +11,7 @@
 
 ### Fixed
 
+- Added a connected test that taps the reminder notification Done and Snooze actions (issue #223).
 - Instrumented tests now scroll to Open music below the Appearance cards and wait for the composer save, restoring a green 43-test connected run (issue #221).
 - Task import no longer merges distinct tasks that share a title and date, and rejects oversized files before reading them fully (issue #212).
 - Task reminders are now rescheduled after an app update and after a clock or timezone change, not only after reboot (issue #208).
