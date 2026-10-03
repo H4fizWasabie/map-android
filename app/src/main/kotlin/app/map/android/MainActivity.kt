@@ -51,6 +51,7 @@ class MainActivity : MapActivity() {
     private var undoState: UndoState? = null
     private var selectedView = "Home"
     private var taskQuery = ""
+    private val backupExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
     private var pendingTaskId: Long? = null
     private var contentScroll: ScrollView? = null
     private var restoredScrollY = 0
@@ -92,6 +93,7 @@ class MainActivity : MapActivity() {
     }
 
     override fun onDestroy() {
+        backupExecutor.shutdown()
         if (::database.isInitialized) database.close()
         super.onDestroy()
     }
@@ -126,6 +128,8 @@ class MainActivity : MapActivity() {
         val refresh = !initialResumePending
         initialResumePending = false
         if (::database.isInitialized) {
+            val appContext = applicationContext
+            backupExecutor.execute { AutoBackup.runIfDue(appContext) }
             if (refresh) {
                 if (selectedView == "Tasks") showTasks() else showHome()
             }
