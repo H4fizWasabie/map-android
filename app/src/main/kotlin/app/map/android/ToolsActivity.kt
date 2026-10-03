@@ -264,6 +264,29 @@ class ToolsActivity : MapActivity() {
             MapUi.section(this)
             setPadding(0, dp(22), 0, dp(4))
         })
+        val folder = AutoBackup.folder(this)
+        val last = AutoBackup.lastBackupAt(this)
+        addToolRow(
+            parent, "Automatic backup",
+            when {
+                folder == null -> "Choose a folder such as Documents. MAP saves a weekly copy of your tasks there."
+                AutoBackup.lastError(this) != null -> AutoBackup.lastError(this)!!
+                last == 0L -> "Weekly to ${folder.lastPathSegment?.substringAfter(':')}. First backup pending."
+                else -> "Weekly to ${folder.lastPathSegment?.substringAfter(':')}. Last backup ${SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(Date(last))}."
+            },
+            if (folder == null) "Choose folder" else "Change folder"
+        ) {
+            startActivityForResult(
+                Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).addFlags(
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+                ),
+                FOLDER_REQUEST
+            )
+        }
+        if (folder != null) addToolRow(parent, "Stop backup", "Existing backup files stay where they are.", "Turn off") {
+            AutoBackup.disable(this)
+            render()
+        }
         addToolRow(parent, "Export tasks", "Save all tasks to a file you choose.", "Export") {
             startActivityForResult(
                 Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("application/json")
@@ -273,6 +296,19 @@ class ToolsActivity : MapActivity() {
         }
         addToolRow(parent, "Import tasks", "Add tasks from an export. Existing tasks are kept.", "Import") {
             startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"), IMPORT_REQUEST)
+        }
+    }
+
+    private fun chooseBackupFolder(tree: Uri) = backupExecutor.execute {
+        val message = try {
+            AutoBackup.setFolder(this, tree)
+            AutoBackup.runNow(this) ?: "Backup saved. MAP will repeat it weekly."
+        } catch (error: Exception) {
+            "Could not use that folder. Pick another."
+        }
+        runOnUiThread {
+            Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+            if (!isDestroyed) render()
         }
     }
 
@@ -390,7 +426,7 @@ class ToolsActivity : MapActivity() {
         val iconResource = when (title) {
             "Documents" -> R.drawable.ic_map_documents
             "Scan" -> R.drawable.ic_map_scan
-            "Export tasks", "Import tasks" -> R.drawable.ic_map_tasks
+            "Export tasks", "Import tasks", "Automatic backup", "Stop backup" -> R.drawable.ic_map_tasks
             else -> R.drawable.ic_map_music
         }
         val copy = LinearLayout(this).apply {
@@ -466,6 +502,7 @@ class ToolsActivity : MapActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (resultCode == RESULT_OK && data?.data != null) {
+            if (requestCode == FOLDER_REQUEST) return chooseBackupFolder(data.data!!)
             if (requestCode == EXPORT_REQUEST) return exportTasks(data.data!!)
             if (requestCode == IMPORT_REQUEST) return importTasks(data.data!!)
         }
@@ -501,6 +538,7 @@ class ToolsActivity : MapActivity() {
     companion object {
         private const val DOCUMENT_REQUEST = 31
         private const val EXPORT_REQUEST = 32
+        private const val FOLDER_REQUEST = 34
         private const val IMPORT_REQUEST = 33
         private const val MAX_BACKUP_BYTES = 20_000_000
         private const val STATE_SCROLL_Y = "scroll_y"
