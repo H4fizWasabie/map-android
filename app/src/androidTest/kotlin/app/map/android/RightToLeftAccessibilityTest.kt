@@ -86,9 +86,7 @@ class RightToLeftAccessibilityTest {
         assertTrue("RTL Tools did not open Documents", device.wait(Until.hasObject(By.text("Documents")), TIMEOUT))
         assertRtlNavigationOrder()
         listOf("Open document", "Open scanner", "Open music").forEach { label ->
-            val action = device.wait(Until.findObject(By.text(label)), TIMEOUT)
-                ?: error("RTL Tools action $label was not reachable")
-            assertTargetFits(action, label)
+            assertTargetFits(scrollToVisibleAction(label), label)
         }
     }
 
