@@ -5,15 +5,20 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 
 object ReminderScheduler {
     fun schedule(context: Context, taskId: Long, title: String, atMillis: Long) {
         val alarm = context.getSystemService(AlarmManager::class.java)
-        alarm.setAndAllowWhileIdle(
-            AlarmManager.RTC_WAKEUP,
-            atMillis,
-            pendingIntent(context, taskId, title)
-        )
+        val intent = pendingIntent(context, taskId, title)
+        // Exact alarms are install-time granted for this sideloaded app; fall back to a Doze-delayable alarm if that ever changes.
+        val exact = Build.VERSION.SDK_INT < 31 || alarm.canScheduleExactAlarms()
+        try {
+            if (exact) alarm.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atMillis, intent)
+            else alarm.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atMillis, intent)
+        } catch (_: SecurityException) {
+            alarm.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atMillis, intent)
+        }
     }
 
     fun cancel(context: Context, taskId: Long) {

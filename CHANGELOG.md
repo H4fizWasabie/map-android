@@ -19,6 +19,7 @@
 
 ### Changed
 
+- Task reminders now use exact alarms so they fire at the due minute instead of being delayed by Doze (issue #227).
 - Added persistent Colorist Daybook, Botanical Print, and Woven Poster themes with bundled type and artwork, available from Tools → Appearance (issue #205).
 
 - Applied the approved lavender workspace direction across Home, grouped Tasks, Calendar, Tools/Documents, Scan, document viewing, and shared Music controls, with paired light/dark palettes and native floating task actions (issue #203).
