@@ -176,7 +176,7 @@ class MusicTransitionTest {
     fun playbackSurvivesLeavingAndReopeningMusic() {
         launchMap()
         clickText("Tools")
-        clickText("Open music")
+        clickOpenMusic()
         clickDescription("Play")
         dismissNotificationPermission()
         assertPlayback()
@@ -186,7 +186,7 @@ class MusicTransitionTest {
             SystemClock.sleep(500)
             launchMap()
             clickText("Tools")
-            clickText("Open music")
+            clickOpenMusic()
             assertPlayback()
         }
     }
@@ -195,7 +195,7 @@ class MusicTransitionTest {
     fun equalizerPresetAppliesToActiveTrackAndSurvivesDatabaseReopen() {
         launchMap()
         clickText("Tools")
-        clickText("Open music")
+        clickOpenMusic()
         clickDescription("Play")
         dismissNotificationPermission()
         assertPlayback()
@@ -242,7 +242,7 @@ class MusicTransitionTest {
     fun customSleepTimerCanBeSetAndCleared() {
         launchMap()
         clickText("Tools")
-        clickText("Open music")
+        clickOpenMusic()
         clickDescription("Play")
         dismissNotificationPermission()
         assertPlayback()
@@ -326,7 +326,7 @@ class MusicTransitionTest {
     fun homeMiniPlayerCanPauseAndResumePlayback() {
         launchMap()
         clickText("Tools")
-        clickText("Open music")
+        clickOpenMusic()
         clickDescription("Play")
         dismissNotificationPermission()
         assertPlayback()
@@ -344,7 +344,7 @@ class MusicTransitionTest {
     fun permanentAudioFocusLossWaitsForAnExplicitPlayAction() {
         launchMap()
         clickText("Tools")
-        clickText("Open music")
+        clickOpenMusic()
         clickDescription("Play")
         dismissNotificationPermission()
         assertPlayback()
@@ -366,7 +366,7 @@ class MusicTransitionTest {
     fun transientAudioFocusLossResumesPlaybackWhenFocusReturns() {
         launchMap()
         clickText("Tools")
-        clickText("Open music")
+        clickOpenMusic()
         clickDescription("Play")
         dismissNotificationPermission()
         assertPlayback()
@@ -427,6 +427,20 @@ class MusicTransitionTest {
             if (existed) original.copyTo(backup, overwrite = true) else backup.delete()
             DatabaseBackup(original, backup, existed)
         }
+    }
+
+    // The appearance cards push Music below the fold on Tools, so scroll until the action is fully on screen.
+    private fun clickOpenMusic() {
+        val minimum = (48 * context.resources.displayMetrics.density).toInt()
+        repeat(5) { attempt ->
+            val action = device.wait(Until.findObject(By.text("Open music")), 1_000L)
+            if (action != null && action.visibleBounds.height() >= minimum) {
+                action.click()
+                return
+            }
+            if (attempt < 4) device.swipe(device.displayWidth / 2, device.displayHeight * 2 / 3, device.displayWidth / 2, device.displayHeight / 3, 350)
+        }
+        error("MAP did not show Open music")
     }
 
     private fun clickText(text: String) {

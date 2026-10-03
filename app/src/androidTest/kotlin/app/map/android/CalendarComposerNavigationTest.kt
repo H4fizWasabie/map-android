@@ -178,12 +178,19 @@ class CalendarComposerNavigationTest {
         clickText("Weekly")
         clickText("Save")
 
-        val database = TaskDatabase(context)
-        val savedTask = try {
-            database.openTasks().firstOrNull { it.title == taskTitle }
-        } finally {
-            database.close()
-        } ?: error("Composer did not save the scheduled task")
+        // Save finishes asynchronously from the UI's point of view, so poll instead of reading once.
+        val saveDeadline = System.currentTimeMillis() + TIMEOUT
+        var savedTask: Task? = null
+        while (savedTask == null && System.currentTimeMillis() < saveDeadline) {
+            val database = TaskDatabase(context)
+            savedTask = try {
+                database.openTasks().firstOrNull { it.title == taskTitle }
+            } finally {
+                database.close()
+            }
+            if (savedTask == null) Thread.sleep(250)
+        }
+        savedTask ?: error("Composer did not save the scheduled task")
         assertEquals("Task notes did not survive save", "Keep the receipt", savedTask.notes)
         assertEquals("Task tags did not survive save", "errands, personal", savedTask.tags)
         assertEquals("Task recurrence did not survive save", "Weekly", savedTask.recurrence)
