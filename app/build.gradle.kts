@@ -22,6 +22,12 @@ android {
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
         }
+        // Sideloaded daily-driver build: release shrinking, debug signing so it installs over (and keeps the data of) the debug app.
+        create("personal") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += "release"
+        }
     }
 
     compileOptions {
