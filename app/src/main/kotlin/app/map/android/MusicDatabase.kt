@@ -298,6 +298,8 @@ class MusicDatabase(context: Context) : SQLiteOpenHelper(context, "map-music.db"
     fun bassStrength(): Short = state("bass")?.toShortOrNull() ?: 0
     fun setVirtualizerStrength(strength: Short) = setState("virtualizer", strength.toString())
     fun virtualizerStrength(): Short = state("virtualizer")?.toShortOrNull() ?: 0
+    fun setBackdrop(name: String) = setState("backdrop", name)
+    fun backdrop(): String = state("backdrop") ?: "Haze"
 
     private fun setState(key: String, value: String) = setState(writableDatabase, key, value)
 

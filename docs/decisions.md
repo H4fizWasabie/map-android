@@ -30,6 +30,7 @@
 - Active playback exposes a mini-player across MAP plus notification and lock-screen controls. Sleep timer supports custom duration, end of track, and end of queue.
 - Equalizer exposes available bands, presets, and device-supported effects; unsupported effects are clearly hidden or disabled. Missing audio files remain retained as unavailable records.
 - Music follows the selected appearance; primary playback controls stay visible, while queue, equalizer, sleep timer, and metadata use focused sheets or secondary screens rather than crowding Now Playing.
+- Issue #232: Now Playing offers Haze (blurred artwork), Glow (artwork-colour halo), Dusk (artwork edge colours), and Plain backdrops, saved in music state. Each fades into the selected theme's background behind the title and controls, falls back to the theme accent without artwork, and adds no motion or dependency.
 - Tasks support Inbox, Overdue, Today, Upcoming, recurrence, completion history, reminders, and bounded snooze.
 - Open tasks can be deleted from Task details after confirmation; deletion cancels its reminder and removes only that pending task.
 - Tasks can be exported to and imported from a versioned JSON file chosen through the system file picker (Tools → Backup). Import validates the whole file first, rejects newer versions, never deletes or overwrites existing tasks, and skips tasks already present. This is user-initiated local file I/O, not sync.
