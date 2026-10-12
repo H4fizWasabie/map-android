@@ -171,6 +171,7 @@ class MusicService : Service() {
         currentUri = uri
         database.setCurrent(uri)
         pendingSeek = if (restorePosition) database.position() else 0
+        if (!restorePosition) database.setPosition(0)
         releaseEffects()
         player?.release()
         player = try {
