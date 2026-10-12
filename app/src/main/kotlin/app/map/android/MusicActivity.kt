@@ -6,7 +6,13 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.res.ColorStateList
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.Drawable
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.LayerDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -97,6 +103,7 @@ class MusicActivity : MapActivity() {
     private var playButton: ImageButton? = null
     private var playerScroll: ScrollView? = null
     private var playerScrollY = 0
+    private var backdropArt: Pair<String, Bitmap?>? = null
     private var nowPlayingTitle: TextView? = null
     private var nowPlayingArtist: TextView? = null
     private var sleepLabel: TextView? = null
@@ -644,7 +651,7 @@ class MusicActivity : MapActivity() {
         showingPlayer = true
         val item = currentTrack() ?: run { renderLibrary(); return }
         nowPlayingDuration = item.durationMs
-        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(mapColor(R.color.map_background)) }
+        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         root.addView(header("Now Playing", true))
         val scroll = ScrollView(this).apply {
             playerScroll = this
@@ -699,6 +706,10 @@ class MusicActivity : MapActivity() {
                 addView(actionButton("Queue") { showQueueDialog() })
                 addView(actionButton("Equalizer") { showEqualizerDialog() })
                 addView(actionButton("Sleep") { showSleepDialog() })
+                addView(actionButton("Backdrop: ${database.backdrop()}") {
+                    database.setBackdrop(BACKDROPS[(BACKDROPS.indexOf(database.backdrop()) + 1) % BACKDROPS.size])
+                    renderPlayer()
+                })
             })
         }, LinearLayout.LayoutParams(-1, -2))
         sleepLabel = TextView(this).apply { text = ""; MapUi.metadata(this); gravity = Gravity.CENTER; setPadding(0, dp(6), 0, 0) }
@@ -708,7 +719,56 @@ class MusicActivity : MapActivity() {
         MapUi.applySystemBarInsets(root)
         setContentView(root)
         scroll.post { scroll.scrollTo(0, playerScrollY) }
+        applyBackdrop(root, item)
         updatePlaybackViews()
+    }
+
+    /** Paints Now Playing from an 8px copy of the artwork; bilinear upscaling blurs it on every API level. */
+    private fun applyBackdrop(root: View, item: AudioItem) {
+        val cached = backdropArt
+        if (cached?.first == item.uri) {
+            root.background = backdrop(cached.second)
+            return
+        }
+        root.background = backdrop(null)
+        runCatching {
+            executor.execute {
+                val art = loadArtwork(item, dp(96))?.let { full ->
+                    Bitmap.createScaledBitmap(full, 8, 8, true).also { if (it !== full) full.recycle() }
+                }
+                root.post {
+                    backdropArt = item.uri to art
+                    root.background = backdrop(art)
+                }
+            }
+        }
+    }
+
+    private fun backdrop(art: Bitmap?): Drawable {
+        val background = mapColor(R.color.map_background)
+        val accent = mapColor(R.color.map_accent)
+        fun alpha(color: Int, value: Int) = (color and 0xFFFFFF) or (value shl 24)
+        fun edge(y: Int) = art?.let { it.getPixel(it.width / 2, y * (it.height - 1)) }
+        // The fade keeps title and controls on near-solid theme background for contrast.
+        fun fade(top: Int, middle: Int) = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(alpha(background, top), alpha(background, middle), background))
+        return when (database.backdrop()) {
+            "Haze" -> LayerDrawable(arrayOf(
+                art?.let { BitmapDrawable(resources, it).apply { isFilterBitmap = true } } ?: ColorDrawable(alpha(accent, 0x80)),
+                fade(0x66, 0xD9)
+            ))
+            "Glow" -> GradientDrawable().apply {
+                gradientType = GradientDrawable.RADIAL_GRADIENT
+                gradientRadius = resources.displayMetrics.widthPixels * 0.9f
+                setGradientCenter(0.5f, 0.28f)
+                val glow = art?.let { Bitmap.createScaledBitmap(it, 1, 1, true).getPixel(0, 0) } ?: accent
+                colors = intArrayOf(alpha(glow, 0xB3), alpha(glow, 0x33), background)
+            }
+            "Dusk" -> LayerDrawable(arrayOf(
+                GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(edge(0) ?: accent, edge(1) ?: mapColor(R.color.map_focus))),
+                fade(0x1A, 0xB8)
+            ))
+            else -> ColorDrawable(background)
+        }
     }
 
     private fun updatePlaybackViews() {
@@ -1153,5 +1213,6 @@ class MusicActivity : MapActivity() {
         private const val FOLDER_REQUEST = 30
         private const val MAX_ARTWORK_PIXELS = 1024
         private const val MAX_ARTWORK_BYTES = 8 * 1024 * 1024
+        private val BACKDROPS = listOf("Haze", "Glow", "Dusk", "Plain")
     }
 }

@@ -4,6 +4,7 @@
 
 ### Added
 
+- Now Playing has selectable Haze, Glow, Dusk, and Plain backdrops drawn from the track's artwork; tap Backdrop to cycle them (issue #232).
 - `./gradlew assemblePersonal` builds a smaller shrunk APK signed with the debug key that installs over the debug app and keeps its data (issue #229).
 - Tools → Backup can save a weekly copy of all tasks to a folder you choose, keeping the latest five, so reinstalling or losing the phone no longer loses them (issue #225).
 - Tools → Backup exports all tasks to a JSON file and imports them back without duplicating existing tasks (issue #212).
