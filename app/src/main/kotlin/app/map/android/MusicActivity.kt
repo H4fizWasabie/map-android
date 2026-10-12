@@ -26,6 +26,7 @@ import android.widget.ArrayAdapter
 import android.widget.AbsListView
 import android.widget.BaseAdapter
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
 import android.widget.ImageButton
 import android.widget.ImageView
@@ -652,10 +653,15 @@ class MusicActivity : MapActivity() {
         val item = currentTrack() ?: run { renderLibrary(); return }
         nowPlayingDuration = item.durationMs
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        // The backdrop moves with the scrolling content so its fade stays behind the title and controls.
+        val backdrop = View(this)
         root.addView(header("Now Playing", true))
         val scroll = ScrollView(this).apply {
             playerScroll = this
-            setOnScrollChangeListener { _, _, scrollY, _, _ -> playerScrollY = scrollY }
+            setOnScrollChangeListener { _, _, scrollY, _, _ ->
+                playerScrollY = scrollY
+                backdrop.translationY = -scrollY.toFloat()
+            }
         }
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL; setPadding(dp(24), 0, dp(24), dp(28)) }
         val artworkSize = minOf(dp(292), resources.displayMetrics.widthPixels - dp(48))
@@ -717,9 +723,13 @@ class MusicActivity : MapActivity() {
         scroll.addView(body)
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         MapUi.applySystemBarInsets(root)
-        setContentView(root)
+        setContentView(FrameLayout(this).apply {
+            setBackgroundColor(mapColor(R.color.map_background))
+            addView(backdrop, FrameLayout.LayoutParams(-1, -1))
+            addView(root, FrameLayout.LayoutParams(-1, -1))
+        })
         scroll.post { scroll.scrollTo(0, playerScrollY) }
-        applyBackdrop(root, item)
+        applyBackdrop(backdrop, item)
         updatePlaybackViews()
     }
 
