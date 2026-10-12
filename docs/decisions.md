@@ -26,6 +26,7 @@
 - The library supports Songs, Albums, Artists, Genres, Folders, Playlists, Favorites, and Recently played, plus search, sorting, and filtering by folder, format, artist, album, genre, duration, and availability.
 - Now Playing includes artwork, seeking, previous/play/next, shuffle, repeat, favorite, and queue access. The persistent editable queue supports reorder, remove, play next, clear, and save as playlist. Playlists support create, rename, delete, reorder, and add/remove tracks.
 - Music restores the last track, queue, playback position, shuffle, repeat, and equalizer state between sessions, but never starts playback automatically after MAP or the device restarts.
+- Issue #231: stopping playback keeps the last track for the mini-players to resume; only Clear queue forgets it. Swiping MAP from recents keeps active music playing with notification controls; a paused session stops.
 - Active playback exposes a mini-player across MAP plus notification and lock-screen controls. Sleep timer supports custom duration, end of track, and end of queue.
 - Equalizer exposes available bands, presets, and device-supported effects; unsupported effects are clearly hidden or disabled. Missing audio files remain retained as unavailable records.
 - Music follows the selected appearance; primary playback controls stay visible, while queue, equalizer, sleep timer, and metadata use focused sheets or secondary screens rather than crowding Now Playing.

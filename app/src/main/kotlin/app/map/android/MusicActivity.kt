@@ -332,7 +332,7 @@ class MusicActivity : MapActivity() {
             clipToPadding = false
         }
         list.addHeaderView(body, null, false)
-        miniPlayerTrack()?.let { list.addFooterView(miniPlayer(it), null, false) }
+        currentTrack()?.let { list.addFooterView(miniPlayer(it), null, false) }
         libraryAdapter = LibraryAdapter()
         list.adapter = libraryAdapter
         root.addView(list, LinearLayout.LayoutParams(-1, 0, 1f))
@@ -561,7 +561,7 @@ class MusicActivity : MapActivity() {
         if (tracks.isEmpty()) addEmpty(body, "Add tracks from your library using More.")
         scroll.addView(body)
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
-        miniPlayerTrack()?.let { root.addView(miniPlayer(it)) }
+        currentTrack()?.let { root.addView(miniPlayer(it)) }
         MapUi.applySystemBarInsets(root)
         setContentView(root)
     }
@@ -628,8 +628,6 @@ class MusicActivity : MapActivity() {
     }
 
     private fun currentTrack(): AudioItem? = database.track(currentUri ?: database.current())
-
-    private fun miniPlayerTrack(): AudioItem? = currentTrack()?.takeIf { MusicService.isRunning || !database.playing() }
 
     private fun miniPlayer(item: AudioItem): View = LinearLayout(this).apply {
         orientation = LinearLayout.HORIZONTAL

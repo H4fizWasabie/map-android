@@ -153,8 +153,9 @@ class MusicService : Service() {
         super.onDestroy()
     }
 
+    // Swiping MAP away keeps active music playing; a paused session has nothing to keep alive.
     override fun onTaskRemoved(rootIntent: Intent?) {
-        stopPlayback()
+        if (player?.isPlaying != true) stopPlayback()
         super.onTaskRemoved(rootIntent)
     }
 
@@ -170,6 +171,7 @@ class MusicService : Service() {
         currentUri = uri
         database.setCurrent(uri)
         pendingSeek = if (restorePosition) database.position() else 0
+        if (!restorePosition) database.setPosition(0)
         releaseEffects()
         player?.release()
         player = try {
@@ -297,7 +299,6 @@ class MusicService : Service() {
         releaseEffects()
         sleepMode = SLEEP_OFF
         sleepEndsAt = 0
-        database.setCurrent("")
         updatePlaybackState(false)
         broadcastState()
         stopForeground(STOP_FOREGROUND_REMOVE)
@@ -305,6 +306,7 @@ class MusicService : Service() {
     }
 
     private fun savePosition() {
+        if (player?.playbackState == Player.STATE_ENDED) return
         val position = runCatching { player?.currentPosition?.toInt() ?: 0 }.getOrDefault(0)
         if (position > 0) runCatching { database.setPosition(position) }
     }
