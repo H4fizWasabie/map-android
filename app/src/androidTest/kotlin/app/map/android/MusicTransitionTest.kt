@@ -341,6 +341,25 @@ class MusicTransitionTest {
     }
 
     @Test
+    fun stoppedMusicRestoresTheLastTrackOnHome() {
+        launchMap()
+        clickText("Tools")
+        clickOpenMusic()
+        clickDescription("Play")
+        dismissNotificationPermission()
+        assertPlayback()
+
+        context.startService(Intent(context, MusicService::class.java).setAction(MusicService.ACTION_STOP))
+        val deadline = SystemClock.elapsedRealtime() + TIMEOUT
+        while (MusicService.isRunning && SystemClock.elapsedRealtime() < deadline) SystemClock.sleep(50)
+        assertTrue("MAP Music did not stop", !MusicService.isRunning)
+
+        launchMap()
+        clickDescription("Play")
+        assertPlayback()
+    }
+
+    @Test
     fun permanentAudioFocusLossWaitsForAnExplicitPlayAction() {
         launchMap()
         clickText("Tools")
